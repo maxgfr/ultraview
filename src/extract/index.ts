@@ -12,7 +12,7 @@ import { createRepoContext } from "./context.js";
 import { expressExtractor, expressMountLinker } from "./express.js";
 import { extOf } from "./mask.js";
 import { entityUseLinker, prismaClientExtractor, prismaLinker, prismaSchemaExtractor } from "./prisma.js";
-import { type ExtractOutput, type Extractor, FACT_KINDS, FACTS_SCHEMA, type FactKind, type Facts, type LinkHint, type Linker } from "./types.js";
+import { type ExtractOutput, type Extractor, FACT_KINDS, FACTS_SCHEMA, type FactKind, type Facts, type LinkFact, type LinkHint, type Linker } from "./types.js";
 // --- issue #2: python, sql, jobs, externals, infra ---
 import { externalsExtractor } from "./externals.js";
 import { composeExtractor, dockerfileExtractor, k8sExtractor } from "./infra.js";
@@ -89,19 +89,75 @@ const JS_WEB_LINKERS: readonly Linker[] = [jsMountLinker, ormFieldsLinker];
 const JS_WEB_CALL_LINKERS: readonly Linker[] = [httpCallLinker];
 // --- end issue #1 ---
 
+// --- issue #6: RPC, precise externals, deduped infra ---
+import { externalHostsLinker } from "./externals.js";
+import { infraOverlayLinker } from "./infra.js";
+import { nextActionsExtractor, rpcLinker, trpcExtractor } from "./rpc.js";
+
+/** tRPC routers and calls, Next server actions. */
+const RPC_EXTRACTORS: readonly Extractor[] = [trpcExtractor, nextActionsExtractor];
+
+/** RPC routes composed and calls settled (before HTTP calls); then hosts of absolute-URL calls, and one infra fact per unit. */
+const RPC_LINKERS: readonly Linker[] = [rpcLinker];
+const LATE_LINKERS: readonly Linker[] = [externalHostsLinker, infraOverlayLinker];
+// --- end issue #6 ---
+
 export type * from "./types.js";
 export { FACT_KINDS, FACTS_SCHEMA } from "./types.js";
 export { createRepoContext } from "./context.js";
 export { commentSyntaxFor, maskComments, maskSource } from "./mask.js";
 
 /** Every extractor, in a fixed order. Planned ones are listed in src/extract/README.md. */
-export const EXTRACTORS: readonly Extractor[] = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...JS_WEB_EXTRACTORS, ...PY_OPS_EXTRACTORS];
+export const EXTRACTORS: readonly Extractor[] = [
+  expressExtractor,
+  prismaSchemaExtractor,
+  prismaClientExtractor,
+  ...JS_WEB_EXTRACTORS,
+  ...RPC_EXTRACTORS,
+  ...PY_OPS_EXTRACTORS,
+];
 
 /** Repo-level passes, in order: structure first (mounts), then name resolution. */
-export const LINKERS: readonly Linker[] = [expressMountLinker, ...JS_WEB_LINKERS, prismaLinker, ...PY_OPS_LINKERS, ...JS_WEB_CALL_LINKERS, entityUseLinker];
+export const LINKERS: readonly Linker[] = [
+  expressMountLinker,
+  ...JS_WEB_LINKERS,
+  prismaLinker,
+  ...PY_OPS_LINKERS,
+  ...RPC_LINKERS,
+  ...JS_WEB_CALL_LINKERS,
+  entityUseLinker,
+  ...LATE_LINKERS,
+];
 
 export function emptyFacts(): Facts {
-  return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [] };
+  return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [], links: [] };
+}
+
+/** Locations kept per hyperlink host: enough to cite, small enough to keep facts.json lean. */
+export const LINKS_PER_HOST = 3;
+
+/**
+ * Hyperlinks sorted by file, line, host; deduplicated; hosts that are an
+ * external (`via: "host"`) dropped; at most `LINKS_PER_HOST` locations per host
+ * (the first ones in that order).
+ */
+function normalizeLinks(links: readonly LinkFact[], externals: readonly Facts["externals"][number][]): LinkFact[] {
+  const hostExternals = new Set(externals.filter((x) => x.via === "host").map((x) => x.id));
+  const sorted = [...links].sort((a, b) => cmp(a.file, b.file) || a.line - b.line || cmp(a.host, b.host));
+  const perHost = new Map<string, number>();
+  const seen = new Set<string>();
+  const out: LinkFact[] = [];
+  for (const l of sorted) {
+    if (hostExternals.has(l.host)) continue;
+    const key = `${l.host}\u0000${l.file}\u0000${l.line}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const n = perHost.get(l.host) ?? 0;
+    if (n >= LINKS_PER_HOST) continue;
+    perHost.set(l.host, n + 1);
+    out.push({ host: l.host, file: l.file, line: l.line });
+  }
+  return out;
 }
 
 /** The identity of a record within its kind, used to order records sharing a file and line. */
@@ -145,6 +201,7 @@ export function normalizeFacts(facts: Facts): Facts {
     }
     (out as unknown as Record<string, unknown[]>)[kind] = kept;
   }
+  out.links = normalizeLinks(facts.links ?? [], out.externals);
   return out;
 }
 
@@ -201,6 +258,7 @@ export function runExtractors(repo: string, files: readonly string[], readText: 
         const rows = got[kind];
         if (rows?.length) (merged[kind] as unknown[]).push(...rows);
       }
+      if (got.links?.length) merged.links?.push(...got.links);
       if (got.hints?.length) hints.push(...got.hints);
     }
   }

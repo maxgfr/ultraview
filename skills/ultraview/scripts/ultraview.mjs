@@ -32414,7 +32414,7 @@ var entityUseLinker = {
 };
 
 // src/extract/types.ts
-var FACTS_SCHEMA = 1;
+var FACTS_SCHEMA = 2;
 var FACT_KINDS = ["routes", "calls", "screens", "entities", "entityUses", "jobs", "externals", "infra"];
 
 // src/extract/py.ts
@@ -32600,42 +32600,129 @@ function pyRouteParams(path) {
 
 // src/extract/sdk-map.ts
 var SDK_MAP = [
-  { id: "algolia", npm: ["algoliasearch", "@algolia/*"], py: ["algoliasearch"], dist: ["algoliasearch"], env: ["ALGOLIA"] },
-  { id: "anthropic", npm: ["@anthropic-ai/sdk"], py: ["anthropic"], dist: ["anthropic"], env: ["ANTHROPIC"] },
-  { id: "aws", npm: ["@aws-sdk/*", "aws-sdk"], py: ["boto3", "botocore", "aioboto3"], dist: ["boto3", "botocore", "aioboto3"], env: ["AWS"] },
-  { id: "elasticsearch", npm: ["@elastic/elasticsearch"], py: ["elasticsearch"], dist: ["elasticsearch"], env: ["ELASTICSEARCH", "ELASTIC"] },
+  {
+    id: "algolia",
+    npm: ["algoliasearch", "@algolia/*"],
+    py: ["algoliasearch"],
+    dist: ["algoliasearch"],
+    env: ["ALGOLIA"],
+    hosts: ["*.algolia.net", "*.algolianet.com"]
+  },
+  { id: "anthropic", npm: ["@anthropic-ai/sdk"], py: ["anthropic"], dist: ["anthropic"], env: ["ANTHROPIC"], hosts: ["api.anthropic.com"] },
+  {
+    id: "aws",
+    npm: ["@aws-sdk/*", "aws-sdk"],
+    py: ["boto3", "botocore", "aioboto3"],
+    dist: ["boto3", "botocore", "aioboto3"],
+    env: ["AWS"],
+    hosts: ["*.amazonaws.com"]
+  },
+  {
+    id: "elasticsearch",
+    npm: ["@elastic/elasticsearch"],
+    py: ["elasticsearch"],
+    dist: ["elasticsearch"],
+    env: ["ELASTICSEARCH", "ELASTIC"],
+    hosts: ["*.elastic-cloud.com", "*.found.io"]
+  },
   {
     id: "firebase",
     npm: ["firebase", "firebase-admin", "firebase-functions", "@firebase/*"],
     py: ["firebase_admin"],
     dist: ["firebase-admin"],
-    env: ["FIREBASE"]
+    env: ["FIREBASE"],
+    hosts: ["*.firebaseio.com", "firestore.googleapis.com", "identitytoolkit.googleapis.com", "securetoken.googleapis.com"]
   },
-  { id: "github", npm: ["@octokit/*", "octokit"], py: ["github"], dist: ["pygithub"], env: ["GITHUB"] },
-  { id: "google-cloud", npm: ["@google-cloud/*"], py: ["google.cloud"], dist: ["google-cloud-*"], env: ["GOOGLE_CLOUD", "GCP", "GCLOUD"] },
-  { id: "mailgun", npm: ["mailgun.js", "mailgun-js"], py: ["mailgun"], dist: ["mailgun", "mailgun2"], env: ["MAILGUN"] },
-  { id: "mixpanel", npm: ["mixpanel", "mixpanel-browser"], py: ["mixpanel"], dist: ["mixpanel"], env: ["MIXPANEL"] },
-  { id: "mongodb", npm: ["mongodb"], py: ["pymongo", "motor"], dist: ["pymongo", "motor"], env: ["MONGODB", "MONGO"] },
-  { id: "openai", npm: ["openai"], py: ["openai"], dist: ["openai"], env: ["OPENAI"] },
+  { id: "github", npm: ["@octokit/*", "octokit"], py: ["github"], dist: ["pygithub"], env: ["GITHUB"], hosts: ["api.github.com", "uploads.github.com"] },
+  {
+    id: "google-cloud",
+    npm: ["@google-cloud/*"],
+    py: ["google.cloud"],
+    dist: ["google-cloud-*"],
+    env: ["GOOGLE_CLOUD", "GCP", "GCLOUD"],
+    hosts: ["storage.googleapis.com", "*.cloudfunctions.net"]
+  },
+  {
+    id: "mailgun",
+    npm: ["mailgun.js", "mailgun-js"],
+    py: ["mailgun"],
+    dist: ["mailgun", "mailgun2"],
+    env: ["MAILGUN"],
+    hosts: ["api.mailgun.net", "api.eu.mailgun.net"]
+  },
+  {
+    id: "mixpanel",
+    npm: ["mixpanel", "mixpanel-browser"],
+    py: ["mixpanel"],
+    dist: ["mixpanel"],
+    env: ["MIXPANEL"],
+    hosts: ["api.mixpanel.com", "api-eu.mixpanel.com"]
+  },
+  { id: "mongodb", npm: ["mongodb"], py: ["pymongo", "motor"], dist: ["pymongo", "motor"], env: ["MONGODB", "MONGO"], hosts: ["*.mongodb.net"] },
+  { id: "openai", npm: ["openai"], py: ["openai"], dist: ["openai"], env: ["OPENAI"], hosts: ["api.openai.com"] },
   {
     id: "postgres",
     npm: ["pg", "postgres", "@neondatabase/serverless"],
     py: ["psycopg", "psycopg2", "asyncpg"],
     dist: ["psycopg", "psycopg2", "psycopg2-binary", "psycopg-binary", "asyncpg"],
-    env: ["POSTGRES", "PG"]
+    env: ["POSTGRES", "PG"],
+    hosts: ["*.neon.tech"]
   },
-  { id: "posthog", npm: ["posthog-js", "posthog-node"], py: ["posthog"], dist: ["posthog"], env: ["POSTHOG"] },
-  { id: "pusher", npm: ["pusher", "pusher-js"], py: ["pusher"], dist: ["pusher"], env: ["PUSHER"] },
-  { id: "redis", npm: ["redis", "ioredis", "@upstash/redis"], py: ["redis"], dist: ["redis"], env: ["REDIS"] },
-  { id: "resend", npm: ["resend"], py: ["resend"], dist: ["resend"], env: ["RESEND"] },
-  { id: "segment", npm: ["@segment/*", "analytics-node"], py: ["segment"], dist: ["segment-analytics-python", "analytics-python"], env: ["SEGMENT"] },
-  { id: "sendgrid", npm: ["@sendgrid/*"], py: ["sendgrid"], dist: ["sendgrid"], env: ["SENDGRID"] },
-  { id: "sentry", npm: ["@sentry/*"], py: ["sentry_sdk"], dist: ["sentry-sdk"], env: ["SENTRY"] },
-  { id: "slack", npm: ["@slack/*"], py: ["slack_sdk", "slack_bolt"], dist: ["slack-sdk", "slack-bolt"], env: ["SLACK"] },
-  { id: "stripe", npm: ["stripe", "@stripe/*"], py: ["stripe"], dist: ["stripe"], env: ["STRIPE"] },
-  { id: "supabase", npm: ["@supabase/*"], py: ["supabase"], dist: ["supabase"], env: ["SUPABASE"] },
-  { id: "twilio", npm: ["twilio"], py: ["twilio"], dist: ["twilio"], env: ["TWILIO"] }
+  {
+    id: "posthog",
+    npm: ["posthog-js", "posthog-node"],
+    py: ["posthog"],
+    dist: ["posthog"],
+    env: ["POSTHOG"],
+    hosts: ["app.posthog.com", "us.posthog.com", "eu.posthog.com", "us.i.posthog.com", "eu.i.posthog.com"]
+  },
+  { id: "pusher", npm: ["pusher", "pusher-js"], py: ["pusher"], dist: ["pusher"], env: ["PUSHER"], hosts: ["*.pusherapp.com", "sockjs.pusher.com"] },
+  { id: "redis", npm: ["redis", "ioredis", "@upstash/redis"], py: ["redis"], dist: ["redis"], env: ["REDIS"], hosts: ["*.upstash.io"] },
+  { id: "resend", npm: ["resend"], py: ["resend"], dist: ["resend"], env: ["RESEND"], hosts: ["api.resend.com"] },
+  {
+    id: "segment",
+    npm: ["@segment/*", "analytics-node"],
+    py: ["segment"],
+    dist: ["segment-analytics-python", "analytics-python"],
+    env: ["SEGMENT"],
+    hosts: ["api.segment.io", "cdn.segment.com"]
+  },
+  { id: "sendgrid", npm: ["@sendgrid/*"], py: ["sendgrid"], dist: ["sendgrid"], env: ["SENDGRID"], hosts: ["api.sendgrid.com"] },
+  {
+    id: "sentry",
+    npm: ["@sentry/*"],
+    py: ["sentry_sdk"],
+    dist: ["sentry-sdk"],
+    env: ["SENTRY"],
+    hosts: ["*.ingest.sentry.io", "*.ingest.us.sentry.io", "*.ingest.de.sentry.io"]
+  },
+  {
+    id: "slack",
+    npm: ["@slack/*"],
+    py: ["slack_sdk", "slack_bolt"],
+    dist: ["slack-sdk", "slack-bolt"],
+    env: ["SLACK"],
+    hosts: ["hooks.slack.com", "slack.com"]
+  },
+  {
+    id: "stripe",
+    npm: ["stripe", "@stripe/*"],
+    py: ["stripe"],
+    dist: ["stripe"],
+    env: ["STRIPE"],
+    hosts: ["api.stripe.com", "js.stripe.com", "files.stripe.com"]
+  },
+  { id: "supabase", npm: ["@supabase/*"], py: ["supabase"], dist: ["supabase"], env: ["SUPABASE"], hosts: ["*.supabase.co", "*.supabase.in"] },
+  {
+    id: "twilio",
+    npm: ["twilio"],
+    py: ["twilio"],
+    dist: ["twilio"],
+    env: ["TWILIO"],
+    hosts: ["api.twilio.com", "verify.twilio.com", "conversations.twilio.com"]
+  }
 ];
+var ENV_IGNORED = /^GITHUB_(?:ACTIONS?|ACTION_\w+|ACTOR\w*|REF\w*|SHA|RUN_\w+|WORKFLOW\w*|WORKSPACE|REPOSITORY\w*|EVENT_\w+|HEAD_REF|BASE_REF|JOB|SERVER_URL|OUTPUT|ENV|STEP_SUMMARY|PATH|STATE|RETENTION_DAYS|TRIGGERING_ACTOR)$/;
 var ENV_PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "NUXT_PUBLIC_", "VITE_", "REACT_APP_", "EXPO_PUBLIC_", "PUBLIC_", "GATSBY_"];
 var IGNORED_HOSTS = [
   "localhost",
@@ -32649,12 +32736,37 @@ var IGNORED_HOSTS = [
   "schemas.xmlsoap.org",
   "schemas.openxmlformats.org",
   "schemas.microsoft.com",
+  "schemas.android.com",
   "xmlns.com",
+  "xmlns.jcp.org",
   "purl.org",
+  "purl.oclc.org",
   "ns.adobe.com",
-  "relaxng.org"
+  "relaxng.org",
+  "sitemaps.org",
+  "ogp.me",
+  "rdfs.org",
+  "opengis.net",
+  "docbook.org",
+  "iptc.org",
+  "xmp.org"
 ];
-var IGNORED_TLDS = ["localhost", "local", "internal", "test", "example", "invalid", "lan", "home", "corp"];
+var IGNORED_DOMAIN_LABELS = ["example", "exemple", "beispiel", "ejemplo", "esempio"];
+var IGNORED_TLDS = [
+  "localhost",
+  "local",
+  "internal",
+  "test",
+  "example",
+  "invalid",
+  "lan",
+  "home",
+  "corp",
+  "arpa",
+  "onion",
+  "localdomain"
+];
+var NAMESPACE_PATH = /^\/(?:schemas?|ns|xmlns|xml\/ns|dtd|xsd)(?:\/|$)|\/XMLSchema(?:-instance)?$/i;
 var MULTI_LABEL_SUFFIXES = [
   "co.uk",
   "org.uk",
@@ -32675,7 +32787,28 @@ var MULTI_LABEL_SUFFIXES = [
   "com.mx",
   "co.in",
   "co.za",
-  "co.kr"
+  "co.kr",
+  "gouv.fr",
+  "gov.au",
+  "gov.br",
+  "gob.mx",
+  "gob.es",
+  "gv.at",
+  "gc.ca",
+  "gov.in",
+  "github.io",
+  "gitlab.io",
+  "vercel.app",
+  "netlify.app",
+  "herokuapp.com",
+  "pages.dev",
+  "workers.dev",
+  "web.app",
+  "firebaseapp.com",
+  "azurewebsites.net",
+  "onrender.com",
+  "fly.dev",
+  "cloudfront.net"
 ];
 
 // src/extract/externals.ts
@@ -32693,6 +32826,7 @@ function sdkForPyModule(module2) {
   return SDK_MAP.find((e) => e.py.some((m) => module2 === m || module2.startsWith(`${m}.`)));
 }
 function sdkForEnv(name2) {
+  if (ENV_IGNORED.test(name2)) return void 0;
   let n = name2;
   for (const p of ENV_PUBLIC_PREFIXES) if (n.startsWith(p)) n = n.slice(p.length);
   let best;
@@ -32720,7 +32854,254 @@ function registrableDomain(host) {
   if (labels.length < take) return void 0;
   const domain = labels.slice(-take).join(".");
   if (IGNORED_HOSTS.includes(domain) || IGNORED_HOSTS.includes(h)) return void 0;
+  if (IGNORED_DOMAIN_LABELS.includes(labels[labels.length - take])) return void 0;
   return domain;
+}
+function sdkForHost(host) {
+  const h = host.toLowerCase();
+  return SDK_MAP.find((e) => (e.hosts ?? []).some((p) => p.startsWith("*.") ? h === p.slice(2) || h.endsWith(p.slice(1)) : h === p));
+}
+function hostExternalId(host, path = "/") {
+  if (NAMESPACE_PATH.test(path)) return void 0;
+  const domain = registrableDomain(host);
+  if (!domain) return void 0;
+  return sdkForHost(host)?.id ?? domain;
+}
+var QUOTES = /* @__PURE__ */ new Set(['"', "'", "`"]);
+var HTTP_FUNCTIONS = /* @__PURE__ */ new Set([
+  "fetch",
+  "$fetch",
+  "ofetch",
+  "useFetch",
+  "useLazyFetch",
+  "useSWR",
+  "axios",
+  "ky",
+  "got",
+  "superagent",
+  "needle",
+  "urlopen",
+  "Request",
+  "wretch",
+  "get",
+  "post",
+  "put",
+  "patch",
+  "request",
+  "fetchJson",
+  "fetchJSON",
+  "getJson",
+  "getJSON"
+]);
+var HTTP_METHODS = /* @__PURE__ */ new Set([
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "head",
+  "options",
+  "request",
+  "fetch",
+  "stream",
+  "urlopen",
+  "ws_connect",
+  "clone",
+  "fetchJson",
+  "fetchJSON",
+  "getJson",
+  "getJSON"
+]);
+var CLIENT_FACTORIES = /* @__PURE__ */ new Set([
+  "create",
+  "extend",
+  "createClient",
+  "GraphQLClient",
+  "ApolloClient",
+  "HttpLink",
+  "createHttpLink",
+  "httpLink",
+  "httpBatchLink",
+  "httpBatchStreamLink",
+  "createWSClient",
+  "io",
+  "EventSource",
+  "WebSocket",
+  "Client",
+  "AsyncClient",
+  "Session"
+]);
+var ENV_GETTERS = /(?:^|\.)(?:getenv|get_env|env|config|str|url)$|(?:^|\.)environ\.get$/;
+var URL_KEYS = /* @__PURE__ */ new Set(["url", "uri", "baseURL", "baseUrl", "base_url", "prefixUrl", "prefix_url", "endpoint", "host", "server"]);
+var SERVICE_QUALIFIERS = /* @__PURE__ */ new Set([
+  "api",
+  "apis",
+  "base",
+  "prefix",
+  "server",
+  "service",
+  "backend",
+  "webhook",
+  "hook",
+  "graphql",
+  "gql",
+  "rpc",
+  "trpc",
+  "rest",
+  "soap",
+  "auth",
+  "oauth",
+  "oidc",
+  "token",
+  "ws",
+  "wss",
+  "websocket",
+  "socket",
+  "sse",
+  "upstream",
+  "proxy",
+  "gateway",
+  "ingest",
+  "collector",
+  "tracker",
+  "tracking",
+  "analytics",
+  "matomo",
+  "sentry",
+  "endpoint",
+  "remote",
+  "broker",
+  "s3",
+  "storage",
+  "bucket",
+  "smtp",
+  "mail",
+  "elastic",
+  "search",
+  "redis",
+  "db",
+  "database"
+]);
+var WEAK_QUALIFIERS = /* @__PURE__ */ new Set(["base", "prefix", "remote"]);
+var SERVICE_TAILS = /* @__PURE__ */ new Set(["url", "uri", "endpoint", "host", "hostname", "dsn", "base", "root", "origin", "server"]);
+var UPPER_SERVICE_TOKENS = /^(?:URIS?|HOST(?:NAME)?S?|ENDPOINTS?|API\w*|DSN)$/;
+var UPPER_URL_TOKENS = /^URLS?$/;
+function isConfigFile(rel2) {
+  return /(?:^|\/)(?:settings|config|configs|configuration|conf|env|environment|environments)(?:\/|\.|_|-|$)|\.config\.[cm]?[jt]s$/i.test(rel2);
+}
+function isServiceName(rawName, config = false) {
+  const name2 = rawName.replace(/^[_$]+/, "");
+  if (/^[A-Z][A-Z0-9_]*$/.test(name2) && /[A-Z]/.test(name2)) {
+    const tokens = name2.split("_");
+    return tokens.some((t) => UPPER_SERVICE_TOKENS.test(t)) || config && tokens.some((t) => UPPER_URL_TOKENS.test(t));
+  }
+  const words = name2.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").split(/[\s_\-.]+/).filter(Boolean).map((w) => w.toLowerCase());
+  const last = words[words.length - 1];
+  if (!last || !SERVICE_TAILS.has(last)) return false;
+  if (words.length === 1) return last === "endpoint" || last === "dsn";
+  const qualifiers = words.slice(0, -1).filter((w) => SERVICE_QUALIFIERS.has(w));
+  return qualifiers.some((w) => !WEAK_QUALIFIERS.has(w)) || config && qualifiers.length > 0;
+}
+function enclosingCall(sk, from) {
+  let depth = 0;
+  let commas = 0;
+  let inObject = false;
+  const stop2 = Math.max(0, from - 4e3);
+  for (let i2 = from - 1; i2 >= stop2; i2--) {
+    const ch = sk[i2];
+    if (ch === ")" || ch === "]" || ch === "}") depth++;
+    else if (ch === "(" || ch === "[" || ch === "{") {
+      if (depth > 0) {
+        depth--;
+        continue;
+      }
+      if (ch === "(") {
+        const m = /(\??\.\s*)?([A-Za-z_$][\w$]*(?:\s*\??\.\s*[A-Za-z_$][\w$]*)*)\s*(?:<[^<>()]*>)?\s*$/.exec(sk.slice(Math.max(0, i2 - 200), i2));
+        return m ? { callee: `${m[1] ? "." : ""}${m[2].replace(/[\s?]/g, "")}`, arg: commas, inObject } : void 0;
+      }
+      if (ch === "{" && !inObject && !/(?:\)|=>|\b(?:else|try|do|finally))\s*$/.test(sk.slice(Math.max(0, i2 - 20), i2))) {
+        inObject = true;
+        commas = 0;
+        continue;
+      }
+      return void 0;
+    } else if (ch === "," && depth === 0) commas++;
+  }
+  return void 0;
+}
+function elementStart(text2, sk, from, python2) {
+  let depth = 0;
+  const stop2 = Math.max(0, from - 2e3);
+  for (let i2 = from - 1; i2 >= stop2; i2--) {
+    const ch = sk[i2];
+    if (ch === ")" || ch === "]" || ch === "}") depth++;
+    else if (ch === "(" || ch === "[" || ch === "{") {
+      if (depth > 0) {
+        depth--;
+        continue;
+      }
+      if (ch === "(" && /(?:[=:]|\breturn)\s*$/.test(sk.slice(Math.max(0, i2 - 20), i2))) continue;
+      return i2 + 1;
+    } else if (depth === 0 && (ch === "," || ch === ";")) return i2 + 1;
+    else if (depth === 0 && ch === "\n") {
+      const after = text2.slice(i2 + 1, from).trimStart();
+      const before = text2.slice(Math.max(0, i2 - 80), i2).trimEnd();
+      if (/^(?:[?:|&+.=]|\?\?)/.test(after) || /(?:[=?|&+,\\([{]|=>|\bor|\band)$/.test(before) || !python2 && before.endsWith(":")) continue;
+      return i2 + 1;
+    }
+  }
+  return stop2;
+}
+function elementName(element) {
+  const assign = /^\s*(?:export\s+)?(?:(?:const|let|var|readonly|static|private|public|protected|declare)\s+)*([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)\s*(?::[^=]*?)?\s*:?=(?![=>])/.exec(
+    element
+  );
+  if (assign) return assign[1].split(".").pop()?.trim();
+  const key = /^\s*(?:([A-Za-z_$][\w$]*)|"([^"\n]*)"|'([^'\n]*)')\s*:(?!:)/.exec(element);
+  return key ? key[1] ?? key[2] ?? key[3] : void 0;
+}
+var HTTP_CALL_SITE = new RegExp(
+  `(?<![\\w$.])(?:${[...HTTP_FUNCTIONS].map((n) => n.replace(/\$/g, "\\$")).join("|")})\\s*\\(|\\.\\s*(?:${[...HTTP_METHODS].join("|")})\\s*\\(`,
+  "g"
+);
+function httpCallArguments(text2, sk) {
+  const out2 = [];
+  for (const m of sk.matchAll(HTTP_CALL_SITE)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2?.args.length) continue;
+    out2.push(call2.args[0].raw);
+    for (const a of call2.args.slice(1)) if (/^url\s*=/.test(a.raw)) out2.push(a.raw);
+  }
+  return out2;
+}
+function urlUse(text2, sk, at, python2, opts = {}) {
+  if (/xmlns(?::[\w-]+)?\s*=\s*\{?\s*["'`]$/.test(text2.slice(Math.max(0, at - 24), at))) return "skip";
+  const csp = /\b((?:connect|script|frame|worker|child|default|img|style|font|media|manifest|object)-src|form-action)\b[^;`]*$/.exec(
+    text2.slice(Math.max(0, at - 600), at)
+  );
+  if (csp) return /^(?:connect|script|frame|worker|child)-src$/.test(csp[1]) ? "service" : "link";
+  if (!QUOTES.has(sk[at - 1])) return "link";
+  let q = at - 1;
+  const prefix = python2 ? /(?<![\w$])[rRbBuUfF]{1,2}$/.exec(sk.slice(Math.max(0, q - 2), q)) : null;
+  if (prefix) q -= prefix[0].length;
+  const before = text2.slice(Math.max(0, q - 160), q);
+  if (/(?:process\s*\.\s*env|import\s*\.\s*meta\s*\.\s*env)\s*(?:\.\s*[\w$]+|\[[^\]]*\])\s*(?:\?\?|\|\|)\s*$/.test(before)) return "service";
+  if (/(?:environ\s*\.\s*get|getenv)\s*\([^()]*\)\s*or\s*$/.test(before)) return "service";
+  const call2 = enclosingCall(sk, q);
+  const last = call2?.callee.split(".").pop() ?? "";
+  const httpCall = !!call2 && (HTTP_FUNCTIONS.has(call2.callee) || call2.callee.includes(".") && HTTP_METHODS.has(last));
+  const client = !!call2 && (httpCall || CLIENT_FACTORIES.has(last));
+  if (call2 && !call2.inObject) {
+    if (call2.arg === 0 && (httpCall || client)) return "service";
+    if (call2.arg >= 1 && ENV_GETTERS.test(call2.callee)) return "service";
+    if (last === "default") return "service";
+  }
+  const name2 = elementName(text2.slice(elementStart(text2, sk, q, python2), q));
+  if (name2 && isServiceName(name2, opts.config)) return "service";
+  if (name2 && opts.reachesCall?.(name2)) return "service";
+  if (name2 && client && URL_KEYS.has(name2)) return "service";
+  if (name2 === "default" && call2 && ENV_GETTERS.test(call2.callee)) return "service";
+  return "link";
 }
 function jsImports(text2) {
   const out2 = [];
@@ -32758,7 +33139,15 @@ function extractExternals(input, ctx) {
   const inString = (i2) => skeleton[i2] === " " && text2[i2] !== " ";
   const lineOf = lineIndex(text2);
   const deps = ctx.depsFor(input.rel);
+  const config = isConfigFile(input.rel);
+  let callArgs2;
+  const reachesCall = (name2) => {
+    callArgs2 ??= httpCallArguments(text2, skeleton);
+    const word = new RegExp(`(?<![\\w$.])${name2.replace(/\$/g, "\\$")}(?![\\w$])`);
+    return callArgs2.some((a) => word.test(a));
+  };
   const out2 = [];
+  const links = [];
   const push = (id, via, offset) => out2.push({ id, via, file: input.rel, line: lineOf(offset) });
   if (python2) {
     for (const imp of pyImportModules(text2)) {
@@ -32771,10 +33160,18 @@ function extractExternals(input, ctx) {
       if (sdk && declared(sdk, deps, false)) push(sdk.id, "sdk", imp.offset);
     }
   }
-  for (const m of text2.matchAll(/\bhttps?:\/\/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+)/g)) {
-    if (!inString(m.index)) continue;
-    const domain = registrableDomain(m[1]);
-    if (domain) push(domain, "host", m.index);
+  for (const m of text2.matchAll(
+    /\bhttps?:\/\/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+)(?::\d+)?(\/[^\s"'`?#)<>]*)?/g
+  )) {
+    const at = m.index;
+    if (!inString(at)) continue;
+    const host = m[1];
+    const id = hostExternalId(host, m[2] ?? "/");
+    if (!id) continue;
+    const sdkHost = sdkForHost(host) !== void 0;
+    const use = sdkHost ? "service" : urlUse(text2, skeleton, at, python2, { config, reachesCall });
+    if (use === "service") push(id, "host", at);
+    else if (use === "link") links.push({ host: id, file: input.rel, line: lineOf(at) });
   }
   const ENV = python2 ? /(?<![\w.])(?:os\s*\.\s*)?(?:environ\s*\[\s*|environ\s*\.\s*get\s*\(\s*|getenv\s*\(\s*)(["'])([A-Z][A-Z0-9_]*)\1/g : /\b(?:process\s*\.\s*env|import\s*\.\s*meta\s*\.\s*env)\s*(?:\.\s*([A-Z][A-Z0-9_]*)|\[\s*(["'`])([A-Z][A-Z0-9_]*)\2\s*\])/g;
   const osBound = !python2 || /^[ \t]*(?:import[ \t]+os\b|from[ \t]+os[ \t]+import\b)/m.test(text2);
@@ -32786,12 +33183,31 @@ function extractExternals(input, ctx) {
       if (sdk) push(sdk.id, "env", m.index);
     }
   }
-  return out2.length ? { externals: out2 } : {};
+  const result = {};
+  if (out2.length) result.externals = out2;
+  if (links.length) result.links = links;
+  return result;
 }
 var externalsExtractor = {
   id: "externals",
   applies: (input) => isJsLike(input.rel) || isPython(input.rel),
   extract: extractExternals
+};
+var externalHostsLinker = {
+  id: "external-hosts",
+  link(facts) {
+    const cited = new Set(facts.externals.map((x) => `${x.file}\0${x.id}`));
+    const added = [];
+    for (const c2 of facts.calls) {
+      const m = /^https?:\/\/([^/:]+)(?::\d+)?(\/.*)?$/i.exec(c2.url);
+      if (!m) continue;
+      const id = hostExternalId(m[1], m[2] ?? "/");
+      if (!id || cited.has(`${c2.file}\0${id}`)) continue;
+      cited.add(`${c2.file}\0${id}`);
+      added.push({ id, via: "host", file: c2.file, line: c2.line });
+    }
+    return added.length ? { ...facts, externals: [...facts.externals, ...added] } : facts;
+  }
 };
 
 // src/extract/yaml.ts
@@ -32927,6 +33343,30 @@ var k8sExtractor = {
   id: "k8s",
   applies: (input) => isYaml(input.rel) && !COMPOSE.test(baseOf2(input.rel)) && !input.rel.startsWith(".github/") && /^kind:/m.test(input.text) && /^apiVersion:/m.test(input.text),
   extract: extractK8s
+};
+var cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var infraOverlayLinker = {
+  id: "infra-overlays",
+  link(facts) {
+    const groups = /* @__PURE__ */ new Map();
+    for (const f of facts.infra) {
+      const key = `${f.kind}\0${f.id}`;
+      const list = groups.get(key);
+      if (list) list.push(f);
+      else groups.set(key, [f]);
+    }
+    if (groups.size === facts.infra.length) return facts;
+    const infra = [];
+    for (const list of groups.values()) {
+      list.sort((a, b) => cmp(a.file, b.file) || a.line - b.line);
+      const first = list[0];
+      const files = [...new Set(list.map((f) => f.file))];
+      infra.push(
+        files.length > 1 ? { id: first.id, kind: first.kind, file: first.file, line: first.line, overlays: files } : { id: first.id, kind: first.kind, file: first.file, line: first.line }
+      );
+    }
+    return { ...facts, infra };
+  }
 };
 
 // src/extract/jobs.ts
@@ -34766,7 +35206,7 @@ var drizzleExtractor = {
 };
 
 // src/extract/fs-routes.ts
-var HTTP_METHODS = /* @__PURE__ */ new Set(["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]);
+var HTTP_METHODS2 = /* @__PURE__ */ new Set(["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]);
 function stem3(name2) {
   const dot = name2.lastIndexOf(".");
   return dot > 0 ? name2.slice(0, dot) : name2;
@@ -34809,7 +35249,7 @@ var nextAppExtractor = {
     if (!parts2) return {};
     const path = pathFromSegments(parts2.dirs.map(bracketSegment));
     if (parts2.base === "route") {
-      const routes = exportedHandlers(input, input.rel, path, "next-app", (n) => HTTP_METHODS.has(n) ? n : void 0);
+      const routes = exportedHandlers(input, input.rel, path, "next-app", (n) => HTTP_METHODS2.has(n) ? n : void 0);
       return routes.length ? { routes } : {};
     }
     const { skeleton } = sourceViews(input);
@@ -34832,7 +35272,7 @@ function checkedMethods(text2, skeleton) {
   const found = /* @__PURE__ */ new Set();
   const take = (raw) => {
     const v = raw.toUpperCase();
-    if (HTTP_METHODS.has(v)) found.add(v);
+    if (HTTP_METHODS2.has(v)) found.add(v);
   };
   const literalAt = (quote) => {
     const q = text2[quote];
@@ -34952,7 +35392,7 @@ var nuxtPagesExtractor = {
     return path === void 0 ? {} : { screens: [{ path, file: input.rel, line: 1, framework: "nuxt" }] };
   }
 };
-var SVELTEKIT_METHODS = new Map([...[...HTTP_METHODS].map((m) => [m, m]), ["fallback", "ALL"]]);
+var SVELTEKIT_METHODS = new Map([...[...HTTP_METHODS2].map((m) => [m, m]), ["fallback", "ALL"]]);
 function svelteKitParts(input, ctx) {
   const rest = under(workspaceRelative(ctx, input.rel).sub, ["src/routes/"]);
   if (rest === void 0) return void 0;
@@ -35242,7 +35682,7 @@ var httpCallsExtractor = {
   },
   extract: extractCalls
 };
-var cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function matchCallRoute(call2, routes) {
   if (!call2.url.startsWith("/")) return void 0;
   let best;
@@ -35259,7 +35699,7 @@ function matchCallRoute(call2, routes) {
 function lessKey(a, b) {
   if (!b) return true;
   for (let i2 = 0; i2 < 3; i2++) if (a[i2] !== b[i2]) return a[i2] < b[i2];
-  return cmp(a[3], b[3]) < 0;
+  return cmp2(a[3], b[3]) < 0;
 }
 var httpCallLinker = {
   id: "http-calls",
@@ -36193,6 +36633,405 @@ var typeormExtractor = {
   extract: extractTypeorm
 };
 
+// src/extract/rpc.ts
+var IDENT2 = /^[A-Za-z_$][\w$]*$/;
+var STRIP_EXT2 = /\.(?:[cm]?[jt]sx?)$/;
+var cmp3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function joinRpcPath(prefix, path) {
+  return prefix && path ? `${prefix}.${path}` : prefix || path;
+}
+var PROCEDURE_METHODS = { query: "QUERY", mutation: "MUTATION", subscription: "SUBSCRIPTION" };
+function procedureMethod(skValue) {
+  const head = /^[A-Za-z_$][\w$]*/.exec(skValue)?.[0];
+  if (!head) return void 0;
+  let depth = 0;
+  let method;
+  let builder = /procedure/i.test(head);
+  for (let i2 = head.length; i2 < skValue.length; i2++) {
+    const ch = skValue[i2];
+    if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") depth--;
+    else if (ch === "." && depth === 0) {
+      const m = /^\.\s*([A-Za-z_$][\w$]*)\s*(?:<[^<>()]*>\s*)?(\()?/.exec(skValue.slice(i2, i2 + 80));
+      if (!m) continue;
+      const name2 = m[1];
+      if (!m[2]) {
+        if (/procedure/i.test(name2)) builder = true;
+      } else if (name2 in PROCEDURE_METHODS) method = PROCEDURE_METHODS[name2];
+      else if (/^(?:input|output|use|meta|concat|unstable_concat)$/.test(name2)) builder = true;
+    }
+  }
+  return builder ? method : void 0;
+}
+var ROUTER_CALLEES = ["router", "createTRPCRouter", "createRouter"];
+function routerAliases(skeleton) {
+  const out2 = [];
+  for (const m of skeleton.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\s*\.\s*router\s*;?\s*(?:\n|$)/g)) out2.push(m[1]);
+  return out2;
+}
+function declarationBefore(skeleton, at) {
+  const before = skeleton.slice(Math.max(0, at - 200), at);
+  const decl = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*$/.exec(before);
+  if (decl) return decl[1];
+  return /\bexport\s+default\s+$/.test(before) ? "default" : void 0;
+}
+function extractTrpcRouters(input, ctx) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const callees = [...ROUTER_CALLEES, ...routerAliases(skeleton)].map((n) => n.replace(/\$/g, "\\$"));
+  const head = `(?<![\\w$])(?:[A-Za-z_$][\\w$]*\\s*\\.\\s*router|${callees.join("|")})\\s*\\(\\s*\\{`;
+  const ROUTER = new RegExp(head, "g");
+  const ROUTER_AT_START = new RegExp(`^${head}`);
+  const bindings = importBindings(text2);
+  const declaredHere = /* @__PURE__ */ new Set();
+  for (const m of skeleton.matchAll(/\b(?:const|let|var|function)\s+([A-Za-z_$][\w$]*)/g)) declaredHere.add(m[1]);
+  const childRef = (ident) => {
+    const b = bindings.get(ident);
+    if (b) {
+      if (b.imported === "*" || !isLocalSpecifier(b.spec)) return void 0;
+      const module2 = resolveLocalModule(ctx, input.rel, b.spec);
+      return module2 ? { module: module2, name: b.imported } : void 0;
+    }
+    return declaredHere.has(ident) ? { module: input.rel, name: ident } : void 0;
+  };
+  const parse = (brace, prefix, procedures, children, depth) => {
+    const obj2 = objectProps(text2, brace);
+    if (!obj2 || depth > 8) return;
+    for (const p of obj2.props) {
+      if (!p.key) continue;
+      const path = joinRpcPath(prefix, p.key);
+      const skValue = skeleton.slice(p.start, p.start + p.value.length);
+      if (IDENT2.test(p.value)) {
+        const ref2 = childRef(p.value);
+        if (ref2) children.push({ prefix: path, ...ref2 });
+        continue;
+      }
+      const nested = ROUTER_AT_START.exec(skValue);
+      if (nested) {
+        parse(p.start + nested[0].length - 1, path, procedures, children, depth + 1);
+        continue;
+      }
+      const method = procedureMethod(skValue);
+      if (method) procedures.push({ path, method, line: lineOf(p.at) });
+    }
+  };
+  const exportsOf = (name2) => {
+    if (name2 === "default") return ["default"];
+    const out2 = exportedNames(skeleton).filter((e) => e.local === name2).map((e) => e.name);
+    const def = /\bexport\s+default\s+([A-Za-z_$][\w$]*)\s*;?\s*(?:\n|$)/.exec(skeleton);
+    if (def?.[1] === name2) out2.push("default");
+    return [...new Set(out2)].sort();
+  };
+  const hints = [];
+  for (const m of skeleton.matchAll(ROUTER)) {
+    const at = m.index;
+    const name2 = declarationBefore(skeleton, at);
+    if (!name2) continue;
+    const procedures = [];
+    const children = [];
+    parse(at + m[0].length - 1, "", procedures, children, 0);
+    hints.push({ kind: "rpc-router", file: input.rel, line: lineOf(at), name: name2, exports: exportsOf(name2), procedures, children });
+  }
+  for (const m of skeleton.matchAll(/(?<![\w$])(?:[A-Za-z_$][\w$]*\s*\.\s*)?mergeRouters\s*\(/g)) {
+    const at = m.index;
+    const name2 = declarationBefore(skeleton, at);
+    const call2 = readArgs(text2, at + m[0].length - 1);
+    if (!name2 || !call2) continue;
+    const children = [];
+    for (const a of call2.args) {
+      const ref2 = IDENT2.test(a.raw) ? childRef(a.raw) : void 0;
+      if (ref2) children.push({ prefix: "", ...ref2 });
+    }
+    hints.push({ kind: "rpc-router", file: input.rel, line: lineOf(at), name: name2, exports: exportsOf(name2), procedures: [], children });
+  }
+  return hints;
+}
+var CALL_TERMINALS = {
+  useQuery: "QUERY",
+  useSuspenseQuery: "QUERY",
+  useInfiniteQuery: "QUERY",
+  useSuspenseInfiniteQuery: "QUERY",
+  usePrefetchQuery: "QUERY",
+  usePrefetchInfiniteQuery: "QUERY",
+  query: "QUERY",
+  queryOptions: "QUERY",
+  infiniteQueryOptions: "QUERY",
+  prefetch: "QUERY",
+  prefetchInfinite: "QUERY",
+  fetch: "QUERY",
+  fetchInfinite: "QUERY",
+  ensureData: "QUERY",
+  useMutation: "MUTATION",
+  mutate: "MUTATION",
+  mutationOptions: "MUTATION",
+  useSubscription: "SUBSCRIPTION",
+  subscribe: "SUBSCRIPTION",
+  subscriptionOptions: "SUBSCRIPTION"
+};
+var NOT_A_CALL = /* @__PURE__ */ new Set([
+  "invalidate",
+  "refetch",
+  "cancel",
+  "reset",
+  "getData",
+  "setData",
+  "getInfiniteData",
+  "setInfiniteData",
+  "queryKey",
+  "queryFilter",
+  "infiniteQueryKey",
+  "infiniteQueryFilter",
+  "pathKey",
+  "pathFilter",
+  "mutationKey",
+  "useUtils",
+  "useContext",
+  "useQueries",
+  "useSuspenseQueries",
+  "createClient",
+  "withTRPC",
+  "Provider",
+  "TRPCProvider"
+]);
+var CLIENT_NAMES = /* @__PURE__ */ new Set(["api", "trpc", "client", "caller", "serverClient", "trpcClient"]);
+function trpcReceivers(text2, skeleton) {
+  const out2 = /* @__PURE__ */ new Set();
+  for (const [local, b] of importBindings(text2)) if (CLIENT_NAMES.has(local) && b.imported !== "*" && isLocalSpecifier(b.spec)) out2.add(local);
+  const CREATE = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*(?:await\s+)?(?:[A-Za-z_$][\w$.]*\.)?(?:createTRPC\w*|useTRPC\w*|createCaller|createTRPCOptionsProxy)\s*(?:<[^()]*>)?\s*\(/g;
+  for (const m of skeleton.matchAll(CREATE)) out2.add(m[1]);
+  return [...out2].sort();
+}
+function extractTrpcCalls(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const calls = [];
+  const hints = [];
+  const receivers = trpcReceivers(text2, skeleton);
+  if (!receivers.length) return { calls, hints };
+  const alt = receivers.map((n) => n.replace(/\$/g, "\\$")).join("|");
+  const CALL = new RegExp(`(?<![\\w$.])(?:${alt})((?:\\s*\\??\\.\\s*[A-Za-z_$][\\w$]*)+)\\s*(?:<[^()]*>)?\\s*\\(`, "g");
+  for (const m of skeleton.matchAll(CALL)) {
+    const segs = m[1].split(".").map((s) => s.replace(/[\s?]/g, "")).filter(Boolean);
+    const terminal = segs[segs.length - 1];
+    const line2 = lineOf(m.index);
+    if (NOT_A_CALL.has(terminal)) continue;
+    const method = CALL_TERMINALS[terminal];
+    if (method) {
+      if (segs.length >= 2) calls.push({ method, url: segs.slice(0, -1).join("."), file: input.rel, line: line2 });
+      continue;
+    }
+    if (segs.length >= 2) hints.push({ kind: "rpc-call", file: input.rel, line: line2, path: segs.join(".") });
+  }
+  return { calls, hints };
+}
+var TRPC_PACKAGES = ["@trpc/"];
+var trpcExtractor = {
+  id: "trpc",
+  applies: (input, ctx) => isScriptFile(input.rel) && declares(ctx, input.rel, TRPC_PACKAGES),
+  extract(input, ctx) {
+    const out2 = {};
+    const routers = /\brouter\b|Router\s*\(|mergeRouters/.test(input.text) ? extractTrpcRouters(input, ctx) : [];
+    const { calls, hints } = extractTrpcCalls(input);
+    if (calls.length) out2.calls = calls;
+    if (routers.length || hints.length) out2.hints = [...routers, ...hints];
+    return out2;
+  }
+};
+function hasDirective(text2, directive) {
+  const re = /^\s*(["'])([^"'\n]*)\1\s*;?/;
+  let rest = text2;
+  for (let i2 = 0; i2 < 4; i2++) {
+    const m = re.exec(rest);
+    if (!m) return false;
+    if (m[2] === directive) return true;
+    rest = rest.slice(m[0].length);
+  }
+  return false;
+}
+function actionPath(rel2, name2) {
+  return `${rel2.replace(STRIP_EXT2, "")}#${name2}`;
+}
+function inlineActions(text2, skeleton) {
+  const out2 = [];
+  for (const m of text2.matchAll(/(["'])use server\1/g)) {
+    const at = m.index;
+    if (skeleton[at] !== m[1] || skeleton[at + 11] !== m[1]) continue;
+    const brace = skeleton.slice(0, at).trimEnd();
+    if (!brace.endsWith("{")) continue;
+    const open = brace.length - 1;
+    const win = skeleton.slice(Math.max(0, open - 600), open);
+    const base = Math.max(0, open - 600);
+    const fn = [...win.matchAll(/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/g)].pop();
+    const arrow = [...win.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*async\s*(\(|[A-Za-z_$][\w$]*\s*=>)/g)].pop();
+    const candidates = [];
+    if (fn) {
+      const call2 = readArgs(skeleton, base + fn.index + fn[0].length - 1);
+      if (call2) candidates.push({ name: fn[1], offset: base + fn.index, tailFrom: call2.end, arrow: false });
+    }
+    if (arrow) {
+      const idx = base + arrow.index;
+      if (arrow[2].startsWith("(")) {
+        const call2 = readArgs(skeleton, idx + arrow[0].length - 1);
+        if (call2) candidates.push({ name: arrow[1], offset: idx, tailFrom: call2.end, arrow: true });
+      } else candidates.push({ name: arrow[1], offset: idx, tailFrom: idx + arrow[0].length, arrow: true });
+    }
+    for (const c2 of candidates.sort((a, b) => b.offset - a.offset)) {
+      const tail = skeleton.slice(c2.tailFrom, open);
+      const ok = c2.arrow ? /^\s*(?::[^{};=]*)?=>\s*$/.test(tail) || /^\s*$/.test(tail) : /^\s*(?::[^{};=]*)?$/.test(tail);
+      if (ok) {
+        out2.push({ name: c2.name, offset: c2.offset });
+        break;
+      }
+    }
+  }
+  return out2;
+}
+var ACTION_HOOKS = "useActionState|useFormState|useAction|useOptimisticAction|useServerAction|useStateAction";
+var SERVER_FILES = /(?:^|\/)(?:page|layout|template|default|not-found|route|opengraph-image|twitter-image|icon|sitemap|robots)\.[cm]?[jt]sx?$/;
+function isServerOnlyModule(rel2, text2, skeleton) {
+  if (hasDirective(text2, "use client")) return false;
+  if (SERVER_FILES.test(rel2)) return true;
+  if (/\bimport\s+["']server-only["']/.test(text2)) return true;
+  return /\bexport\s+(?:default\s+async\s+function\b|async\s+function\s+[A-Z]|const\s+[A-Z][\w$]*\s*(?::[^=;]+)?=\s*async\b)/.test(skeleton);
+}
+function extractNextActions(input, ctx) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const routes = [];
+  const calls = [];
+  const hints = [];
+  const serverModule = hasDirective(text2, "use server");
+  const route = (name2, handler, offset) => routes.push({ method: "ACTION", path: actionPath(input.rel, name2), file: input.rel, line: lineOf(offset), framework: "next-action", handler });
+  if (serverModule) {
+    const seen = /* @__PURE__ */ new Set();
+    for (const e of exportedNames(skeleton)) {
+      if (seen.has(e.name)) continue;
+      seen.add(e.name);
+      route(e.name, e.local, e.offset);
+    }
+    const def = /\bexport\s+default\s+(?:async\s+)?(?:function\b|\(|[A-Za-z_$])/.exec(skeleton);
+    if (def && !seen.has("default")) route("default", "default", def.index);
+  }
+  const inline = /use server/.test(text2) ? inlineActions(text2, skeleton) : [];
+  for (const a of inline) if (!serverModule || !routes.some((r) => r.handler === a.name)) route(a.name, a.name, a.offset);
+  for (const a of inline) {
+    const esc4 = a.name.replace(/\$/g, "\\$");
+    for (const m of skeleton.matchAll(new RegExp(`\\b(?:action|formAction)\\s*=\\s*\\{\\s*${esc4}\\b`, "g"))) {
+      const path = actionPath(input.rel, a.name);
+      calls.push({ method: "ACTION", url: path, file: input.rel, line: lineOf(m.index), route: `route:ACTION ${path}` });
+    }
+  }
+  if (!serverModule) {
+    const serverOnly = isServerOnlyModule(input.rel, text2, skeleton);
+    const FORM_BEFORE = new RegExp(`\\b(?:action|formAction)\\s*=\\s*\\{\\s*$|\\b(?:${ACTION_HOOKS})\\s*(?:<[^()]*>)?\\s*\\(\\s*$`);
+    for (const [local, b] of importBindings(text2)) {
+      if (!isLocalSpecifier(b.spec)) continue;
+      const module2 = resolveLocalModule(ctx, input.rel, b.spec);
+      if (!module2 || module2 === input.rel) continue;
+      const esc4 = local.replace(/\$/g, "\\$");
+      const USE = b.imported === "*" ? new RegExp(`(?<![\\w$.])${esc4}\\s*\\.\\s*([A-Za-z_$][\\w$]*)\\s*(\\(|\\.\\s*bind\\s*\\(|[},)])`, "g") : new RegExp(`(?<![\\w$.])${esc4}()\\s*(\\(|\\.\\s*bind\\s*\\(|[},)])`, "g");
+      for (const m of skeleton.matchAll(USE)) {
+        const at = m.index;
+        const before = skeleton.slice(Math.max(0, at - 60), at);
+        if (/\b(?:function|new)\s*\*?\s*$/.test(before)) continue;
+        const form = FORM_BEFORE.test(before);
+        const invoked = m[2].startsWith("(");
+        if (!form && !invoked && !m[2].includes("bind")) continue;
+        if (!form && serverOnly) continue;
+        hints.push({ kind: "action-call", file: input.rel, line: lineOf(at), module: module2, name: b.imported === "*" ? m[1] : b.imported });
+      }
+    }
+  }
+  const out2 = {};
+  if (routes.length) out2.routes = routes;
+  if (calls.length) out2.calls = calls;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var nextActionsExtractor = {
+  id: "next-actions",
+  applies: (input, ctx) => isScriptFile(input.rel) && declares(ctx, input.rel, ["next"]),
+  extract: extractNextActions
+};
+function composeTrpcRoutes(hints) {
+  const key = (file, name2) => `${file}\0${name2}`;
+  const byKey2 = /* @__PURE__ */ new Map();
+  const byExport = /* @__PURE__ */ new Map();
+  for (const h of [...hints].sort((a, b) => cmp3(a.file, b.file) || a.line - b.line)) {
+    const k = key(h.file, h.name);
+    if (byKey2.has(k)) continue;
+    byKey2.set(k, h);
+    for (const e of h.exports) if (!byExport.has(key(h.file, e))) byExport.set(key(h.file, e), k);
+  }
+  const resolve21 = (c2) => {
+    const local = key(c2.module, c2.name);
+    return byKey2.has(local) ? local : byExport.get(local);
+  };
+  const parents = /* @__PURE__ */ new Map();
+  for (const [k, h] of byKey2) {
+    for (const c2 of h.children) {
+      const child2 = resolve21(c2);
+      if (!child2 || child2 === k) continue;
+      const list = parents.get(child2) ?? [];
+      list.push({ parent: k, prefix: c2.prefix });
+      parents.set(child2, list);
+    }
+  }
+  const prefixesOf2 = (k, seen) => {
+    const list = parents.get(k);
+    if (!list) return [""];
+    if (seen.has(k)) return [];
+    const next = new Set(seen).add(k);
+    const out2 = /* @__PURE__ */ new Set();
+    for (const p of list) for (const outer of prefixesOf2(p.parent, next)) out2.add(joinRpcPath(outer, p.prefix));
+    return [...out2].sort();
+  };
+  const routes = [];
+  for (const [k, h] of byKey2) {
+    if (!h.procedures.length) continue;
+    for (const prefix of prefixesOf2(k, /* @__PURE__ */ new Set())) {
+      for (const p of h.procedures) routes.push({ method: p.method, path: joinRpcPath(prefix, p.path), file: h.file, line: p.line, framework: "trpc" });
+    }
+  }
+  return routes;
+}
+var RPC_METHODS = /* @__PURE__ */ new Set(["QUERY", "MUTATION", "SUBSCRIPTION", "ACTION"]);
+var rpcLinker = {
+  id: "rpc",
+  link(facts, ctx) {
+    const routerHints = ctx.hints.filter((h) => h.kind === "rpc-router");
+    const routes = routerHints.length ? [...facts.routes, ...composeTrpcRoutes(routerHints)] : facts.routes;
+    const hasRpc = routerHints.length > 0 || facts.routes.some((r) => r.method === "ACTION") || facts.calls.some((c2) => RPC_METHODS.has(c2.method));
+    if (!hasRpc) return facts;
+    const byPath = /* @__PURE__ */ new Map();
+    const trpcByPath = /* @__PURE__ */ new Map();
+    const actions = /* @__PURE__ */ new Map();
+    for (const r of [...routes].sort((a, b) => cmp3(a.file, b.file) || a.line - b.line || cmp3(a.method, b.method))) {
+      if (!RPC_METHODS.has(r.method)) continue;
+      const k = `${r.method} ${r.path}`;
+      if (!byPath.has(k)) byPath.set(k, r);
+      if (r.framework === "trpc" && !trpcByPath.has(r.path)) trpcByPath.set(r.path, r);
+      if (r.method === "ACTION") actions.set(`${r.file}\0${r.path.slice(r.path.lastIndexOf("#") + 1)}`, r);
+    }
+    const calls = [];
+    for (const c2 of facts.calls) {
+      if (c2.route !== void 0 || !RPC_METHODS.has(c2.method)) {
+        calls.push(c2);
+        continue;
+      }
+      const r = byPath.get(`${c2.method} ${c2.url}`);
+      calls.push(r ? { ...c2, route: `route:${r.method} ${r.path}` } : c2);
+    }
+    for (const h of ctx.hints) {
+      if (h.kind === "rpc-call") {
+        const r = trpcByPath.get(h.path);
+        if (r) calls.push({ method: r.method, url: r.path, file: h.file, line: h.line, route: `route:${r.method} ${r.path}` });
+      } else if (h.kind === "action-call") {
+        const r = actions.get(`${h.module}\0${h.name}`);
+        if (r) calls.push({ method: "ACTION", url: r.path, file: h.file, line: h.line, route: `route:ACTION ${r.path}` });
+      }
+    }
+    return { ...facts, routes, calls };
+  }
+};
+
 // src/extract/index.ts
 var PY_OPS_EXTRACTORS = [
   fastapiExtractor,
@@ -36237,10 +37076,48 @@ var JS_WEB_EXTRACTORS = [
 ];
 var JS_WEB_LINKERS = [jsMountLinker, ormFieldsLinker];
 var JS_WEB_CALL_LINKERS = [httpCallLinker];
-var EXTRACTORS2 = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...JS_WEB_EXTRACTORS, ...PY_OPS_EXTRACTORS];
-var LINKERS = [expressMountLinker, ...JS_WEB_LINKERS, prismaLinker, ...PY_OPS_LINKERS, ...JS_WEB_CALL_LINKERS, entityUseLinker];
+var RPC_EXTRACTORS = [trpcExtractor, nextActionsExtractor];
+var RPC_LINKERS = [rpcLinker];
+var LATE_LINKERS = [externalHostsLinker, infraOverlayLinker];
+var EXTRACTORS2 = [
+  expressExtractor,
+  prismaSchemaExtractor,
+  prismaClientExtractor,
+  ...JS_WEB_EXTRACTORS,
+  ...RPC_EXTRACTORS,
+  ...PY_OPS_EXTRACTORS
+];
+var LINKERS = [
+  expressMountLinker,
+  ...JS_WEB_LINKERS,
+  prismaLinker,
+  ...PY_OPS_LINKERS,
+  ...RPC_LINKERS,
+  ...JS_WEB_CALL_LINKERS,
+  entityUseLinker,
+  ...LATE_LINKERS
+];
 function emptyFacts() {
-  return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [] };
+  return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [], links: [] };
+}
+var LINKS_PER_HOST = 3;
+function normalizeLinks(links, externals) {
+  const hostExternals = new Set(externals.filter((x) => x.via === "host").map((x) => x.id));
+  const sorted = [...links].sort((a, b) => cmp4(a.file, b.file) || a.line - b.line || cmp4(a.host, b.host));
+  const perHost = /* @__PURE__ */ new Map();
+  const seen = /* @__PURE__ */ new Set();
+  const out2 = [];
+  for (const l of sorted) {
+    if (hostExternals.has(l.host)) continue;
+    const key = `${l.host}\0${l.file}\0${l.line}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const n = perHost.get(l.host) ?? 0;
+    if (n >= LINKS_PER_HOST) continue;
+    perHost.set(l.host, n + 1);
+    out2.push({ host: l.host, file: l.file, line: l.line });
+  }
+  return out2;
 }
 function identity(kind, r) {
   switch (kind) {
@@ -36258,13 +37135,13 @@ function identity(kind, r) {
       return String(r.id);
   }
 }
-var cmp2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function normalizeFacts(facts) {
   const out2 = emptyFacts();
   for (const kind of FACT_KINDS) {
     const rows = facts[kind].map((r) => ({ r, key: stableJson(r) }));
     rows.sort(
-      (a, b) => cmp2(String(a.r.file), String(b.r.file)) || a.r.line - b.r.line || cmp2(identity(kind, a.r), identity(kind, b.r)) || cmp2(a.key, b.key)
+      (a, b) => cmp4(String(a.r.file), String(b.r.file)) || a.r.line - b.r.line || cmp4(identity(kind, a.r), identity(kind, b.r)) || cmp4(a.key, b.key)
     );
     const seen = /* @__PURE__ */ new Set();
     const kept = [];
@@ -36275,6 +37152,7 @@ function normalizeFacts(facts) {
     }
     out2[kind] = kept;
   }
+  out2.links = normalizeLinks(facts.links ?? [], out2.externals);
   return out2;
 }
 function runExtractors(repo, files, readText2, opts = {}) {
@@ -36310,6 +37188,7 @@ function runExtractors(repo, files, readText2, opts = {}) {
         const rows = got[kind];
         if (rows?.length) merged[kind].push(...rows);
       }
+      if (got.links?.length) merged.links?.push(...got.links);
       if (got.hints?.length) hints.push(...got.hints);
     }
   }
@@ -36394,10 +37273,10 @@ function fileOfId(id) {
 
 // src/model/assemble.ts
 var SYMBOLS_PER_FILE = 50;
-var cmp3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var round4 = (x) => Math.round(x * 1e4) / 1e4;
 var zeroMetrics = () => ({ loc: 0, pagerank: 0, churn: 0, tests: 0 });
-var uniqSorted = (xs) => [...new Set(xs)].sort(cmp3);
+var uniqSorted = (xs) => [...new Set(xs)].sort(cmp5);
 function humanizeSegment(path) {
   const last = path.split("/").filter(Boolean).pop() ?? path;
   const words = last.replace(/[^A-Za-z0-9]+/g, " ").trim().toLowerCase();
@@ -36429,7 +37308,7 @@ function systemRules(model, workspaces = []) {
     ),
     label: w.name || w.dir,
     dir: w.dir
-  })).sort((a, b) => cmp3(a.dir, b.dir));
+  })).sort((a, b) => cmp5(a.dir, b.dir));
   if (!pkgs.length) return { systems: [{ id: APP_SYS, label: "App" }] };
   return { systems: pkgs.map(({ id, label }) => ({ id, label })), dirs: pkgs.map(({ id, dir }) => ({ id, dir })) };
 }
@@ -36486,7 +37365,7 @@ function assembleWithNotes(inp) {
     if (!nodes.has(n.id)) nodes.set(n.id, n);
   };
   const emptyGlobs = [];
-  const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp3(a.rel, b.rel));
+  const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp5(a.rel, b.rel));
   const rels = files.map((f) => f.rel);
   const testMap = codeindex_engine_exports.computeTestMap(graph);
   const rules = systemRules(model, inp.workspaces);
@@ -36504,7 +37383,7 @@ function assembleWithNotes(inp) {
     filesByModule.set(f.module, list);
   }
   const usedSystems = new Set(systemOrder.map((s) => s.id));
-  const modules = [...graph.modules].filter((m) => filesByModule.has(m.slug)).sort((a, b) => cmp3(a.slug, b.slug));
+  const modules = [...graph.modules].filter((m) => filesByModule.has(m.slug)).sort((a, b) => cmp5(a.slug, b.slug));
   const testModules = /* @__PURE__ */ new Set();
   const slicesOf = /* @__PURE__ */ new Map();
   const fileParent = /* @__PURE__ */ new Map();
@@ -36597,7 +37476,7 @@ function assembleWithNotes(inp) {
       }
     }
     for (const [rel2, defs] of byFile) {
-      defs.sort((a, b) => a.line - b.line || cmp3(a.name, b.name));
+      defs.sort((a, b) => a.line - b.line || cmp5(a.name, b.name));
       const seen = /* @__PURE__ */ new Set();
       const kept = defs.filter((d) => {
         if (seen.has(d.name)) return false;
@@ -36812,15 +37691,15 @@ ${kind}`;
       ...e.cite ? { cite: e.cite } : {}
     });
   }
-  edges.sort((a, b) => cmp3(a.from, b.from) || cmp3(a.to, b.to) || cmp3(a.kind, b.kind) || Number(a.derived) - Number(b.derived));
+  edges.sort((a, b) => cmp5(a.from, b.from) || cmp5(a.to, b.to) || cmp5(a.kind, b.kind) || Number(a.derived) - Number(b.derived));
   const codeFiles = files.filter((f) => f.fileKind === "code");
   const inSystems = codeFiles.filter((f) => fileSystems.get(f.rel) !== UNASSIGNED_SYS).length;
   const codeModules = modules.filter((m) => !testModules.has(m.slug) && filesByModule.get(m.slug).some((f) => f.fileKind === "code" && !f.testFile));
   const inCaps = codeModules.filter((m) => slicesOf.get(m.slug).some((id) => nodes.get(id).caps.some((c2) => c2 !== FOUNDATIONS_CAP))).length;
   const ratio = (n, d) => d === 0 ? 1 : round4(n / d);
   const isStale = (sources) => !!sources && Object.entries(sources).some(([path, hash]) => (inp.currentHashes.get(path) ?? null) !== hash);
-  const flows = [...inp.flows].sort((a, b) => cmp3(a.id, b.id));
-  const lenses = [...inp.lenses].sort((a, b) => cmp3(a.id, b.id));
+  const flows = [...inp.flows].sort((a, b) => cmp5(a.id, b.id));
+  const lenses = [...inp.lenses].sort((a, b) => cmp5(a.id, b.id));
   const view = {
     schema: VIEW_SCHEMA,
     repo: { name: inp.repoName, ...inp.commit ? { commit: inp.commit } : {} },
@@ -36830,7 +37709,7 @@ ${kind}`;
       cites: citesOf(model?.app.summary),
       audience: model?.app.audience ?? "everyone"
     },
-    nodes: [...nodes.values()].sort((a, b) => cmp3(a.id, b.id)),
+    nodes: [...nodes.values()].sort((a, b) => cmp5(a.id, b.id)),
     edges,
     flows,
     lenses,
@@ -37452,14 +38331,14 @@ function liveView(repo) {
   const assembled = assembleWithNotes(loaded2.inputs);
   return { ...assembled, loaded: loaded2, byId: new Map(assembled.view.nodes.map((n) => [n.id, n])) };
 }
-var cmp4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function listOf(nodes) {
   const byKind = {};
   for (const n of nodes) byKind[n.kind] = (byKind[n.kind] ?? 0) + 1;
-  const ids = nodes.map((n) => n.id).sort(cmp4);
+  const ids = nodes.map((n) => n.id).sort(cmp6);
   return { total: ids.length, byKind, first: ids.slice(0, CARD_LIST) };
 }
-var byWeight = (key) => (a, b) => b.weight - a.weight || cmp4(a[key], b[key]) || cmp4(a.kind, b.kind);
+var byWeight = (key) => (a, b) => b.weight - a.weight || cmp6(a[key], b[key]) || cmp6(a.kind, b.kind);
 function nodeCard(live, id) {
   const node = live.byId.get(id);
   if (!node) return void 0;
@@ -37497,17 +38376,17 @@ function nodeCard(live, id) {
   }
   if (id === UNASSIGNED_SYS) {
     const codeFiles = new Set(view.nodes.filter((n) => n.kind === "file" && n.tags.includes("code")).map((n) => n.id.slice("file:".length)));
-    card.unassignedFiles = [...live.fileSystems].filter(([rel2, sys]) => sys === UNASSIGNED_SYS && codeFiles.has(rel2)).map(([rel2]) => rel2).sort(cmp4);
+    card.unassignedFiles = [...live.fileSystems].filter(([rel2, sys]) => sys === UNASSIGNED_SYS && codeFiles.has(rel2)).map(([rel2]) => rel2).sort(cmp6);
   }
   return card;
 }
 function similarIds(view, query, n = 5) {
   const q = query.toLowerCase().replace(/^[a-z]+:/, "");
   if (!q) return [];
-  return view.nodes.filter((x) => x.id.toLowerCase().includes(q) || x.label.toLowerCase().includes(q)).map((x) => x.id).sort((a, b) => a.length - b.length || cmp4(a, b)).slice(0, n);
+  return view.nodes.filter((x) => x.id.toLowerCase().includes(q) || x.label.toLowerCase().includes(q)).map((x) => x.id).sort((a, b) => a.length - b.length || cmp6(a, b)).slice(0, n);
 }
 function fmtList(l) {
-  const kinds2 = Object.entries(l.byKind).sort((a, b) => cmp4(a[0], b[0])).map(([k, v]) => `${v} ${k}`).join(", ");
+  const kinds2 = Object.entries(l.byKind).sort((a, b) => cmp6(a[0], b[0])).map(([k, v]) => `${v} ${k}`).join(", ");
   return `${l.total}${kinds2 ? ` (${kinds2})` : ""}`;
 }
 function fmtEdge(e, other, arrow) {
@@ -37558,7 +38437,7 @@ var HEAD_LINES2 = 60;
 var NEIGHBOURS = 12;
 var FACTS_PER_KIND = 25;
 var SITES = 12;
-var cmp5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp7 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CITE_RULE = "Every sentence you write cites the file it rests on as `[path:line]` (or `[path:start-end]`); `ultraview check` fails a dead citation and an uncited sentence.";
 function readLines(repo, rel2) {
   try {
@@ -37609,7 +38488,7 @@ function neighbourLines(live, id, leafOnly = false) {
   const label = (x) => live.byId.get(x)?.label ?? x;
   const coarse = /* @__PURE__ */ new Set(["cap", "sys", "mod"]);
   const keep = (other) => !leafOnly || !coarse.has(kindOf2(other) ?? "");
-  const byW = (key) => (a, b) => b.weight - a.weight || cmp5(a[key], b[key]) || cmp5(a.kind, b.kind);
+  const byW = (key) => (a, b) => b.weight - a.weight || cmp7(a[key], b[key]) || cmp7(a.kind, b.kind);
   const outs = live.view.edges.filter((e) => e.from === id && keep(e.to)).sort(byW("to"));
   const ins = live.view.edges.filter((e) => e.to === id && keep(e.from)).sort(byW("from"));
   const lines = [];
@@ -37630,7 +38509,7 @@ function factLines(nodes) {
   ];
   const lines = [];
   for (const [kind, plural2] of order) {
-    const of = nodes.filter((n) => n.kind === kind).sort((a, b) => cmp5(a.id, b.id));
+    const of = nodes.filter((n) => n.kind === kind).sort((a, b) => cmp7(a.id, b.id));
     if (!of.length) continue;
     lines.push(`${plural2} (${of.length}):`);
     for (const n of of.slice(0, FACTS_PER_KIND)) lines.push(`- ${n.id}${n.tags.length ? ` (${n.tags.join(", ")})` : ""}${n.at ? `  [${n.at}]` : ""}`);
@@ -37658,7 +38537,7 @@ function header(n, task) {
 }
 function topFiles(files) {
   const isCode3 = (f) => f.tags.includes("code") ? 0 : 1;
-  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode3(a) - isCode3(b) || b.metrics.pagerank - a.metrics.pagerank || cmp5(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
+  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode3(a) - isCode3(b) || b.metrics.pagerank - a.metrics.pagerank || cmp7(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
 }
 function groupDossier(live, repo, n, budget) {
   const nodes = live.view.nodes;
@@ -37682,7 +38561,7 @@ function groupDossier(live, repo, n, budget) {
   const fileSet = new Set(files.map((f) => f.id));
   const exts = new Set(live.view.edges.filter((e) => fileSet.has(e.from) && kindOf2(e.to) === "ext").map((e) => e.to));
   const factNodes = [...members, ...[...exts].map((x) => live.byId.get(x))].filter((x) => x && x.kind !== "file" && x.kind !== "sym" && x.kind !== "mod");
-  const mods = members.filter((x) => x.kind === "mod").sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp5(a.id, b.id));
+  const mods = members.filter((x) => x.kind === "mod").sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp7(a.id, b.id));
   const modLines = mods.map(
     (m) => `- ${m.id} (${m.label}): ${nodes.filter((x) => x.parent === m.id && x.kind === "file").length} file(s), pagerank ${m.metrics.pagerank}`
   );
@@ -37733,7 +38612,7 @@ ${ex}
   }
   if (n.fields?.length)
     sections.push(["## Fields", ...n.fields.map((f) => `- ${f.name}: ${f.type}${f.relation ? ` -> entity:${f.relation}` : ""}`)].join("\n"));
-  const sites = sitesOf(live.loaded.inputs.facts, n).sort((a, b) => cmp5(a.file, b.file) || a.line - b.line);
+  const sites = sitesOf(live.loaded.inputs.facts, n).sort((a, b) => cmp7(a.file, b.file) || a.line - b.line);
   const neigh = neighbourLines(live, n.id, true);
   if (neigh.length) sections.push(neigh.join("\n"));
   if (sites.length) {
@@ -37871,7 +38750,7 @@ function describe(kind, r) {
     case "externals":
       return `${r.id} via ${r.via}  [${at}]`;
     case "infra":
-      return `${r.id} (${r.kind})  [${at}]`;
+      return `${r.id} (${r.kind}${r.overlays ? `, ${r.overlays.length} overlays` : ""})  [${at}]`;
   }
 }
 function formatBuildSummary(r) {
@@ -37907,6 +38786,9 @@ function formatBuildSummary(r) {
   push();
   const externals = [...new Set(r.facts.externals.map((e) => e.id))].sort();
   push(`externals  ${externals.length ? externals.join(", ") : "(none detected)"}`);
+  const links = r.facts.links ?? [];
+  const linkHosts = new Set(links.map((l) => l.host)).size;
+  if (links.length) push(`links      ${linkHosts} hyperlinked host${linkHosts === 1 ? "" : "s"} (not services; first ${links.length} locations kept)`);
   if (r.failures.length) {
     push();
     push(`extractor errors ${r.failures.length} (facts from these files may be missing)`);

@@ -157,6 +157,7 @@
   "externals": [],
   "infra": [],
   "jobs": [],
+  "links": [],
   "routes": [
     {
       "file": "src/routes/orders.ts",
@@ -194,6 +195,6 @@
       "path": "/health"
     }
   ],
-  "schema": 1,
+  "schema": 2,
   "screens": []
 }

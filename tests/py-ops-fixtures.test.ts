@@ -61,7 +61,7 @@ describe("fastapi-sqlalchemy fixture", () => {
       "cron cron:flush-receipts",
     ]);
     expect(facts.infra.map((i) => `${i.kind} ${i.id}`)).toEqual(["dockerfile root", "compose-service api", "compose-service db", "compose-service redis"]);
-    expect([...new Set(facts.externals.map((e) => e.id))].sort()).toEqual(["stripe", "stripe.com"]);
+    expect([...new Set(facts.externals.map((e) => e.id))].sort()).toEqual(["stripe"]);
     // Tests, docs and the README never contribute.
     for (const kind of ["routes", "calls", "entities", "entityUses", "jobs", "externals", "infra"] as const) {
       for (const r of facts[kind]) expect(r.file).not.toMatch(/^(?:tests|docs)\/|README/);
@@ -109,7 +109,8 @@ describe("django-shop fixture", () => {
     ]);
     expect(facts.externals.map((e) => `${e.id} ${e.via} ${at(e)}`)).toEqual([
       "stripe sdk orders/views.py:4",
-      "slack.com host orders/views.py:40",
+      // hooks.slack.com is Slack's API host: the SDK id, not the domain.
+      "slack host orders/views.py:40",
       "stripe env shop/settings.py:4",
     ]);
     expect(facts.jobs).toEqual([]);

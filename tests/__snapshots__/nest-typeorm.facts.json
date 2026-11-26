@@ -93,6 +93,7 @@
   "externals": [],
   "infra": [],
   "jobs": [],
+  "links": [],
   "routes": [
     {
       "file": "src/orders/orders.controller.ts",
@@ -143,6 +144,6 @@
       "path": "/users/:id"
     }
   ],
-  "schema": 1,
+  "schema": 2,
   "screens": []
 }

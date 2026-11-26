@@ -6,9 +6,21 @@
 // file system, no network, no model. That is what lets one be upstreamed to
 // codeindex unchanged, and what makes `facts.json` a function of the files.
 
-export const FACTS_SCHEMA = 1;
+// Schema history:
+//   1  the first shape.
+//   2  `links` (hyperlink hosts, kept apart from `externals`), `InfraFact.overlays`,
+//      RPC routes and calls (tRPC `QUERY` / `MUTATION` / `SUBSCRIPTION`, Next
+//      server actions `ACTION`). Additive: a schema-1 reader still reads it.
+export const FACTS_SCHEMA = 2;
 
-/** An HTTP endpoint the app serves. Node id: `route:<METHOD> <path>`. */
+/**
+ * An endpoint the app serves. Node id: `route:<METHOD> <path>`.
+ * HTTP routes: an HTTP method (or `ALL`) and a URL path (`/api/orders/:id`).
+ * RPC routes: tRPC procedures (`QUERY` / `MUTATION` / `SUBSCRIPTION`, path =
+ * the dotted procedure path `user.byId`, framework `trpc`) and Next server
+ * actions (`ACTION`, path = `<repo path without extension>#<export>`,
+ * framework `next-action`).
+ */
 export interface RouteFact {
   method: string;
   path: string;
@@ -18,7 +30,11 @@ export interface RouteFact {
   handler?: string;
 }
 
-/** An outbound HTTP call, matched to a route when one serves it. */
+/**
+ * An outbound call, matched to a route when one serves it: an HTTP call
+ * (method + URL), or an RPC call (`QUERY user.byId`, `ACTION app/actions#save`)
+ * whose `url` is the route path it names.
+ */
 export interface CallFact {
   method: string;
   url: string;
@@ -76,10 +92,31 @@ export interface ExternalFact {
   line: number;
 }
 
-/** A deployable unit declared in infrastructure files. */
+/**
+ * A deployable unit declared in infrastructure files. One fact per id + kind:
+ * a unit declared again by environment overlays (`env/dev/…`, `env/prod/…`,
+ * kustomize overlays, compose overrides) keeps its first location by path and
+ * lists every declaring file in `overlays`.
+ */
 export interface InfraFact {
   id: string;
   kind: "compose-service" | "dockerfile" | "k8s";
+  file: string;
+  line: number;
+  /** Every file declaring this unit, sorted, when more than one does. */
+  overlays?: string[];
+}
+
+/**
+ * A hyperlink to another site: an absolute URL in a string that reaches no
+ * HTTP call, client base URL or configuration (JSX `href`, content and i18n
+ * strings). Kept apart from `externals` so a link to a regulator's website is
+ * not a service the app depends on. Capped at the first 3 locations per host;
+ * hosts that are already an external are not repeated here.
+ */
+export interface LinkFact {
+  /** The registrable domain (`cnil.fr`). */
+  host: string;
   file: string;
   line: number;
 }
@@ -94,6 +131,8 @@ export interface Facts {
   jobs: JobFact[];
   externals: ExternalFact[];
   infra: InfraFact[];
+  /** Hyperlink hosts (schema 2). Optional so a schema-1 `facts.json` still reads; `runExtractors` always writes it. */
+  links?: LinkFact[];
 }
 
 /** The fact arrays, in the order `facts.json` and the build summary list them. */
@@ -222,7 +261,81 @@ export interface ClientCallHint {
   name: string;
 }
 
-export type LinkHint = MountHint | TableHint | SqlUseHint | ViewsetHint | FieldsHint | HttpClientHint | ClientCallHint;
+/** A tRPC procedure declared in a router, relative to that router (`byId`). */
+export interface RpcProcedure {
+  /** Dotted path within the router (`byId`, or `posts.list` for an inline sub-router). */
+  path: string;
+  method: "QUERY" | "MUTATION" | "SUBSCRIPTION";
+  line: number;
+}
+
+/** A router another router composes under a key (`user: userRouter`). */
+export interface RpcChild {
+  /** Dotted key path within the parent router (`user`); "" for `mergeRouters`. */
+  prefix: string;
+  /** The file declaring the child router (the parent's own file for a same-file router). */
+  module: string;
+  /** The child's name in that module: its local binding (same file) or the imported name (`default` for a default import). */
+  name: string;
+}
+
+/**
+ * A tRPC router: `export const userRouter = router({ byId: publicProcedure.query(…) })`.
+ * The `rpc` linker composes routers by key into full procedure paths
+ * (`user.byId`); a router no other router composes is a root.
+ */
+export interface RpcRouterHint {
+  kind: "rpc-router";
+  file: string;
+  line: number;
+  /** The local binding (`userRouter`), or `default` for `export default router({…})`. */
+  name: string;
+  /** Names other modules import it by: its exported names (`default` included). */
+  exports: string[];
+  procedures: RpcProcedure[];
+  children: RpcChild[];
+}
+
+/**
+ * A tRPC call without a method-naming terminal (`await api.user.byId({ id })`,
+ * a server-side caller): becomes a call fact only when a procedure of that
+ * exact path exists, with that procedure's method.
+ */
+export interface RpcCallHint {
+  kind: "rpc-call";
+  file: string;
+  line: number;
+  /** The dotted procedure path (`user.byId`). */
+  path: string;
+}
+
+/**
+ * A use of an imported function that may be a Next server action: a call
+ * (`await save(data)`), `action={save}` / `formAction={save}`, or
+ * `useActionState(save, …)`. Becomes an `ACTION` call when `module` exports a
+ * server action by that name.
+ */
+export interface ActionCallHint {
+  kind: "action-call";
+  file: string;
+  line: number;
+  /** The resolved file of the imported module. */
+  module: string;
+  /** The imported name (`save`, or `default`). */
+  name: string;
+}
+
+export type LinkHint =
+  | MountHint
+  | TableHint
+  | SqlUseHint
+  | ViewsetHint
+  | FieldsHint
+  | HttpClientHint
+  | ClientCallHint
+  | RpcRouterHint
+  | RpcCallHint
+  | ActionCallHint;
 
 /**
  * What an extractor returns: partial facts, plus optional hints for the

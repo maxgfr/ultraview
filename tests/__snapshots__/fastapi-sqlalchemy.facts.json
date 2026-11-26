@@ -217,7 +217,7 @@
     },
     {
       "file": "app/services/payments.py",
-      "id": "stripe.com",
+      "id": "stripe",
       "line": 14,
       "via": "host"
     }
@@ -283,6 +283,7 @@
       "schedule": "every 300s"
     }
   ],
+  "links": [],
   "routes": [
     {
       "file": "app/main.py",
@@ -349,6 +350,6 @@
       "path": "/api/users/:user_id"
     }
   ],
-  "schema": 1,
+  "schema": 2,
   "screens": []
 }

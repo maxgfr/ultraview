@@ -166,13 +166,14 @@
   "externals": [
     {
       "file": "src/components/CartView.tsx",
-      "id": "stripe.com",
+      "id": "stripe",
       "line": 17,
       "via": "host"
     }
   ],
   "infra": [],
   "jobs": [],
+  "links": [],
   "routes": [
     {
       "file": "src/app/api/auth/[...nextauth]/route.ts",
@@ -247,7 +248,7 @@
       "path": "/api/webhook"
     }
   ],
-  "schema": 1,
+  "schema": 2,
   "screens": [
     {
       "file": "src/app/(shop)/cart/page.tsx",

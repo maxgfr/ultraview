@@ -28,7 +28,7 @@ function describe(kind: FactKind, r: Record<string, any>): string {
     case "externals":
       return `${r.id} via ${r.via}  [${at}]`;
     case "infra":
-      return `${r.id} (${r.kind})  [${at}]`;
+      return `${r.id} (${r.kind}${r.overlays ? `, ${r.overlays.length} overlays` : ""})  [${at}]`;
   }
 }
 
@@ -77,6 +77,9 @@ export function formatBuildSummary(r: MapBuildResult): string {
   push();
   const externals = [...new Set(r.facts.externals.map((e) => e.id))].sort();
   push(`externals  ${externals.length ? externals.join(", ") : "(none detected)"}`);
+  const links = r.facts.links ?? [];
+  const linkHosts = new Set(links.map((l) => l.host)).size;
+  if (links.length) push(`links      ${linkHosts} hyperlinked host${linkHosts === 1 ? "" : "s"} (not services; first ${links.length} locations kept)`);
 
   if (r.failures.length) {
     push();

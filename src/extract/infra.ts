@@ -11,9 +11,15 @@
 //                   Deployment / StatefulSet / DaemonSet / Service / CronJob
 //                   → { id: metadata.name, kind: "k8s" }, at the `kind` line;
 //                   templated names (`{{ … }}`) are skipped.
+//
+// The `infra-overlays` linker then keeps one fact per id + kind: environment
+// overlays (`.kontinuous/env/{dev,prod}/…`, kustomize `overlays/*`, compose
+// overrides, `Dockerfile.<variant>`) and a Deployment + Service pair declare
+// the same unit again. The first location by path wins; `overlays` lists every
+// declaring file when there are several.
 
 import { lineIndex, maskSource } from "./mask.js";
-import type { ExtractInput, ExtractOutput, Extractor, InfraFact } from "./types.js";
+import type { ExtractInput, ExtractOutput, Extractor, Facts, InfraFact, Linker } from "./types.js";
 import { yamlChild, yamlDocuments } from "./yaml.js";
 
 function baseOf(rel: string): string {
@@ -95,4 +101,33 @@ export const k8sExtractor: Extractor = {
     /^kind:/m.test(input.text) &&
     /^apiVersion:/m.test(input.text),
   extract: extractK8s,
+};
+
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+/** One infra fact per id + kind: the first by file and line, with every declaring file in `overlays` when there are several. */
+export const infraOverlayLinker: Linker = {
+  id: "infra-overlays",
+  link(facts: Facts): Facts {
+    const groups = new Map<string, InfraFact[]>();
+    for (const f of facts.infra) {
+      const key = `${f.kind}\u0000${f.id}`;
+      const list = groups.get(key);
+      if (list) list.push(f);
+      else groups.set(key, [f]);
+    }
+    if (groups.size === facts.infra.length) return facts;
+    const infra: InfraFact[] = [];
+    for (const list of groups.values()) {
+      list.sort((a, b) => cmp(a.file, b.file) || a.line - b.line);
+      const first = list[0] as InfraFact;
+      const files = [...new Set(list.map((f) => f.file))];
+      infra.push(
+        files.length > 1
+          ? { id: first.id, kind: first.kind, file: first.file, line: first.line, overlays: files }
+          : { id: first.id, kind: first.kind, file: first.file, line: first.line },
+      );
+    }
+    return { ...facts, infra };
+  },
 };

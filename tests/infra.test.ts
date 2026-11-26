@@ -110,7 +110,8 @@ describe("k8s extractor", () => {
           "  name: report",
         ),
       }),
-    ).toEqual(["k8s api k8s/api.yaml:2", "k8s api k8s/api.yaml:12", "k8s report k8s/api.yaml:17"]);
+      // The Deployment and the Service of one unit are one infra fact (first location).
+    ).toEqual(["k8s api k8s/api.yaml:2", "k8s report k8s/api.yaml:17"]);
   });
 
   describe("false-positive guards", () => {
@@ -125,5 +126,52 @@ describe("k8s extractor", () => {
       ).toEqual([]);
       expect(k8sExtractor.applies({ rel: ".github/workflows/x.yml", text: "apiVersion: v1\nkind: Service\n" }, memoryContext({}))).toBe(false);
     });
+  });
+});
+
+describe("infra-overlays linker", () => {
+  const deployment = (name: string) => lines("apiVersion: apps/v1", "kind: Deployment", "metadata:", `  name: ${name}`);
+  const facts = (files: Record<string, string>) => runExtractors("/repo", Object.keys(files), (abs) => files[abs.slice("/repo/".length)]).infra;
+
+  it("keeps one fact per id + kind across env overlays: first location by path, every declaring file listed", () => {
+    expect(
+      facts({
+        ".kontinuous/env/prod/templates/mailpit.yaml": deployment("mailpit"),
+        ".kontinuous/env/dev/templates/mailpit.yaml": deployment("mailpit"),
+        ".kontinuous/env/preprod/templates/mailpit.yaml": deployment("mailpit"),
+        "k8s/overlays/staging/api.yaml": deployment("api"),
+        "k8s/base/api.yaml": deployment("api"),
+        "docker-compose.yml": lines("services:", "  db:", "    image: postgres"),
+        "docker-compose.prod.yml": lines("services:", "  db:", "    image: postgres:16"),
+      }),
+    ).toEqual([
+      {
+        id: "mailpit",
+        kind: "k8s",
+        file: ".kontinuous/env/dev/templates/mailpit.yaml",
+        line: 2,
+        overlays: [
+          ".kontinuous/env/dev/templates/mailpit.yaml",
+          ".kontinuous/env/preprod/templates/mailpit.yaml",
+          ".kontinuous/env/prod/templates/mailpit.yaml",
+        ],
+      },
+      { id: "db", kind: "compose-service", file: "docker-compose.prod.yml", line: 2, overlays: ["docker-compose.prod.yml", "docker-compose.yml"] },
+      { id: "api", kind: "k8s", file: "k8s/base/api.yaml", line: 2, overlays: ["k8s/base/api.yaml", "k8s/overlays/staging/api.yaml"] },
+    ]);
+  });
+
+  it("false-positive guards: different kinds or ids stay apart, a single file gets no overlays", () => {
+    expect(
+      facts({
+        "api/Dockerfile": "FROM node:20",
+        "k8s/api.yaml": deployment("api"),
+        "k8s/web.yaml": deployment("web"),
+      }),
+    ).toEqual([
+      { id: "api", kind: "dockerfile", file: "api/Dockerfile", line: 1 },
+      { id: "api", kind: "k8s", file: "k8s/api.yaml", line: 2 },
+      { id: "web", kind: "k8s", file: "k8s/web.yaml", line: 2 },
+    ]);
   });
 });

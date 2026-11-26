@@ -150,6 +150,7 @@
   ],
   "infra": [],
   "jobs": [],
+  "links": [],
   "routes": [
     {
       "file": "server/api/orders.ts",
@@ -194,7 +195,7 @@
       "path": "/health"
     }
   ],
-  "schema": 1,
+  "schema": 2,
   "screens": [
     {
       "file": "pages/index.vue",
