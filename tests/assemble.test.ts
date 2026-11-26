@@ -48,7 +48,7 @@ describe("assembleView", () => {
     await expect(first.replace(JSON.stringify(repo), '"<repo>"')).toMatchFileSnapshot("./__snapshots__/shop.view.json");
     await buildMap({ repo, ast: false });
     expect(readFileSync(join(repo, ".ultraview", "view.json"), "utf8")).toBe(first);
-    expect(r.view).toMatchObject({ nodes: 40, coverage: { filesInSystems: 1, modulesInCapabilities: 1 }, oversize: false, problems: [] });
+    expect(r.view).toMatchObject({ nodes: 41, coverage: { filesInSystems: 1, modulesInCapabilities: 1 }, oversize: false, problems: [] });
     expect(r.written).toContain(".ultraview/view.json");
   });
 
@@ -85,6 +85,10 @@ describe("assembleView", () => {
     expect(node(v, "mod:root")!.label).toBe("Root");
     // Only exported top-level symbols, one node per name.
     expect(v.nodes.filter((n) => n.kind === "sym" && n.parent === "file:src/server.ts").map((n) => n.id)).toEqual(["sym:src/server.ts#app"]);
+    // The engine lists each Prisma model as a symbol too: the entity stands for it, so a model shows once;
+    // the enum, which no entity holds, stays a symbol.
+    const inSchema = v.nodes.filter((n) => n.parent === "file:prisma/schema.prisma").map((n) => n.id);
+    expect(inSchema.sort()).toEqual(["entity:Order", "entity:OrderItem", "entity:Product", "entity:User", "sym:prisma/schema.prisma#OrderStatus"]);
     // Model labels and summaries, with their citations.
     expect(node(v, "sys:api")).toMatchObject({ label: "Main server", role: "service", cites: ["src/server.ts:7"] });
     expect(v.app).toMatchObject({ name: "Shop", audience: "everyone", cites: ["README.md:3"] });
@@ -101,7 +105,7 @@ describe("assembleView", () => {
     const narrow = readModelFile("shop.model.json") as Model;
     narrow.systems = [{ ...narrow.systems[0]!, paths: ["src/routes/**"] }];
     const v2 = assembleWithNotes({ ...inputs, model: narrow });
-    expect(v2.view.coverage.filesInSystems).toBe(0.2); // 1 of 5 code files
+    expect(v2.view.coverage.filesInSystems).toBe(0.1667); // 1 of 6 code files (the engine reads prisma/schema.prisma as code)
     expect(node(v2.view, "mod:src")!.parent).toBe("sys:_unassigned");
   });
 
@@ -147,7 +151,8 @@ describe("assembleView", () => {
     const v2 = assembleView({ ...inputs, model: m });
     expect(node(v2, "mod:src")!.caps).toEqual(["cap:_foundations"]);
     expect(node(v2, "file:src/server.test.ts")!.caps).toEqual(["cap:_foundations"]);
-    expect(v2.coverage.modulesInCapabilities).toBe(0.6667);
+    // 3 of 4 code modules: mod:prisma is one (the engine reads the schema as code), claimed via entity:Order.
+    expect(v2.coverage.modulesInCapabilities).toBe(0.75);
   });
 
   it("rolls file edges up to module, system and capability level, without self-loops", async () => {

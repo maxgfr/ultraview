@@ -106,7 +106,7 @@ with `--terms`.
 | it | 6/30 | 30/30 | 11/30 | 29/30 | 17/60 (28%) | 59/60 (98%) |
 | pt | 9/30 | 30/30 | 15/30 | 29/30 | 24/60 (40%) | 59/60 (98%) |
 | nl | 5/30 | 30/30 | 17/30 | 27/30 | 22/60 (37%) | 57/60 (95%) |
-| ja | 0/30 | 30/30 | 4/30 | 29/30 | 4/60 (7%) | 59/60 (98%) |
+| ja | 1/30 | 30/30 | 7/30 | 29/30 | 8/60 (13%) | 59/60 (98%) |
 | zh | 1/30 | 30/30 | 7/30 | 28/30 | 8/60 (13%) | 58/60 (97%) |
 | ar | 5/30 | 30/30 | 2/30 | 28/30 | 7/60 (12%) | 58/60 (97%) |
 | ru | 2/30 | 30/30 | 3/30 | 28/30 | 5/60 (8%) | 58/60 (97%) |
@@ -114,9 +114,14 @@ with `--terms`.
 The bridge gate holds over all the cases: with terms, every language reaches
 at least 88% (English without terms, 90%, less 2 points). The French lexicon
 is the only bridge without terms, so French stays near English there; every
-other language without terms is what `--terms` is for. The CJK rows rank on
-the terms alone for now: the pinned engine splits a CJK sentence into whole
-runs, so its own words match nothing (CJK bigrams come with a later engine).
+other language without terms is what `--terms` is for. The pinned engine
+(ultraindex 7.16.2) splits a CJK run into overlapping bigrams and keeps a Latin
+word next to it apart, so the `ID` of a Japanese question is a word of its
+own: with that re-pin (from 7.14.2), Japanese without terms went from 4/60 to
+8/60, the four new hits all asking for one product or order by its ID. The
+fixtures hold no CJK code, so the bigrams themselves match nothing here and
+the CJK rows with terms are unchanged. The re-pin's other changes (Prisma
+blocks as symbols, body search in `find`) moved no count.
 
 History. The ranking (`src/lens.ts`, `src/lens-terms.ts`) was developed
 against the English and French shop questions: 14/30 en and 3/30 fr with the
@@ -148,8 +153,8 @@ follow-ups):
 | fr | 4/5 | 2/5 | 7/8 | 2/8 |
 | es | 3/5 | 1/5 | 7/8 | 2/8 |
 | de | 3/5 | 1/5 | 7/8 | 2/8 |
-| ja | 2/5 | 0/5 | 6/8 | 0/8 |
-| all | 16/25 (64%) | 6/25 (24%) | 34/40 (85%) | 9/40 (23%) |
+| ja | 2/5 | 0/5 | 6/8 | 1/8 |
+| all | 16/25 (64%) | 6/25 (24%) | 34/40 (85%) | 10/40 (25%) |
 
 Turn 1 with a context (the two "ask about this" scenarios): 10/10 with
 `--context`, 0/10 without. Without the digest the follow-ups mostly fail: they
@@ -171,6 +176,9 @@ caught it in all five languages and lost "how do I undo that?" in all five
 (the entities around the order now outrank cancelOrder), the same 34/40. Then a seed itself (1.5) outranks its neighbours (1), and a
 turn's seeds share its weight by the square root of their count, so a
 clicked node outranks a long previous answer: no change to the counts.
+The re-pin to ultraindex 7.16.2 (CJK runs split into bigrams, a Latin word
+next to them kept apart) added one follow-up alone, 9/40 → 10/40: the Japanese
+"1件だけなら？ …id指定で。", whose `id` is now a word of its own.
 
 ## Provenance
 

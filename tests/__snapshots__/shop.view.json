@@ -674,7 +674,7 @@
       },
       "parent": "mod:prisma",
       "tags": [
-        "other"
+        "code"
       ]
     },
     {
@@ -1012,6 +1012,24 @@
       "parent": "file:src/routes/orders.ts",
       "tags": [
         "express"
+      ]
+    },
+    {
+      "at": "prisma/schema.prisma:13",
+      "caps": [],
+      "cites": [],
+      "id": "sym:prisma/schema.prisma#OrderStatus",
+      "kind": "sym",
+      "label": "OrderStatus",
+      "metrics": {
+        "churn": 0,
+        "loc": 5,
+        "pagerank": 0,
+        "tests": 0
+      },
+      "parent": "file:prisma/schema.prisma",
+      "tags": [
+        "enum"
       ]
     },
     {

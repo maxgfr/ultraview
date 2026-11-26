@@ -68,8 +68,8 @@ export interface Explanation {
   source: "facts";
 }
 
-/** One call site the engine extracted (codeindex `FileRecord.calls`). */
-interface CallSite {
+/** One call the engine extracted in a file (codeindex `FileRecord.calls`); the engine's `CallSite` is a site of a callee, by name. */
+interface FileCall {
   name: string;
   line: number;
 }
@@ -105,7 +105,7 @@ export interface ExplainContext {
   extsById: Map<string, Facts["externals"]>;
   extsByFile: Map<string, Facts["externals"]>;
   /** File → its call sites, from the codeindex extraction cache (loaded on first use). */
-  callSites: () => Map<string, CallSite[]>;
+  callSites: () => Map<string, FileCall[]>;
 }
 
 const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -116,16 +116,16 @@ function push<K, V>(map: Map<K, V[]>, key: K, value: V): void {
   else map.set(key, [value]);
 }
 
-let siteCache: { key: string; sites: Map<string, CallSite[]> } | undefined;
+let siteCache: { key: string; sites: Map<string, FileCall[]> } | undefined;
 
 /** Call sites per file from `<repo>/.ultraindex/cache.json`, re-read only when that file changes. */
-function loadCallSites(root: string | undefined): Map<string, CallSite[]> {
+function loadFileCalls(root: string | undefined): Map<string, FileCall[]> {
   if (!root) return new Map();
   const index = viewPaths(root).index;
   const file = join(index, "cache.json");
   const key = existsSync(file) ? `${file}:${statSync(file).mtimeMs}` : "none";
   if (siteCache?.key === key) return siteCache.sites;
-  const sites = new Map<string, CallSite[]>();
+  const sites = new Map<string, FileCall[]>();
   for (const [rel, entry] of loadCache(index) ?? []) {
     const calls = entry.record.calls;
     if (calls?.length)
@@ -199,7 +199,7 @@ export function explainContext(live: { view: ViewModel; byId: Map<string, ViewNo
     usesByFile: new Map(),
     extsById: new Map(),
     extsByFile: new Map(),
-    callSites: () => loadCallSites(inputs.root),
+    callSites: () => loadFileCalls(inputs.root),
   };
   for (const c of facts.calls) {
     push(ctx.callsByFile, c.file, c);

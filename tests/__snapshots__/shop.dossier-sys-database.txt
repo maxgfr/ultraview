@@ -35,6 +35,32 @@ Source (lines 1-4):
 ```
 
 ### prisma/schema.prisma (55 lines)
+Exported:
+- enum OrderStatus @ line 13
+- enum-member PENDING @ line 14
+- enum-member PAID @ line 15
+- enum-member SHIPPED @ line 16
+- struct User @ line 19
+- field id @ line 20
+- field email @ line 21
+- field name @ line 22
+- field orders @ line 23
+- field createdAt @ line 24
+- struct Product @ line 27
+- field id @ line 28
+- field sku @ line 29
+- field title @ line 30
+- field priceCents @ line 31
+- field items @ line 32
+- struct Order @ line 36
+- field id @ line 37
+- field user @ line 38
+- field userId @ line 39
+- field status @ line 40
+- field items @ line 41
+- field createdAt @ line 42
+- struct OrderItem @ line 47
+- field id @ line 48
 Source (lines 1-55):
 ```
  1  // Data model of the shop.

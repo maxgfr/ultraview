@@ -85,15 +85,17 @@ describe("checkMap", () => {
   it("fails below the coverage thresholds", async () => {
     const m = model();
     m.capabilities = m.capabilities.filter((c: { id: string }) => c.id !== "health");
+    // Without its entities, no capability claims mod:prisma (a code module: the engine reads the schema as code).
+    m.capabilities[0].members = m.capabilities[0].members.filter((id: string) => !id.startsWith("entity:"));
     m.systems = [{ ...m.systems[0], paths: ["src/routes/**", "src/services/**"] }];
     m.edges = [];
     m.tour = [m.tour[0]];
     const repo = await builtShop(cleanups, { model: m });
     const r = checkMap(repo);
-    expect(r.coverage).toEqual({ filesInSystems: 0.4, modulesInCapabilities: 0.6667 });
+    expect(r.coverage).toEqual({ filesInSystems: 0.3333, modulesInCapabilities: 0.5 });
     expect(r.errors.map((e) => e.path)).toEqual(["systems", "capabilities"]);
-    expect(r.errors[0]!.message).toContain("systems hold 40.0% of code files, below 90.0%");
-    expect(r.errors[1]!.message).toContain("capabilities claim 66.7% of non-test code modules, below 70.0%");
+    expect(r.errors[0]!.message).toContain("systems hold 33.3% of code files, below 90.0%");
+    expect(r.errors[1]!.message).toContain("capabilities claim 50.0% of non-test code modules, below 70.0%");
   });
 
   it("warns on a stale lens or flow after a cited file changes; --strict fails", async () => {
@@ -174,6 +176,7 @@ describe("status", () => {
 
     const m = model();
     m.capabilities = m.capabilities.filter((c: { id: string }) => c.id !== "health");
+    m.capabilities[0].members = m.capabilities[0].members.filter((id: string) => !id.startsWith("entity:"));
     m.capabilities[0].summary += " It also emails a receipt to the customer.";
     writeView(repo, "model.json", m);
     const incomplete = readStatus(repo);
@@ -181,7 +184,7 @@ describe("status", () => {
     expect(incomplete.check).toMatchObject({ ok: false, errors: 2 });
     expect(incomplete.worklist).toEqual([
       '.ultraview/model.json capabilities[0].summary: uncited sentence: "It also emails a receipt to the customer."',
-      expect.stringContaining(".ultraview/model.json capabilities: capabilities claim 66.7%"),
+      expect.stringContaining(".ultraview/model.json capabilities: capabilities claim 50.0%"),
       "run `ultraview check` until it passes",
     ]);
 

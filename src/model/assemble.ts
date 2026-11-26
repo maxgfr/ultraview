@@ -422,10 +422,19 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
 
   // --- symbols: exported, top-level, at most SYMBOLS_PER_FILE per file -------
   if (inp.symbols) {
+    // A symbol whose extent holds an entity of its own name and file is that entity's declaration
+    // (a Prisma `model` block the engine also lists as a symbol): the entity node stands for it.
+    const entityAt = new Map<string, number[]>();
+    for (const e of facts.entities) {
+      const k = `${e.file}\n${e.name}`;
+      entityAt.set(k, [...(entityAt.get(k) ?? []), e.line]);
+    }
+    const isEntity = (file: string, name: string, line: number, endLine?: number) =>
+      (entityAt.get(`${file}\n${name}`) ?? []).some((l) => l >= line && l <= (endLine ?? line));
     const byFile = new Map<string, { name: string; line: number; endLine?: number; kind: string }[]>();
     for (const [name, defs] of Object.entries(inp.symbols.defs)) {
       for (const d of defs) {
-        if (!d.exported || d.parent || !hasFile(d.file)) continue;
+        if (!d.exported || d.parent || !hasFile(d.file) || isEntity(d.file, name, d.line, d.endLine)) continue;
         const list = byFile.get(d.file) ?? [];
         list.push({ name, line: d.line, endLine: d.endLine, kind: d.kind });
         byFile.set(d.file, list);

@@ -224,7 +224,9 @@ describe("lens new", () => {
   it("keeps words in any script, as the engine splits them", () => {
     expect(readQuestion("Как отменить заказ?").terms).toEqual(expect.arrayContaining(["заказ", "отменить"]));
     expect(readQuestion("ما هي حالة الطلب؟").terms).toEqual(expect.arrayContaining(["الطلب", "حالة"]));
-    expect(readQuestion("购物车 页面").terms).toEqual(["购物车", "页面"]);
+    // A CJK run is split into overlapping bigrams, as the engine indexes it (Lucene CJKAnalyzer style).
+    expect(readQuestion("购物车 页面").terms).toEqual(["物车", "购物", "页面"]);
+    expect(readQuestion("注文をキャンセル").terms).toEqual(expect.arrayContaining(["注文", "キャ", "セル"]));
     // Still no one-letter Latin words, and English stems are not applied to other scripts.
     expect(readQuestion("Заказы и товары").terms).toEqual(expect.arrayContaining(["заказы", "товары"]));
     // A run-together identifier in the question is split like code.
