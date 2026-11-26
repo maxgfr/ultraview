@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.3.1](https://github.com/maxgfr/ultraview/compare/v1.3.0...v1.3.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **model:** place files in the system their glob declares ([4cab7ee](https://github.com/maxgfr/ultraview/commit/4cab7eefd2ae428d5a0597b596cb6d33f6dfa3b7)), closes [#4](https://github.com/maxgfr/ultraview/issues/4)
+
 # [1.3.0](https://github.com/maxgfr/ultraview/compare/v1.2.0...v1.3.0) (2026-11-26)
 
 

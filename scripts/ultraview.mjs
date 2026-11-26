@@ -38029,7 +38029,7 @@ function readStatus(repoArg, probes = PROBES) {
 }
 
 // src/version.ts
-var ULTRAVIEW_VERSION = "1.3.0";
+var ULTRAVIEW_VERSION = "1.3.1";
 
 // src/cli.ts
 var EXIT_OK = 0;
