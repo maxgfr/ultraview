@@ -2,6 +2,7 @@
   "calls": [],
   "entities": [
     {
+      "end": 25,
       "fields": [
         {
           "name": "id",
@@ -31,6 +32,7 @@
       "orm": "prisma"
     },
     {
+      "end": 33,
       "fields": [
         {
           "name": "id",
@@ -60,6 +62,7 @@
       "orm": "prisma"
     },
     {
+      "end": 45,
       "fields": [
         {
           "name": "id",
@@ -94,6 +97,7 @@
       "orm": "prisma"
     },
     {
+      "end": 54,
       "fields": [
         {
           "name": "id",
@@ -160,6 +164,7 @@
   "links": [],
   "routes": [
     {
+      "end": 8,
       "file": "src/routes/orders.ts",
       "framework": "express",
       "line": 6,
@@ -167,6 +172,7 @@
       "path": "/api/orders"
     },
     {
+      "end": 12,
       "file": "src/routes/orders.ts",
       "framework": "express",
       "line": 10,
@@ -174,6 +180,7 @@
       "path": "/api/orders"
     },
     {
+      "end": 18,
       "file": "src/routes/orders.ts",
       "framework": "express",
       "line": 16,
@@ -181,6 +188,7 @@
       "path": "/api/orders/:id"
     },
     {
+      "end": 21,
       "file": "src/routes/orders.ts",
       "framework": "express",
       "line": 19,
@@ -188,6 +196,7 @@
       "path": "/api/orders/:id"
     },
     {
+      "end": 11,
       "file": "src/server.ts",
       "framework": "express",
       "line": 9,

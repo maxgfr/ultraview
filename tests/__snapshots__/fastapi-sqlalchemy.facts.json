@@ -1,18 +1,21 @@
 {
   "calls": [
     {
+      "end": 11,
       "file": "app/services/payments.py",
       "line": 11,
       "method": "POST",
       "url": "/payments"
     },
     {
+      "end": 12,
       "file": "app/services/payments.py",
       "line": 12,
       "method": "GET",
       "url": "/payments/:p"
     },
     {
+      "end": 14,
       "file": "app/services/payments.py",
       "line": 14,
       "method": "POST",
@@ -21,6 +24,7 @@
   ],
   "entities": [
     {
+      "end": 20,
       "fields": [
         {
           "name": "id",
@@ -42,6 +46,7 @@
       "orm": "sqlalchemy"
     },
     {
+      "end": 31,
       "fields": [
         {
           "name": "id",
@@ -77,6 +82,7 @@
       "orm": "sqlalchemy"
     },
     {
+      "end": 39,
       "fields": [
         {
           "name": "id",
@@ -98,6 +104,7 @@
       "orm": "sqlalchemy"
     },
     {
+      "end": 6,
       "fields": [
         {
           "name": "id",
@@ -114,6 +121,7 @@
       "orm": "sql"
     },
     {
+      "end": 13,
       "fields": [
         {
           "name": "id",
@@ -139,6 +147,7 @@
       "orm": "sql"
     },
     {
+      "end": 7,
       "fields": [
         {
           "name": "id",
@@ -250,6 +259,7 @@
   ],
   "jobs": [
     {
+      "end": 4,
       "file": ".github/workflows/nightly.yml",
       "id": "cron:.github/workflows/nightly.yml",
       "kind": "cron",
@@ -257,18 +267,21 @@
       "schedule": "0 3 * * *"
     },
     {
+      "end": 9,
       "file": "app/worker.py",
       "id": "send_receipt",
       "kind": "worker",
       "line": 7
     },
     {
+      "end": 15,
       "file": "app/worker.py",
       "id": "nightly_report",
       "kind": "worker",
       "line": 12
     },
     {
+      "end": 22,
       "file": "app/worker.py",
       "id": "cron:nightly-report",
       "kind": "cron",
@@ -276,6 +289,7 @@
       "schedule": "0 3 * * *"
     },
     {
+      "end": 26,
       "file": "app/worker.py",
       "id": "cron:flush-receipts",
       "kind": "cron",
@@ -286,6 +300,7 @@
   "links": [],
   "routes": [
     {
+      "end": 17,
       "file": "app/main.py",
       "framework": "fastapi",
       "handler": "root",
@@ -294,6 +309,7 @@
       "path": "/"
     },
     {
+      "end": 8,
       "file": "app/routers/health.py",
       "framework": "fastapi",
       "handler": "health",
@@ -302,6 +318,7 @@
       "path": "/health"
     },
     {
+      "end": 17,
       "file": "app/routers/orders.py",
       "framework": "fastapi",
       "handler": "list_orders",
@@ -310,6 +327,7 @@
       "path": "/api/orders"
     },
     {
+      "end": 22,
       "file": "app/routers/orders.py",
       "framework": "fastapi",
       "handler": "get_order",
@@ -318,6 +336,7 @@
       "path": "/api/orders/:order_id"
     },
     {
+      "end": 31,
       "file": "app/routers/orders.py",
       "framework": "fastapi",
       "handler": "create_order",
@@ -326,6 +345,7 @@
       "path": "/api/orders"
     },
     {
+      "end": 36,
       "file": "app/routers/orders.py",
       "framework": "fastapi",
       "handler": "cancel_order",
@@ -334,6 +354,7 @@
       "path": "/api/orders/:order_id/cancel"
     },
     {
+      "end": 36,
       "file": "app/routers/orders.py",
       "framework": "fastapi",
       "handler": "cancel_order",
@@ -342,6 +363,7 @@
       "path": "/api/orders/:order_id/cancel"
     },
     {
+      "end": 11,
       "file": "app/routers/users.py",
       "framework": "fastapi",
       "handler": "get_user",

@@ -32024,6 +32024,146 @@ function maskSql(text2, strings2) {
   return out2.join("");
 }
 
+// src/extract/extent.ts
+function scanSyntax(rel2) {
+  return commentSyntaxFor(rel2) ?? (extOf(rel2) === ".json" ? "c" : void 0);
+}
+function lastLine(text2) {
+  const lines = text2.split("\n");
+  for (let i2 = lines.length - 1; i2 >= 0; i2--) if (lines[i2].trim()) return i2 + 1;
+  return 1;
+}
+var OPEN = /* @__PURE__ */ new Set(["(", "[", "{"]);
+var CLOSE = /* @__PURE__ */ new Set([")", "]", "}"]);
+var CONT_PREV = /* @__PURE__ */ new Set(["=", "+", "-", "*", "/", "%", "&", "|", "^", "!", "?", ":", "<", ">", ".", "("]);
+var CONT_NEXT = /* @__PURE__ */ new Set([".", "?", ":", "=", "+", "*", "&", "|", "^", "%"]);
+var isSpace = (ch) => ch === " " || ch === "	" || ch === "\r" || ch === "\f" || ch === "\v";
+function lineTable(text2) {
+  const starts = [0];
+  for (let i2 = 0; i2 < text2.length; i2++) if (text2.charCodeAt(i2) === 10) starts.push(i2 + 1);
+  const lineOf = (offset) => {
+    let lo = 0;
+    let hi = starts.length - 1;
+    while (lo < hi) {
+      const mid = lo + hi + 1 >> 1;
+      if (starts[mid] <= offset) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo + 1;
+  };
+  return { starts, lineOf };
+}
+function scanStatement(sk, start2, sql) {
+  let depth = 0;
+  let segFirst = -1;
+  let last = -1;
+  for (let i2 = start2; i2 < sk.length; i2++) {
+    const ch = sk[i2];
+    if (isSpace(ch)) continue;
+    if (ch === "\n") {
+      if (depth !== 0 || segFirst === -1) continue;
+      if (sql) {
+        let j2 = i2 + 1;
+        while (isSpace(sk[j2])) j2++;
+        if (sk[j2] === "\n" || j2 >= sk.length) return last;
+        continue;
+      }
+      const prev = sk[last];
+      const selfClosing = prev === ">" && sk[last - 1] === "/";
+      if (CONT_PREV.has(prev) && !selfClosing) continue;
+      let j = i2 + 1;
+      while (j < sk.length && (isSpace(sk[j]) || sk[j] === "\n")) j++;
+      const next = sk[j];
+      if (next === void 0) return last;
+      if (next === ".") {
+        if (sk[segFirst] === ".") return last;
+        continue;
+      }
+      if (CONT_NEXT.has(next)) continue;
+      if (next === "{" && prev === ")") continue;
+      if (sk[segFirst] === "@") {
+        segFirst = -1;
+        continue;
+      }
+      return last;
+    }
+    if (segFirst === -1) segFirst = i2;
+    if (OPEN.has(ch)) depth++;
+    else if (CLOSE.has(ch)) {
+      if (depth === 0) return last;
+      depth--;
+    } else if (depth === 0 && (ch === ";" || !sql && ch === ",")) return i2;
+    last = i2;
+  }
+  return last;
+}
+function scanIndented(sk, starts, line2, python2) {
+  const count2 = starts.length;
+  const lineText = (l) => sk.slice(starts[l - 1], l < count2 ? starts[l] - 1 : sk.length);
+  const indentOf2 = (s) => s.length - s.trimStart().length;
+  const logicalEnd = (l) => {
+    let depth = 0;
+    for (let k = l; k <= count2; k++) {
+      const s = lineText(k);
+      for (const ch of s) {
+        if (OPEN.has(ch)) depth++;
+        else if (CLOSE.has(ch)) depth--;
+      }
+      if (depth <= 0 && !s.trimEnd().endsWith("\\")) return k;
+    }
+    return count2;
+  };
+  let header2 = line2;
+  let end = logicalEnd(header2);
+  while (python2 && lineText(header2).trimStart().startsWith("@") && end < count2) {
+    let k = end + 1;
+    while (k <= count2 && !lineText(k).trim()) k++;
+    if (k > count2) break;
+    header2 = k;
+    end = logicalEnd(header2);
+  }
+  if (python2 && !lineText(end).trimEnd().endsWith(":")) return end;
+  const indent = indentOf2(lineText(header2));
+  let last = end;
+  for (let k = end + 1; k <= count2; k++) {
+    const s = lineText(k);
+    if (!s.trim()) continue;
+    if (indentOf2(s) <= indent) break;
+    last = k;
+  }
+  return last;
+}
+function extentFinder(rel2, text2) {
+  const syntax = scanSyntax(rel2);
+  if (syntax === void 0) return (line2) => line2;
+  const sk = maskComments(text2, syntax, { strings: true });
+  const { starts, lineOf } = lineTable(sk);
+  const cache = /* @__PURE__ */ new Map();
+  return (line2) => {
+    const hit = cache.get(line2);
+    if (hit !== void 0) return hit;
+    let end = line2;
+    if (line2 >= 1 && line2 <= starts.length) {
+      if (syntax === "python" || syntax === "hash") end = scanIndented(sk, starts, line2, syntax === "python");
+      else {
+        const last = scanStatement(sk, starts[line2 - 1], syntax === "sql");
+        if (last !== -1) end = lineOf(last);
+      }
+    }
+    end = Math.max(line2, end);
+    cache.set(line2, end);
+    return end;
+  };
+}
+function blankOrCommentOnly(rel2, text2) {
+  const masked = maskComments(text2, scanSyntax(rel2));
+  const lines = masked.split("\n");
+  return (from, to) => {
+    for (let l = Math.max(1, from); l <= Math.min(to, lines.length); l++) if (lines[l - 1].trim()) return false;
+    return true;
+  };
+}
+
 // src/extract/mounts.ts
 function joinRoutePath(prefix, path) {
   if (!prefix || prefix === "/") return path || "/";
@@ -32243,7 +32383,7 @@ function extractExpress(input) {
     const line2 = lineOf(m.index);
     if (VERB_SET.has(method)) {
       if (path === void 0 || !isRoutePath(path) || call2.args.length < 2) continue;
-      routes.push({ receiver, method: method.toUpperCase(), path, line: line2, handler: lastHandler(call2.args.slice(1)) });
+      routes.push({ receiver, method: method.toUpperCase(), path, line: line2, end: lineOf(call2.end - 1), handler: lastHandler(call2.args.slice(1)) });
       continue;
     }
     if (method === "route") {
@@ -32256,7 +32396,14 @@ function extractExpress(input) {
         const inner = readArgs(text2, open2);
         if (!inner) break;
         const dot = skeleton.indexOf(".", at);
-        routes.push({ receiver, method: chain[1].toUpperCase(), path, line: lineOf(dot), handler: lastHandler(inner.args) });
+        routes.push({
+          receiver,
+          method: chain[1].toUpperCase(),
+          path,
+          line: lineOf(dot),
+          end: lineOf(inner.end - 1),
+          handler: lastHandler(inner.args)
+        });
         at = inner.end;
       }
       continue;
@@ -32290,7 +32437,7 @@ function extractExpress(input) {
   const facts = [];
   for (const r of routes) {
     for (const prefix of prefixesOf2(r.receiver, /* @__PURE__ */ new Set())) {
-      const fact = { method: r.method, path: joinRoutePath(prefix, r.path), file: input.rel, line: r.line, framework: FRAMEWORK };
+      const fact = { method: r.method, path: joinRoutePath(prefix, r.path), file: input.rel, line: r.line, end: r.end, framework: FRAMEWORK };
       if (r.handler) fact.handler = r.handler;
       facts.push(fact);
     }
@@ -35231,6 +35378,9 @@ function under(sub, roots) {
 function lineAt(text2, offset) {
   return offset === void 0 ? 1 : lineIndex(text2)(offset);
 }
+function defaultAt(text2, offset) {
+  return offset === void 0 ? { line: 1, end: lastLine(text2) } : { line: lineAt(text2, offset) };
+}
 function exportedHandlers(input, file, path, framework, map) {
   const { skeleton, lineOf } = sourceViews(input);
   const out2 = [];
@@ -35266,7 +35416,7 @@ var nextAppExtractor = {
       return routes.length ? { routes } : {};
     }
     const { skeleton } = sourceViews(input);
-    return { screens: [{ path, file: input.rel, line: lineAt(skeleton, defaultExportOffset(skeleton)), framework: "next-app" }] };
+    return { screens: [{ path, file: input.rel, ...defaultAt(skeleton, defaultExportOffset(skeleton)), framework: "next-app" }] };
   }
 };
 var NEXT_PAGES_ROOTS = ["pages/", "src/pages/"];
@@ -35334,18 +35484,18 @@ var nextPagesExtractor = {
     if (!parts2) return {};
     const { text: text2, skeleton } = sourceViews(input);
     const path = pathFromSegments(parts2.map(bracketSegment));
-    const line2 = lineAt(skeleton, defaultExportOffset(skeleton));
+    const at = defaultAt(skeleton, defaultExportOffset(skeleton));
     if (parts2[0] === "api") {
       const handler = defaultExportName(skeleton);
       const methods = checkedMethods(text2, skeleton);
       const routes = (methods.length ? methods : ["ALL"]).map((method) => {
-        const r = { method, path, file: input.rel, line: line2, framework: "next-pages" };
+        const r = { method, path, file: input.rel, ...at, framework: "next-pages" };
         if (handler) r.handler = handler;
         return r;
       });
       return { routes };
     }
-    return { screens: [{ path, file: input.rel, line: line2, framework: "next-pages" }] };
+    return { screens: [{ path, file: input.rel, ...at, framework: "next-pages" }] };
   }
 };
 var NUXT_DEPS = ["nuxt", "nuxt3", "nitropack", "nitro"];
@@ -35383,7 +35533,7 @@ var nuxtServerExtractor = {
     const route = nuxtServerRoute(input, ctx);
     if (!route) return {};
     const { skeleton } = sourceViews(input);
-    return { routes: [{ ...route, file: input.rel, line: lineAt(skeleton, defaultExportOffset(skeleton)), framework: "nuxt" }] };
+    return { routes: [{ ...route, file: input.rel, ...defaultAt(skeleton, defaultExportOffset(skeleton)), framework: "nuxt" }] };
   }
 };
 function nuxtPagePath(input, ctx) {
@@ -35402,7 +35552,7 @@ var nuxtPagesExtractor = {
   },
   extract(input, ctx) {
     const path = nuxtPagePath(input, ctx);
-    return path === void 0 ? {} : { screens: [{ path, file: input.rel, line: 1, framework: "nuxt" }] };
+    return path === void 0 ? {} : { screens: [{ path, file: input.rel, line: 1, end: lastLine(input.text), framework: "nuxt" }] };
   }
 };
 var SVELTEKIT_METHODS = new Map([...[...HTTP_METHODS2].map((m) => [m, m]), ["fallback", "ALL"]]);
@@ -35423,7 +35573,7 @@ var svelteKitExtractor = {
     const parts2 = svelteKitParts(input, ctx);
     if (!parts2) return {};
     const path = pathFromSegments(parts2.dirs.map(bracketSegment));
-    if (parts2.base === "+page.svelte") return { screens: [{ path, file: input.rel, line: 1, framework: "sveltekit" }] };
+    if (parts2.base === "+page.svelte") return { screens: [{ path, file: input.rel, line: 1, end: lastLine(input.text), framework: "sveltekit" }] };
     const routes = exportedHandlers(input, input.rel, path, "sveltekit", (n) => SVELTEKIT_METHODS.get(n));
     return routes.length ? { routes } : {};
   }
@@ -36003,7 +36153,8 @@ function walkTable(text2, open, parent, keys, rel2, lineOf, out2, depth = 0) {
     const path = raw !== void 0 ? joinChild(parent, stripParamPatterns(raw)) : parent;
     const render = keys.renders.map((k) => propValue(obj2.props, k)).find((p) => p !== void 0);
     const redirect = render && keys.redirect?.test(render.value);
-    if ((raw !== void 0 || isIndex) && render && !redirect) out2.push({ path, file: rel2, line: lineOf(el.start), framework: keys.framework });
+    if ((raw !== void 0 || isIndex) && render && !redirect)
+      out2.push({ path, file: rel2, line: lineOf(el.start), end: lineOf(obj2.end - 1), framework: keys.framework });
     const children = propValue(obj2.props, "children");
     if (children?.value.startsWith("[")) walkTable(text2, children.start, path, keys, rel2, lineOf, out2, depth + 1);
   }
@@ -36072,7 +36223,7 @@ function jsxRoutes(text2, skeleton, rel2, lineOf, out2) {
       const open = at + renderM.index + renderM[0].length - 1;
       redirect = /^\{\s*<\s*Navigate\b/.test(text2.slice(open, open + 40));
     }
-    if ((pathM || isIndex) && renderM && !redirect) out2.push({ path, file: rel2, line: lineOf(at), framework: "react-router" });
+    if ((pathM || isIndex) && renderM && !redirect) out2.push({ path, file: rel2, line: lineOf(at), end: lineOf(tag.end - 1), framework: "react-router" });
     if (!tag.selfClosing) stack.push(path);
   }
 }
@@ -37110,6 +37261,7 @@ var LINKERS = [
   entityUseLinker,
   ...LATE_LINKERS
 ];
+var EXTENT_KINDS = ["routes", "calls", "screens", "entities", "jobs"];
 function emptyFacts() {
   return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [], links: [] };
 }
@@ -37188,6 +37340,7 @@ function runExtractors(repo, files, readText2, opts = {}) {
     texts.delete(rel2);
     if (text2 === void 0 || text2 === "") continue;
     const input = { rel: rel2, text: text2, lang: codeindex_engine_exports.extToLang(extOf(rel2)) };
+    let extent;
     for (const ex of candidates) {
       let got;
       try {
@@ -37196,6 +37349,13 @@ function runExtractors(repo, files, readText2, opts = {}) {
       } catch (e) {
         opts.onError?.({ extractor: ex.id, file: rel2, message: e.message });
         continue;
+      }
+      for (const kind of EXTENT_KINDS) {
+        for (const row2 of got[kind] ?? []) {
+          if (row2.end !== void 0 || row2.file !== rel2) continue;
+          extent ??= extentFinder(rel2, text2);
+          row2.end = extent(row2.line);
+        }
       }
       for (const kind of FACT_KINDS) {
         const rows = got[kind];
@@ -37208,6 +37368,21 @@ function runExtractors(repo, files, readText2, opts = {}) {
   let facts = merged;
   const linkCtx = { ...ctx, hints };
   for (const linker of linkers) facts = linker.link(facts, linkCtx);
+  const pending = /* @__PURE__ */ new Map();
+  for (const kind of EXTENT_KINDS) {
+    for (const row2 of facts[kind]) {
+      if (row2.end !== void 0) continue;
+      const rows = pending.get(row2.file);
+      if (rows) rows.push(row2);
+      else pending.set(row2.file, [row2]);
+    }
+  }
+  for (const [rel2, rows] of pending) {
+    const text2 = readText2(join41(repo, rel2));
+    if (text2 === void 0) continue;
+    const extent = extentFinder(rel2, text2);
+    for (const row2 of rows) row2.end = extent(row2.line);
+  }
   return normalizeFacts(facts);
 }
 
@@ -38706,12 +38881,14 @@ function factIndex(facts) {
       label: `${r.method.toUpperCase()} ${r.path}`,
       file: r.file,
       line: r.line,
+      end: r.end,
       sig: `${r.framework}|${r.handler ?? ""}`
     });
   }
-  for (const s of facts.screens) put(screenId(s.path), { kind: "screen", label: s.path, file: s.file, line: s.line, sig: s.framework });
-  for (const e of facts.entities) put(entityId(e.name), { kind: "entity", label: e.name, file: e.file, line: e.line, sig: stableLine([e.orm, e.fields]) });
-  for (const j of facts.jobs) put(jobId(j.id), { kind: "job", label: j.id, file: j.file, line: j.line, sig: `${j.kind}|${j.schedule ?? ""}` });
+  for (const s of facts.screens) put(screenId(s.path), { kind: "screen", label: s.path, file: s.file, line: s.line, end: s.end, sig: s.framework });
+  for (const e of facts.entities)
+    put(entityId(e.name), { kind: "entity", label: e.name, file: e.file, line: e.line, end: e.end, sig: stableLine([e.orm, e.fields]) });
+  for (const j of facts.jobs) put(jobId(j.id), { kind: "job", label: j.id, file: j.file, line: j.line, end: j.end, sig: `${j.kind}|${j.schedule ?? ""}` });
   return out2;
 }
 function readSource2(abs) {
@@ -38818,18 +38995,31 @@ function changeSetOf(repoArg, git, opts = {}) {
     }
   }
   if (direct.size) {
-    const hunksOf = new Map(delta.changes.map((c2) => [c2.path, c2.hunks]));
+    const hunksOf = git.diff.hunks;
     const cur = factIndex(facts);
     let old;
     if (direct.size > BASE_FACTS_MAX_FILES)
       notes.push(`${direct.size} changed files: base facts not re-extracted, removed routes / screens / entities / jobs are not reported`);
     else old = factIndex(baseFacts(repo, graph, delta, git.diff.base.mergeBase));
-    const linesOf = /* @__PURE__ */ new Map();
-    for (const f of cur.values()) linesOf.set(f.file, [...linesOf.get(f.file) ?? [], f.line]);
-    for (const list of linesOf.values()) list.sort((a, b) => a - b);
+    const sources = /* @__PURE__ */ new Map();
+    const sourceOf2 = (rel2) => {
+      if (!sources.has(rel2)) {
+        const text2 = readSource2(join44(repo, rel2));
+        sources.set(rel2, text2 === void 0 ? void 0 : { extent: extentFinder(rel2, text2), quiet: blankOrCommentOnly(rel2, text2) });
+      }
+      return sources.get(rel2);
+    };
     const touched = (f) => {
-      const end = (linesOf.get(f.file) ?? []).find((l) => l > f.line);
-      return (hunksOf.get(f.file) ?? []).some((h) => h.end >= f.line && (end === void 0 || h.start < end));
+      const hunks = hunksOf.get(f.file) ?? [];
+      if (!hunks.length) return false;
+      const src = sourceOf2(f.file);
+      const end = Math.max(f.line, f.end ?? src?.extent(f.line) ?? f.line);
+      return hunks.some((h) => {
+        if (h.approx) return f.line <= h.start && h.start < end;
+        const from = Math.max(h.start, f.line);
+        const to = Math.min(h.end, end);
+        return from <= to && !src?.quiet(from, to);
+      });
     };
     for (const id of [.../* @__PURE__ */ new Set([...cur.keys(), ...old?.keys() ?? []])].sort(cmp7)) {
       const c2 = cur.get(id);
@@ -39190,14 +39380,14 @@ function checkMap(repoArg, opts = {}) {
   view = assembled.view;
   const ids = new Set(view.nodes.map((n) => n.id));
   const { model, flows, lenses, timeline, graph } = loaded2.inputs;
-  const lineTable = fileLineTable(graph);
+  const lineTable2 = fileLineTable(graph);
   const resolveId = (file, path, id) => {
     if (id !== void 0 && !ids.has(id))
       errors.push({ file, path, message: `unknown node "${id}" (run \`ultraview show <id>\` on a known one, or see the build summary)` });
   };
   const prose = (file, path, text2) => {
     if (text2 === void 0) return;
-    for (const u of checkCitations(text2, lineTable).unresolved) errors.push({ file, path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
+    for (const u of checkCitations(text2, lineTable2).unresolved) errors.push({ file, path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
     for (const s of uncitedSentences(text2)) errors.push({ file, path, message: `uncited sentence: "${s.length > 120 ? `${s.slice(0, 117)}...` : s}"` });
   };
   if (model) {
@@ -39218,9 +39408,9 @@ function checkMap(repoArg, opts = {}) {
         errors.push({ file: MODEL_FILE, path: `edges[${i2}]`, message: "a hand-written edge needs a `cite` (path:line it rests on)" });
         return;
       }
-      const c2 = checkCitations(`[${e.cite}]`, lineTable);
+      const c2 = checkCitations(`[${e.cite}]`, lineTable2);
       if (c2.unresolved.length) errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `dead citation [${e.cite}]: ${c2.unresolved[0].reason}` });
-      else if (!c2.resolved.length || !lineTable.has(c2.resolved[0].path))
+      else if (!c2.resolved.length || !lineTable2.has(c2.resolved[0].path))
         errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `"${e.cite}" is not an indexed path:line` });
     });
     (model.tour ?? []).forEach((t, i2) => {
@@ -40127,10 +40317,10 @@ function save(kind, repoArg, input, opts) {
   const file = `${kind.dir}/${item.id}.json`;
   const errors = [];
   const graph = loadGraph(viewPaths(repo).index);
-  const lineTable = graph ? fileLineTable(graph) : void 0;
+  const lineTable2 = graph ? fileLineTable(graph) : void 0;
   const cited = /* @__PURE__ */ new Set();
   for (const { path, text: text2 } of kind.prose(item)) {
-    if (lineTable) for (const u of checkCitations(text2, lineTable).unresolved) errors.push({ path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
+    if (lineTable2) for (const u of checkCitations(text2, lineTable2).unresolved) errors.push({ path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
     for (const c2 of parseCitations(text2)) {
       const abs2 = resolve25(repo, c2.path);
       const inside = abs2.startsWith(repo + sep10);

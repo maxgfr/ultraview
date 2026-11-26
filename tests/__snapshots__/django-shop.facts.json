@@ -1,12 +1,14 @@
 {
   "calls": [
     {
+      "end": 24,
       "file": "orders/views.py",
       "line": 24,
       "method": "GET",
       "url": "/stock/:p"
     },
     {
+      "end": 40,
       "file": "orders/views.py",
       "line": 40,
       "method": "POST",
@@ -15,6 +17,7 @@
   ],
   "entities": [
     {
+      "end": 14,
       "fields": [
         {
           "name": "user",
@@ -31,6 +34,7 @@
       "orm": "django"
     },
     {
+      "end": 19,
       "fields": [
         {
           "name": "sku",
@@ -47,6 +51,7 @@
       "orm": "django"
     },
     {
+      "end": 29,
       "fields": [
         {
           "name": "customer",
@@ -74,6 +79,7 @@
       "orm": "django"
     },
     {
+      "end": 35,
       "fields": [
         {
           "name": "order",
@@ -165,6 +171,7 @@
   "links": [],
   "routes": [
     {
+      "end": 6,
       "file": "orders/urls.py",
       "framework": "django",
       "handler": "views.order_list",
@@ -173,6 +180,7 @@
       "path": "/shop"
     },
     {
+      "end": 7,
       "file": "orders/urls.py",
       "framework": "django",
       "handler": "views.OrderDetail",
@@ -181,6 +189,7 @@
       "path": "/shop/:pk"
     },
     {
+      "end": 12,
       "file": "orders/urls.py",
       "framework": "django",
       "handler": "views.checkout_start",
@@ -189,6 +198,7 @@
       "path": "/shop/checkout/start"
     },
     {
+      "end": 13,
       "file": "orders/urls.py",
       "framework": "django",
       "handler": "views.checkout_done",
@@ -197,6 +207,7 @@
       "path": "/shop/checkout/done"
     },
     {
+      "end": 9,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "OrderViewSet",
@@ -205,6 +216,7 @@
       "path": "/api/orders/:pk"
     },
     {
+      "end": 9,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "OrderViewSet",
@@ -213,6 +225,7 @@
       "path": "/api/orders"
     },
     {
+      "end": 9,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "OrderViewSet",
@@ -221,6 +234,7 @@
       "path": "/api/orders/:pk"
     },
     {
+      "end": 9,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "OrderViewSet",
@@ -229,6 +243,7 @@
       "path": "/api/orders/:pk"
     },
     {
+      "end": 9,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "OrderViewSet",
@@ -237,6 +252,7 @@
       "path": "/api/orders"
     },
     {
+      "end": 9,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "OrderViewSet",
@@ -245,6 +261,7 @@
       "path": "/api/orders/:pk"
     },
     {
+      "end": 10,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "ProductViewSet",
@@ -253,6 +270,7 @@
       "path": "/api/products"
     },
     {
+      "end": 10,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "ProductViewSet",
@@ -261,6 +279,7 @@
       "path": "/api/products/:pk"
     },
     {
+      "end": 13,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "admin.site.urls",
@@ -269,6 +288,7 @@
       "path": "/admin"
     },
     {
+      "end": 16,
       "file": "shop/urls.py",
       "framework": "django",
       "handler": "legacy_product",

@@ -37,6 +37,7 @@ describe("prisma schema extractor", () => {
         orm: "prisma",
         file: "prisma/schema.prisma",
         line: 5,
+        end: 11,
         fields: [
           { name: "id", type: "Int" },
           { name: "role", type: "Role" },
@@ -49,6 +50,7 @@ describe("prisma schema extractor", () => {
         orm: "prisma",
         file: "prisma/schema.prisma",
         line: 13,
+        end: 18,
         fields: [
           { name: "id", type: "Int" },
           { name: "author", type: "User", relation: "User" },

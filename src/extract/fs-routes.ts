@@ -17,6 +17,7 @@
 //                fs-routes): `loader` → GET, `action` → POST, default export →
 //                screen.
 
+import { lastLine } from "./extent.js";
 import { isJsLike } from "./js.js";
 import { extOf, lineIndex } from "./mask.js";
 import { bracketSegment, flatRoutePath, pathFromSegments } from "./routing.js";
@@ -38,6 +39,11 @@ function under(sub: string, roots: readonly string[]): string | undefined {
 
 function lineAt(text: string, offset: number | undefined): number {
   return offset === undefined ? 1 : lineIndex(text)(offset);
+}
+
+/** Where a default export starts (its extent is the statement there); with none, the whole file is the fact. */
+function defaultAt(text: string, offset: number | undefined): { line: number; end?: number } {
+  return offset === undefined ? { line: 1, end: lastLine(text) } : { line: lineAt(text, offset) };
 }
 
 /** Exported HTTP handlers (`export async function GET`, `export { h as POST }`, `export const { GET } = …`). */
@@ -81,7 +87,7 @@ export const nextAppExtractor: Extractor = {
       return routes.length ? { routes } : {};
     }
     const { skeleton } = sourceViews(input);
-    return { screens: [{ path, file: input.rel, line: lineAt(skeleton, defaultExportOffset(skeleton)), framework: "next-app" }] };
+    return { screens: [{ path, file: input.rel, ...defaultAt(skeleton, defaultExportOffset(skeleton)), framework: "next-app" }] };
   },
 };
 
@@ -156,18 +162,18 @@ export const nextPagesExtractor: Extractor = {
     if (!parts) return {};
     const { text, skeleton } = sourceViews(input);
     const path = pathFromSegments(parts.map(bracketSegment));
-    const line = lineAt(skeleton, defaultExportOffset(skeleton));
+    const at = defaultAt(skeleton, defaultExportOffset(skeleton));
     if (parts[0] === "api") {
       const handler = defaultExportName(skeleton);
       const methods = checkedMethods(text, skeleton);
       const routes = (methods.length ? methods : ["ALL"]).map((method) => {
-        const r: RouteFact = { method, path, file: input.rel, line, framework: "next-pages" };
+        const r: RouteFact = { method, path, file: input.rel, ...at, framework: "next-pages" };
         if (handler) r.handler = handler;
         return r;
       });
       return { routes };
     }
-    return { screens: [{ path, file: input.rel, line, framework: "next-pages" }] };
+    return { screens: [{ path, file: input.rel, ...at, framework: "next-pages" }] };
   },
 };
 
@@ -210,7 +216,7 @@ export const nuxtServerExtractor: Extractor = {
     const route = nuxtServerRoute(input, ctx);
     if (!route) return {};
     const { skeleton } = sourceViews(input);
-    return { routes: [{ ...route, file: input.rel, line: lineAt(skeleton, defaultExportOffset(skeleton)), framework: "nuxt" }] };
+    return { routes: [{ ...route, file: input.rel, ...defaultAt(skeleton, defaultExportOffset(skeleton)), framework: "nuxt" }] };
   },
 };
 
@@ -231,7 +237,7 @@ export const nuxtPagesExtractor: Extractor = {
   },
   extract(input, ctx): ExtractOutput {
     const path = nuxtPagePath(input, ctx);
-    return path === undefined ? {} : { screens: [{ path, file: input.rel, line: 1, framework: "nuxt" }] };
+    return path === undefined ? {} : { screens: [{ path, file: input.rel, line: 1, end: lastLine(input.text), framework: "nuxt" }] };
   },
 };
 
@@ -257,7 +263,7 @@ export const svelteKitExtractor: Extractor = {
     const parts = svelteKitParts(input, ctx);
     if (!parts) return {};
     const path = pathFromSegments(parts.dirs.map(bracketSegment));
-    if (parts.base === "+page.svelte") return { screens: [{ path, file: input.rel, line: 1, framework: "sveltekit" }] };
+    if (parts.base === "+page.svelte") return { screens: [{ path, file: input.rel, line: 1, end: lastLine(input.text), framework: "sveltekit" }] };
     const routes = exportedHandlers(input, input.rel, path, "sveltekit", (n) => SVELTEKIT_METHODS.get(n));
     return routes.length ? { routes } : {};
   },

@@ -60,7 +60,8 @@ function walkTable(
     const path = raw !== undefined ? joinChild(parent, stripParamPatterns(raw)) : parent;
     const render = keys.renders.map((k) => propValue(obj.props, k)).find((p) => p !== undefined);
     const redirect = render && keys.redirect?.test(render.value);
-    if ((raw !== undefined || isIndex) && render && !redirect) out.push({ path, file: rel, line: lineOf(el.start), framework: keys.framework });
+    if ((raw !== undefined || isIndex) && render && !redirect)
+      out.push({ path, file: rel, line: lineOf(el.start), end: lineOf(obj.end - 1), framework: keys.framework });
     const children = propValue(obj.props, "children");
     if (children?.value.startsWith("[")) walkTable(text, children.start, path, keys, rel, lineOf, out, depth + 1);
   }
@@ -143,7 +144,7 @@ function jsxRoutes(text: string, skeleton: string, rel: string, lineOf: (o: numb
       const open = at + (renderM.index as number) + renderM[0].length - 1;
       redirect = /^\{\s*<\s*Navigate\b/.test(text.slice(open, open + 40));
     }
-    if ((pathM || isIndex) && renderM && !redirect) out.push({ path, file: rel, line: lineOf(at), framework: "react-router" });
+    if ((pathM || isIndex) && renderM && !redirect) out.push({ path, file: rel, line: lineOf(at), end: lineOf(tag.end - 1), framework: "react-router" });
     if (!tag.selfClosing) stack.push(path);
   }
 }

@@ -11,7 +11,15 @@
 //   2  `links` (hyperlink hosts, kept apart from `externals`), `InfraFact.overlays`,
 //      RPC routes and calls (tRPC `QUERY` / `MUTATION` / `SUBSCRIPTION`, Next
 //      server actions `ACTION`). Additive: a schema-1 reader still reads it.
+//   `end` on routes, calls, screens, entities and jobs (the last line of the
+//   definition, src/extract/extent.ts) is optional and additive: still schema 2.
 export const FACTS_SCHEMA = 2;
+
+/** The last line (1-based, inclusive) of the definition a fact's `line` starts: the fact owns `[line, end]`. */
+export interface FactExtent {
+  /** Absent in facts written before extents existed; readers fall back to computing it from the file. */
+  end?: number;
+}
 
 /**
  * An endpoint the app serves. Node id: `route:<METHOD> <path>`.
@@ -21,7 +29,7 @@ export const FACTS_SCHEMA = 2;
  * actions (`ACTION`, path = `<repo path without extension>#<export>`,
  * framework `next-action`).
  */
-export interface RouteFact {
+export interface RouteFact extends FactExtent {
   method: string;
   path: string;
   file: string;
@@ -35,7 +43,7 @@ export interface RouteFact {
  * (method + URL), or an RPC call (`QUERY user.byId`, `ACTION app/actions#save`)
  * whose `url` is the route path it names.
  */
-export interface CallFact {
+export interface CallFact extends FactExtent {
   method: string;
   url: string;
   file: string;
@@ -44,7 +52,7 @@ export interface CallFact {
 }
 
 /** A page / screen of a UI. Node id: `screen:<path>`. */
-export interface ScreenFact {
+export interface ScreenFact extends FactExtent {
   path: string;
   file: string;
   line: number;
@@ -59,7 +67,7 @@ export interface EntityField {
 }
 
 /** A persisted data model. Node id: `entity:<name>`. */
-export interface EntityFact {
+export interface EntityFact extends FactExtent {
   name: string;
   orm: string;
   file: string;
@@ -76,7 +84,7 @@ export interface EntityUseFact {
 }
 
 /** A scheduled or queued unit of work. Node id: `job:<id>`. */
-export interface JobFact {
+export interface JobFact extends FactExtent {
   id: string;
   kind: "cron" | "queue" | "worker";
   schedule?: string;

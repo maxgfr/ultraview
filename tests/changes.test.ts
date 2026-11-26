@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { buildMap } from "../src/build.js";
 import { changeMarkdown, computeDiff, diffMap, readGitDiff, recordChange, stampOf } from "../src/changes.js";
 import { checkMap } from "../src/check.js";
 import { main } from "../src/cli.js";
@@ -180,6 +181,105 @@ describe("diff: the engine delta on the map", () => {
     expect((await run(["diff", "--staged", "--worktree", "--repo", dir])).code).toBe(2);
     expect((await run(["diff", "--base", "main", "--staged", "--repo", dir])).code).toBe(2);
     expect((await run(["diff", "--depth", "-1", "--repo", dir])).code).toBe(2);
+  });
+});
+
+describe("diff: hunks attributed to the facts they touch", () => {
+  const ROUTES = "src/routes/orders.ts";
+  const worktreeDiff = (repo: string) => diffMap(repo, { worktree: true, ast: false, now: NOW });
+  const routeStatuses = (c: ChangeSet) =>
+    Object.fromEntries(
+      c.nodes
+        .filter((n) => n.kind === "route")
+        .map((n) => [n.label, n.status])
+        .sort(),
+    );
+
+  it("a route appended after the last one is added; the last one is untouched", async () => {
+    const repo = await gitShop(cleanups);
+    const abs = join(repo, ROUTES);
+    writeFileSync(abs, `${readFileSync(abs, "utf8")}\nordersRouter.get("/orders/:id/receipt", (req, res) => res.json({ ok: true }));\n`);
+    const c = await worktreeDiff(repo);
+    expect(statusOf(c, "route:GET /api/orders/:id/receipt")).toBe("added");
+    expect(statusOf(c, "route:DELETE /api/orders/:id")).toBe("impacted");
+    expect(c.nodes.filter((n) => n.kind === "route" && n.status === "changed")).toEqual([]);
+  });
+
+  it("an edit inside a handler body changes that route only", async () => {
+    const repo = await gitShop(cleanups);
+    edit(repo, ROUTES, "cancelOrder(Number(req.params.id))", "cancelOrder(Number(req.params.id), true)");
+    const c = await worktreeDiff(repo);
+    expect(routeStatuses(c)).toEqual({
+      "DELETE /api/orders/:id": "changed",
+      "GET /api/orders": "impacted",
+      "GET /api/orders/:id": "impacted",
+      "GET /health": "impacted",
+      "POST /api/orders": "impacted",
+    });
+  });
+
+  it("computes extents from the file when facts.json predates them", async () => {
+    const repo = await gitShop(cleanups);
+    const abs = join(repo, ".ultraview/facts.json");
+    const facts = JSON.parse(readFileSync(abs, "utf8"));
+    for (const kind of ["routes", "calls", "screens", "entities", "jobs"]) for (const f of facts[kind]) delete f.end;
+    writeFileSync(abs, JSON.stringify(facts));
+    edit(repo, ROUTES, "cancelOrder(Number(req.params.id))", "cancelOrder(Number(req.params.id), true)");
+    writeFileSync(join(repo, ROUTES), `${readFileSync(join(repo, ROUTES), "utf8")}\n\nconst LIMIT = 50;\n`);
+    const c = await diffMap(repo, { worktree: true, refresh: false, now: NOW });
+    expect(statusOf(c, "route:DELETE /api/orders/:id")).toBe("changed");
+    expect(statusOf(c, "route:GET /api/orders/:id")).toBe("impacted");
+  });
+
+  it("a hunk between two routes changes neither", async () => {
+    const repo = await gitShop(cleanups);
+    edit(repo, ROUTES, "});\n\nordersRouter\n", "});\n\nconst LIMIT = 50;\n\nordersRouter\n");
+    const c = await worktreeDiff(repo);
+    expect(statusOf(c, "file:src/routes/orders.ts")).toBe("changed");
+    expect(statusOf(c, "route:POST /api/orders")).toBe("impacted");
+    expect(statusOf(c, "route:GET /api/orders/:id")).toBe("impacted");
+    expect(c.nodes.filter((n) => n.kind === "route" && n.status === "changed")).toEqual([]);
+  });
+
+  it("a multi-line registration owns every line up to its closing parenthesis", async () => {
+    const repo = await gitShop(cleanups);
+    edit(
+      repo,
+      ROUTES,
+      'ordersRouter.get("/orders", async (req, res) => {\n  res.json(await listOrders(Number(req.query.userId)));\n});',
+      'ordersRouter.get(\n  "/orders",\n  async (req, res) => {\n    res.json(await listOrders(Number(req.query.userId)));\n  },\n);',
+    );
+    git(repo, ["commit", "-qam", "multi-line route"]);
+    await buildMap({ repo, ast: false });
+    const facts = JSON.parse(readFileSync(join(repo, ".ultraview/facts.json"), "utf8"));
+    expect(facts.routes.find((r: { method: string; path: string }) => r.method === "GET" && r.path === "/api/orders")).toMatchObject({ line: 6, end: 11 });
+
+    edit(repo, ROUTES, "  },\n);", "  },\n  );");
+    const c = await worktreeDiff(repo);
+    expect(statusOf(c, "route:GET /api/orders")).toBe("changed");
+    expect(statusOf(c, "route:POST /api/orders")).toBe("impacted");
+  });
+
+  it("an edit inside a Prisma model block changes that entity only", async () => {
+    const repo = await gitShop(cleanups);
+    edit(repo, "prisma/schema.prisma", "@@index([userId])", "@@index([userId, status])");
+    const c = await worktreeDiff(repo);
+    expect(statusOf(c, "entity:Order")).toBe("changed");
+    expect(statusOf(c, "entity:User")).toBe("impacted");
+    expect(statusOf(c, "entity:OrderItem")).toBe("impacted");
+  });
+
+  it("blank-line or comment-only hunks change nothing, even inside a handler", async () => {
+    const repo = await gitShop(cleanups);
+    edit(repo, ROUTES, "  .delete(async (req, res) => {\n", "  .delete(async (req, res) => {\n\n");
+    edit(repo, ROUTES, "  res.status(201)", "  // 201: created\n  res.status(201)");
+    edit(repo, "prisma/schema.prisma", "model Order {", "model Order {\n");
+    const c = await worktreeDiff(repo);
+    expect(statusOf(c, "file:src/routes/orders.ts")).toBe("changed");
+    expect(c.nodes.filter((n) => ["route", "entity"].includes(n.kind)).map((n) => n.status)).not.toContain("changed");
+    expect(statusOf(c, "route:DELETE /api/orders/:id")).toBe("impacted");
+    expect(statusOf(c, "route:POST /api/orders")).toBe("impacted");
+    expect(statusOf(c, "entity:Order")).toBe("impacted");
   });
 });
 

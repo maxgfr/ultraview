@@ -46,6 +46,8 @@ interface RawRoute {
   method: string;
   path: string;
   line: number;
+  /** Line of the registering call's closing parenthesis. */
+  end: number;
   handler?: string;
 }
 
@@ -91,7 +93,7 @@ function extractExpress(input: ExtractInput): ExtractOutput {
     if (VERB_SET.has(method)) {
       // `app.get("setting")` with one argument is Express's settings getter.
       if (path === undefined || !isRoutePath(path) || call.args.length < 2) continue;
-      routes.push({ receiver, method: method.toUpperCase(), path, line, handler: lastHandler(call.args.slice(1)) });
+      routes.push({ receiver, method: method.toUpperCase(), path, line, end: lineOf(call.end - 1), handler: lastHandler(call.args.slice(1)) });
       continue;
     }
 
@@ -106,7 +108,14 @@ function extractExpress(input: ExtractInput): ExtractOutput {
         const inner = readArgs(text, open2);
         if (!inner) break;
         const dot = skeleton.indexOf(".", at);
-        routes.push({ receiver, method: (chain[1] as string).toUpperCase(), path, line: lineOf(dot), handler: lastHandler(inner.args) });
+        routes.push({
+          receiver,
+          method: (chain[1] as string).toUpperCase(),
+          path,
+          line: lineOf(dot),
+          end: lineOf(inner.end - 1),
+          handler: lastHandler(inner.args),
+        });
         at = inner.end;
       }
       continue;
@@ -145,7 +154,7 @@ function extractExpress(input: ExtractInput): ExtractOutput {
   const facts: RouteFact[] = [];
   for (const r of routes) {
     for (const prefix of prefixesOf(r.receiver, new Set())) {
-      const fact: RouteFact = { method: r.method, path: joinRoutePath(prefix, r.path), file: input.rel, line: r.line, framework: FRAMEWORK };
+      const fact: RouteFact = { method: r.method, path: joinRoutePath(prefix, r.path), file: input.rel, line: r.line, end: r.end, framework: FRAMEWORK };
       if (r.handler) fact.handler = r.handler;
       facts.push(fact);
     }

@@ -153,7 +153,7 @@ exports is caught). The viewer shows stale items greyed with "re-ask".
 
 ```json
 { "schema": 2,
-  "routes":   [ { "method": "POST", "path": "/api/checkout", "file": "…", "line": 40, "framework": "express", "handler": "checkout" },
+  "routes":   [ { "method": "POST", "path": "/api/checkout", "file": "…", "line": 40, "end": 44, "framework": "express", "handler": "checkout" },
                 { "method": "QUERY", "path": "user.byId", "file": "…", "line": 12, "framework": "trpc" },
                 { "method": "ACTION", "path": "app/actions#save", "file": "…", "line": 4, "framework": "next-action", "handler": "save" } ],
   "calls":    [ { "method": "POST", "url": "/api/checkout", "file": "…", "line": 22, "route": "route:POST /api/checkout" },
@@ -214,7 +214,12 @@ externals — curated SDK map (stripe, @supabase/*, firebase*, openai,
 posthog…) + hosts of URL literals that reach the network (the rest are
 `links`) + `process.env.X_*` prefixes; infra — docker-compose services,
 Dockerfiles, k8s Deployments/Services, deduplicated across overlays.
-Every fact carries `file` + `line`. Each extractor has fixture tests with
+Every fact carries `file` + `line`. Routes, calls, screens, entities and jobs
+also carry `end`, the last line of their definition (the registering call to
+its closing parenthesis, the exported handler, the decorated method, the
+model / class / table block; a file-level page spans the file), so a change
+can tell which fact a hunk touches. `end` is optional and additive (still
+schema 2): a reader of an older facts.json computes it from the file. Each extractor has fixture tests with
 true positives AND explicit false-positive guards (comments, strings in tests,
 docs).
 
@@ -301,8 +306,8 @@ longer in `view.nodes`. Classification:
   past 500 changed files, with a note): an id only in the new tree → `added`,
   only in the base → `removed`; in both → `changed` when its definition differs
   (file, handler, fields, schedule…) or a hunk touches the lines it owns (its
-  line up to the next fact of the same file), else `impacted` when its file is
-  changed or impacted.
+  extent `[line, end]`; a hunk of only blank or comment lines owns nothing), else
+  `impacted` when its file is changed or impacted.
 - **mod / sys / cap**, rolled up from the files under them (a module slice, its
   system, every capability the file serves): `removed` when the node left the
   map, `added` when every file under it is new, `changed` when any file under it

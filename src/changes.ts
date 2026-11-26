@@ -11,8 +11,10 @@
 //             facts of the new tree against facts of the base tree (the
 //             extractors re-run over the base contents): new id → added, gone →
 //             removed, same id with a different definition or a changed hunk in
-//             the lines it owns (its line up to the next fact of the same file)
-//             → changed, else impacted when its file is changed or impacted
+//             the lines it owns (its extent `[line, end]`: the registering call,
+//             handler, model block; a hunk of blank or comment-only lines owns
+//             nothing) → changed, else impacted when its file is changed or
+//             impacted
 //   mod / sys / cap
 //             rolled up from their files (a module slice, its system, every
 //             capability the file serves): changed when a file under it is,
@@ -26,6 +28,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, join, posix, relative, resolve, sep } from "node:path";
 import { buildMap } from "./build.js";
 import { codeindex, type DeltaResult, type Graph, indexExists, loadGraph, loadManifest, runCheck, withEntries } from "./engine.js";
+import { blankOrCommentOnly, type ExtentOf, extentFinder } from "./extract/extent.js";
 import { runExtractors } from "./extract/index.js";
 import type { Facts } from "./extract/types.js";
 import { fileAt, headState } from "./git.js";
@@ -154,6 +157,8 @@ interface FactRef {
   label: string;
   file: string;
   line: number;
+  /** Last line of the definition, when facts.json carries it. */
+  end?: number;
   /** What the definition says besides where it is (key order free): a different signature = a changed fact. */
   sig: string;
 }
@@ -169,12 +174,14 @@ function factIndex(facts: Facts): Map<string, FactRef> {
       label: `${r.method.toUpperCase()} ${r.path}`,
       file: r.file,
       line: r.line,
+      end: r.end,
       sig: `${r.framework}|${r.handler ?? ""}`,
     });
   }
-  for (const s of facts.screens) put(screenId(s.path), { kind: "screen", label: s.path, file: s.file, line: s.line, sig: s.framework });
-  for (const e of facts.entities) put(entityId(e.name), { kind: "entity", label: e.name, file: e.file, line: e.line, sig: stableLine([e.orm, e.fields]) });
-  for (const j of facts.jobs) put(jobId(j.id), { kind: "job", label: j.id, file: j.file, line: j.line, sig: `${j.kind}|${j.schedule ?? ""}` });
+  for (const s of facts.screens) put(screenId(s.path), { kind: "screen", label: s.path, file: s.file, line: s.line, end: s.end, sig: s.framework });
+  for (const e of facts.entities)
+    put(entityId(e.name), { kind: "entity", label: e.name, file: e.file, line: e.line, end: e.end, sig: stableLine([e.orm, e.fields]) });
+  for (const j of facts.jobs) put(jobId(j.id), { kind: "job", label: j.id, file: j.file, line: j.line, end: j.end, sig: `${j.kind}|${j.schedule ?? ""}` });
   return out;
 }
 
@@ -313,19 +320,36 @@ export function changeSetOf(repoArg: string, git: GitDiff, opts: Pick<DiffOption
 
   // --- facts -----------------------------------------------------------------
   if (direct.size) {
-    const hunksOf = new Map(delta.changes.map((c) => [c.path, c.hunks]));
+    // The raw diff's hunks: the delta's drop `approx` (a pure deletion's gap).
+    const hunksOf = git.diff.hunks;
     const cur = factIndex(facts);
     let old: Map<string, FactRef> | undefined;
     if (direct.size > BASE_FACTS_MAX_FILES)
       notes.push(`${direct.size} changed files: base facts not re-extracted, removed routes / screens / entities / jobs are not reported`);
     else old = factIndex(baseFacts(repo, graph, delta, git.diff.base.mergeBase));
-    // A fact owns its lines up to the next fact of the same file.
-    const linesOf = new Map<string, number[]>();
-    for (const f of cur.values()) linesOf.set(f.file, [...(linesOf.get(f.file) ?? []), f.line]);
-    for (const list of linesOf.values()) list.sort((a, b) => a - b);
+    // A fact owns its extent [line, end] (computed from the file when facts.json
+    // predates extents). A hunk changes it when the two intersect on a line that
+    // is neither blank nor comment-only; a pure deletion (`approx`, the gap after
+    // its start line) when the gap falls inside the extent.
+    const sources = new Map<string, { extent: ExtentOf; quiet: (from: number, to: number) => boolean } | undefined>();
+    const sourceOf = (rel: string) => {
+      if (!sources.has(rel)) {
+        const text = readSource(join(repo, rel));
+        sources.set(rel, text === undefined ? undefined : { extent: extentFinder(rel, text), quiet: blankOrCommentOnly(rel, text) });
+      }
+      return sources.get(rel);
+    };
     const touched = (f: FactRef) => {
-      const end = (linesOf.get(f.file) ?? []).find((l) => l > f.line);
-      return (hunksOf.get(f.file) ?? []).some((h) => h.end >= f.line && (end === undefined || h.start < end));
+      const hunks = hunksOf.get(f.file) ?? [];
+      if (!hunks.length) return false;
+      const src = sourceOf(f.file);
+      const end = Math.max(f.line, f.end ?? src?.extent(f.line) ?? f.line);
+      return hunks.some((h) => {
+        if (h.approx) return f.line <= h.start && h.start < end;
+        const from = Math.max(h.start, f.line);
+        const to = Math.min(h.end, end);
+        return from <= to && !src?.quiet(from, to);
+      });
     };
     for (const id of [...new Set([...cur.keys(), ...(old?.keys() ?? [])])].sort(cmp)) {
       const c = cur.get(id);

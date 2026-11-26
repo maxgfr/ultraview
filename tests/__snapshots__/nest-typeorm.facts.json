@@ -2,6 +2,7 @@
   "calls": [],
   "entities": [
     {
+      "end": 15,
       "fields": [
         {
           "name": "id",
@@ -23,6 +24,7 @@
       "orm": "typeorm"
     },
     {
+      "end": 25,
       "fields": [
         {
           "name": "id",
@@ -96,6 +98,7 @@
   "links": [],
   "routes": [
     {
+      "end": 11,
       "file": "src/orders/orders.controller.ts",
       "framework": "nestjs",
       "handler": "list",
@@ -104,6 +107,7 @@
       "path": "/api/orders"
     },
     {
+      "end": 16,
       "file": "src/orders/orders.controller.ts",
       "framework": "nestjs",
       "handler": "checkout",
@@ -112,6 +116,7 @@
       "path": "/api/orders/checkout"
     },
     {
+      "end": 11,
       "file": "src/users/users.controller.ts",
       "framework": "nestjs",
       "handler": "findAll",
@@ -120,6 +125,7 @@
       "path": "/users"
     },
     {
+      "end": 16,
       "file": "src/users/users.controller.ts",
       "framework": "nestjs",
       "handler": "findOne",
@@ -128,6 +134,7 @@
       "path": "/users/:id"
     },
     {
+      "end": 22,
       "file": "src/users/users.controller.ts",
       "framework": "nestjs",
       "handler": "create",
@@ -136,6 +143,7 @@
       "path": "/users"
     },
     {
+      "end": 30,
       "file": "src/users/users.controller.ts",
       "framework": "nestjs",
       "handler": "remove",

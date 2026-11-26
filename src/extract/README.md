@@ -4,7 +4,11 @@ Pure functions that turn one indexed file into facts (docs/design.md §5): no
 file system, no network, no model. Each one implements `Extractor` from
 `types.ts`, gates itself on the file's shape and on the dependencies its
 workspace declares (`ctx.depsFor(rel)`), searches comment-masked text
-(`mask.ts`), and cites every fact with `file` + `line`. Cross-file resolution
+(`mask.ts`), and cites every fact with `file` + `line`. Routes, calls, screens,
+entities and jobs also get `end`, the last line of their definition: set by an
+extractor that knows the construct, else filled by `runExtractors` from
+`extent.ts` (the statement, decorated declaration or indented block the line
+starts). Cross-file resolution
 (mount prefixes, relation targets, call→route matching) belongs to a `Linker`.
 Test files are skipped unless an extractor sets `includeTests`.
 

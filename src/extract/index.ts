@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { codeindex } from "../engine.js";
 import { stableJson } from "../json.js";
 import { createRepoContext } from "./context.js";
+import { type ExtentOf, extentFinder } from "./extent.js";
 import { expressExtractor, expressMountLinker } from "./express.js";
 import { extOf } from "./mask.js";
 import { entityUseLinker, prismaClientExtractor, prismaLinker, prismaSchemaExtractor } from "./prisma.js";
@@ -129,6 +130,11 @@ export const LINKERS: readonly Linker[] = [
   ...LATE_LINKERS,
 ];
 
+type FactExtentRow = Facts[(typeof EXTENT_KINDS)[number]][number];
+
+/** The fact kinds that carry an extent (`end`): the ones a hunk can change. */
+export const EXTENT_KINDS = ["routes", "calls", "screens", "entities", "jobs"] as const satisfies readonly FactKind[];
+
 export function emptyFacts(): Facts {
   return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [], links: [] };
 }
@@ -245,6 +251,7 @@ export function runExtractors(repo: string, files: readonly string[], readText: 
     texts.delete(rel);
     if (text === undefined || text === "") continue;
     const input = { rel, text, lang: codeindex.extToLang(extOf(rel)) };
+    let extent: ExtentOf | undefined;
     for (const ex of candidates) {
       let got: ExtractOutput;
       try {
@@ -253,6 +260,14 @@ export function runExtractors(repo: string, files: readonly string[], readText: 
       } catch (e) {
         opts.onError?.({ extractor: ex.id, file: rel, message: (e as Error).message });
         continue;
+      }
+      // Extents while the text is at hand: an extractor's own `end` wins, else the statement its line starts.
+      for (const kind of EXTENT_KINDS) {
+        for (const row of got[kind] ?? []) {
+          if (row.end !== undefined || row.file !== rel) continue;
+          extent ??= extentFinder(rel, text);
+          row.end = extent(row.line);
+        }
       }
       for (const kind of FACT_KINDS) {
         const rows = got[kind];
@@ -265,5 +280,21 @@ export function runExtractors(repo: string, files: readonly string[], readText: 
   let facts = merged;
   const linkCtx = { ...ctx, hints };
   for (const linker of linkers) facts = linker.link(facts, linkCtx);
+  // Facts a linker made from hints (tRPC procedures, settled calls) get their extents now.
+  const pending = new Map<string, FactExtentRow[]>();
+  for (const kind of EXTENT_KINDS) {
+    for (const row of facts[kind]) {
+      if (row.end !== undefined) continue;
+      const rows = pending.get(row.file);
+      if (rows) rows.push(row);
+      else pending.set(row.file, [row]);
+    }
+  }
+  for (const [rel, rows] of pending) {
+    const text = readText(join(repo, rel));
+    if (text === undefined) continue;
+    const extent = extentFinder(rel, text);
+    for (const row of rows) row.end = extent(row.line);
+  }
   return normalizeFacts(facts);
 }
