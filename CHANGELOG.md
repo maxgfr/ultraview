@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.6.0](https://github.com/maxgfr/ultraview/compare/v1.5.0...v1.6.0) (2026-11-26)
+
+
+### Features
+
+* change views, agent timeline, insights and exports ([86b11cc](https://github.com/maxgfr/ultraview/commit/86b11ccf92007ea8045e903f735a82a2e0ff8aa8)), closes [#7](https://github.com/maxgfr/ultraview/issues/7)
+
 # [1.5.0](https://github.com/maxgfr/ultraview/compare/v1.4.0...v1.5.0) (2026-11-26)
 
 
