@@ -38,7 +38,7 @@ describe("validateModel", () => {
     m.systems[1].kind = "database";
     m.app.audience = "managers";
     m.capabilities[2].id = "ordering";
-    m.edges[0].kind = "rpc";
+    m.edges[0].kind = "soap";
     const ps = validateModel(m);
     expect(paths(ps)).toEqual(["schema", "app.audience", "systems[0].id", "systems[1].kind", "edges[0].kind", "capabilities[2].id"]);
     expect(ps.find((p) => p.path === "capabilities[2].id")!.message).toContain('duplicate id "ordering"');

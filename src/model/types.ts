@@ -25,8 +25,12 @@ export type Audience = (typeof AUDIENCES)[number];
 export const NODE_KINDS = ["cap", "sys", "mod", "file", "sym", "route", "screen", "entity", "job", "ext", "infra"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
-/** Every edge kind of the view-model. `contains` is never derived (the tree is `parent`); a model or lens edge may use it. */
-export const EDGE_KINDS = ["import", "call", "http", "data", "event", "queue", "extends", "config", "contains"] as const;
+/**
+ * Every edge kind of the view-model. `rpc`: a call to a tRPC procedure or a Next
+ * server action (`http` is a call to an HTTP route or host). `contains` is never
+ * derived (the tree is `parent`); a model or lens edge may use it.
+ */
+export const EDGE_KINDS = ["import", "call", "http", "rpc", "data", "event", "queue", "extends", "config", "contains"] as const;
 export type ViewEdgeKind = (typeof EDGE_KINDS)[number];
 
 export const TIMELINE_SOURCES = ["agent", "pr", "manual"] as const;
@@ -322,6 +326,12 @@ export interface EntityFieldView {
   relation?: string;
 }
 
+/** A hyperlink a file holds: the registrable domain and the line. */
+export interface NodeLink {
+  host: string;
+  line: number;
+}
+
 /** mod: the module a slice is part of, and the system it sits in (docs/design.md §2). */
 export interface ModuleSlice {
   /** The whole module's id (`mod:src`), itself the slice in the system holding most of its files. */
@@ -356,6 +366,10 @@ export interface ViewNode {
   actors?: string[];
   /** entity: its fields. */
   fields?: EntityFieldView[];
+  /** file: hyperlinks to other sites (facts `links`), by line, at most LINKS_PER_FILE; the side panel lists them, the map never draws them. */
+  links?: NodeLink[];
+  /** infra: every file declaring this unit (environment overlays), when more than one does. */
+  overlays?: string[];
   /**
    * mod: set on a minority slice (`mod:<slug>@<sys>`, tagged `slice`) — the
    * files of module `of` that sit in another system than the majority's.

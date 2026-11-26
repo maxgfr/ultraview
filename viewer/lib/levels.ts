@@ -13,13 +13,16 @@
 // re-points an endpoint at its nearest drawn ancestor (a route at its file, a
 // file at its folder card) and merges parallel edges of different kinds into
 // one drawn line. A view of more than GROUP_LIMIT cards groups its members by
-// folder (lib/groups.ts), with a "show all" escape; entities, externals and
+// folder (lib/groups.ts) into about FILL_TARGET cards, with a "show all"
+// escape; a node most of the view uses keeps a "used by N" badge instead of
+// its lines (lib/hubs.ts); entities, externals and
 // infrastructure joining a view collapse into one aggregate chip per kind
 // unless the user opens that kind or pins one of them. Same-named cards get
 // the folder tail that tells them apart (lib/labels.ts).
 
 import { type AnyKind, anyKindOf, type Counts, type Index, treePath, type XEdge, type XEdgeKind, type XNode } from "./data.js";
-import { GROUP_LIMIT, groupMembers, groupTrail, type PathMember } from "./groups.js";
+import { FILL_TARGET, GROUP_LIMIT, groupMembers, groupTrail, type PathMember } from "./groups.js";
+import { summarizeHubs } from "./hubs.js";
 import { dirSegments, disambiguate } from "./labels.js";
 
 export const LEVELS = ["biz", "sys", "mod", "file", "sym"] as const;
@@ -28,7 +31,7 @@ export type Level = (typeof LEVELS)[number];
 export const AUDIENCES = ["business", "developer"] as const;
 export type ViewerAudience = (typeof AUDIENCES)[number];
 
-export { GROUP_LIMIT };
+export { FILL_TARGET, GROUP_LIMIT };
 /** A level with boxes (systems around modules) groups each box on its own when it has at most this many. */
 export const BOX_MAX = 6;
 /** Cards a box gets at least when each box groups on its own. */
@@ -145,6 +148,10 @@ export interface Scene {
   aggregated: FreeKind[];
   /** View-model id → scene id it is drawn as (members, folder cards, aggregates, boxes, ghosts). */
   drawnAs: Map<string, string>;
+  /** Hubs (lib/hubs.ts): scene id → distinct cards using it, whose lines into it are summarized. */
+  hubs: Map<string, number>;
+  /** The summarized lines into hubs: never laid out, drawn on hover / selection. */
+  hubEdges: SceneEdge[];
 }
 
 export const SIZE: Record<Exclude<SceneRole, "group">, { w: number; h: number }> = {
@@ -156,7 +163,7 @@ export const SIZE: Record<Exclude<SceneRole, "group">, { w: number; h: number }>
 };
 
 /** Which kind wins when several edge kinds join the same two nodes. */
-const KIND_PRIORITY: (XEdgeKind | "step")[] = ["step", "http", "event", "queue", "data", "call", "extends", "uses", "config", "import", "contains"];
+const KIND_PRIORITY: (XEdgeKind | "step")[] = ["step", "rpc", "http", "event", "queue", "data", "call", "extends", "uses", "config", "import", "contains"];
 
 export function dominantKind(kinds: Iterable<XEdgeKind | "step">): XEdgeKind | "step" {
   let best: XEdgeKind | "step" = "import";
@@ -300,15 +307,14 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
     // A few boxes (systems around their modules) each group on their own, with a share of the limit.
     const perBox = !s.group && byBox.size >= 2 && byBox.size <= BOX_MAX && !byBox.has("");
     boxes = perBox;
-    const runs: [string | undefined, XNode[], number][] = perBox
-      ? [...byBox.entries()]
-          .sort((x, y) => (x[0] < y[0] ? -1 : 1))
-          .map(([b, list]) => [b, list, Math.max(BOX_MIN, Math.round((GROUP_LIMIT * list.length) / all.length))])
-      : [[undefined, all, s.showAll ? Number.POSITIVE_INFINITY : GROUP_LIMIT]];
+    const share = (n: number, list: readonly XNode[]) => Math.max(BOX_MIN, Math.round((n * list.length) / all.length));
+    const runs: [string | undefined, XNode[], number, number][] = perBox
+      ? [...byBox.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1)).map(([b, list]) => [b, list, share(GROUP_LIMIT, list), share(FILL_TARGET, list)])
+      : [[undefined, all, s.showAll ? Number.POSITIVE_INFINITY : GROUP_LIMIT, FILL_TARGET]];
     members = [];
     total = 0;
-    for (const [box, list, limit] of runs) {
-      const g = groupMembers(pathMembers(ix, list), s.group, limit);
+    for (const [box, list, limit, target] of runs) {
+      const g = groupMembers(pathMembers(ix, list), s.group, limit, target);
       total += g.total;
       for (const item of g.items) {
         if (item.type === "member") {
@@ -495,16 +501,18 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
       };
     });
 
+  // Lines into a node most of the view uses become its "used by N" badge.
+  const split = summarizeHubs([...nodes.values()], edges);
   // Past twice as many lines as cards a map turns into a hairball: keep each card's strongest first.
   const cards = [...nodes.values()].filter((n) => n.role !== "group").length;
-  const kept = s.showAll ? edges : strongest(edges, Math.min(EDGE_LIMIT, Math.max(EDGE_MIN, 2 * cards)));
+  const kept = s.showAll ? split.kept : strongest(split.kept, Math.min(EDGE_LIMIT, Math.max(EDGE_MIN, 2 * cards)));
   relabel(ix, [...nodes.values()]);
   const ordered = [...nodes.values()].sort((a, b) => {
     const ra = a.role === "group" ? 0 : 1;
     const rb = b.role === "group" ? 0 : 1;
     return ra - rb || kindRank(a.kind) - kindRank(b.kind) || (a.label < b.label ? -1 : a.label > b.label ? 1 : a.id < b.id ? -1 : 1);
   });
-  return { key, nodes: ordered, edges: kept, total, edgesTotal: edges.length, grouped, aggregated, drawnAs };
+  return { key, nodes: ordered, edges: kept, total, edgesTotal: split.kept.length, grouped, aggregated, drawnAs, hubs: split.hubs, hubEdges: split.hidden };
 }
 
 /** Same-named cards in one view get the shortest folder tail that tells them apart. */
@@ -594,7 +602,7 @@ export function subgraphScene(
     const kinds = [...m.kinds].sort((p, q) => KIND_PRIORITY.indexOf(p) - KIND_PRIORITY.indexOf(q));
     return { id: `${m.from}->${m.to}`, from: m.from, to: m.to, kind: dominantKind(kinds), kinds, weight: m.weight, ...(m.label ? { label: m.label } : {}) };
   });
-  return { key, nodes, edges, total: nodes.length, edgesTotal: edges.length, grouped: false, aggregated: [], drawnAs };
+  return { key, nodes, edges, total: nodes.length, edgesTotal: edges.length, grouped: false, aggregated: [], drawnAs, hubs: new Map(), hubEdges: [] };
 }
 
 /** Fields an ERD card lists before "+ n more". */
@@ -634,5 +642,5 @@ export function erdScene(ix: Index): Scene {
       weight: p.weight,
       ...(p.labels.length ? { label: p.labels.join(" · ") } : {}),
     }));
-  return { key: "erd", nodes, edges, total: nodes.length, edgesTotal: edges.length, grouped: false, aggregated: [], drawnAs };
+  return { key: "erd", nodes, edges, total: nodes.length, edgesTotal: edges.length, grouped: false, aggregated: [], drawnAs, hubs: new Map(), hubEdges: [] };
 }

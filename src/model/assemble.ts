@@ -16,7 +16,7 @@
 //   - the timeline newest first, the latest change set and the insights, as given
 
 import { codeindex, type Graph, parseCitations, type SymbolIndex } from "../engine.js";
-import type { Facts } from "../extract/types.js";
+import { type Facts, RPC_METHODS } from "../extract/types.js";
 import {
   APP_SYS,
   capId,
@@ -29,6 +29,7 @@ import {
   jobId,
   kindOf,
   modId,
+  parseId,
   parseSlice,
   routeId,
   screenId,
@@ -57,6 +58,8 @@ import {
 
 /** Symbols kept per file, at most (exported, top-level, by line). */
 export const SYMBOLS_PER_FILE = 50;
+/** Outbound hyperlinks kept per file node, at most (by line, then host). */
+export const LINKS_PER_FILE = 10;
 
 export interface WorkspaceRef {
   name: string;
@@ -258,6 +261,12 @@ function mapEdgeKind(kind: string): ViewEdgeKind | undefined {
   }
 }
 
+/** The edge kind of a call matched to a route: `rpc` for a tRPC procedure or server action, else `http`. */
+export function routeEdgeKind(route: string): "rpc" | "http" {
+  const p = parseId(route);
+  return p?.kind === "route" && RPC_METHODS.has(p.method) ? "rpc" : "http";
+}
+
 const EXTERNAL_EDGE: Record<string, ViewEdgeKind> = { sdk: "call", host: "http", env: "config" };
 
 /** Nodes that stay themselves at every roll-up level: business things, not code. */
@@ -389,6 +398,28 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
   }
   const hasFile = (rel: string) => nodes.has(fileId(rel));
 
+  // --- outbound hyperlinks: side-panel data on the file, never an edge -------
+  const linksByFile = new Map<string, { host: string; line: number }[]>();
+  for (const l of facts.links ?? []) {
+    if (!hasFile(l.file)) continue;
+    const list = linksByFile.get(l.file) ?? [];
+    list.push({ host: l.host, line: l.line });
+    linksByFile.set(l.file, list);
+  }
+  for (const [rel, list] of linksByFile) {
+    const seen = new Set<string>();
+    const kept = list
+      .sort((a, b) => a.line - b.line || cmp(a.host, b.host))
+      .filter((l) => {
+        const k = `${l.host}\n${l.line}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
+      .slice(0, LINKS_PER_FILE);
+    nodes.get(fileId(rel))!.links = kept;
+  }
+
   // --- symbols: exported, top-level, at most SYMBOLS_PER_FILE per file -------
   if (inp.symbols) {
     const byFile = new Map<string, { name: string; line: number; endLine?: number; kind: string }[]>();
@@ -456,7 +487,7 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
     extVias.set(x.id, vias);
   }
   for (const [id, vias] of extVias) nodes.get(extId(id))!.tags = uniqSorted(vias);
-  for (const i of facts.infra) factNode(infraId(i.id), "infra", i.id, i.file, i.line, [i.kind]);
+  for (const i of facts.infra) factNode(infraId(i.id), "infra", i.id, i.file, i.line, [i.kind], i.overlays?.length ? { overlays: uniqSorted(i.overlays) } : {});
 
   // --- tree ----------------------------------------------------------------
   const children = new Map<string, string[]>();
@@ -580,7 +611,8 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
     if (!kind || e.dangling) continue;
     addBase(fileId(e.from), fileId(e.to), kind, e.weight || 1);
   }
-  for (const c of facts.calls) if (c.route) addBase(fileId(c.file), c.route, "http", 1);
+  // A call to a tRPC procedure or a server action is RPC; any other matched route is HTTP.
+  for (const c of facts.calls) if (c.route) addBase(fileId(c.file), c.route, routeEdgeKind(c.route), 1);
   for (const u of facts.entityUses) addBase(fileId(u.file), entityId(u.entity), "data", 1, u.op);
   for (const e of facts.entities) {
     for (const f of e.fields) if (f.relation) addBase(entityId(e.name), entityId(f.relation), "data", 1, f.name);

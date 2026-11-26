@@ -254,9 +254,26 @@ describe("deep links", () => {
     { view: "flows", flow: "checkout", step: 2 },
     { view: "changes", change: "t1" },
     { view: "insights" },
+    // Ids with `#`, `/`, spaces, `@` and `&` (server actions, tRPC procedures, slices).
+    { view: "map", level: "file", node: "route:ACTION app/actions#save" },
+    { view: "map", level: "sym", focus: "file:app/actions.ts", node: "route:ACTION app/(shop)/cart/actions#add&remove" },
+    { view: "map", level: "file", node: "route:QUERY user.byId" },
+    { view: "map", level: "file", focus: "mod:src@database", node: "file:src/db/a+b%20c.ts" },
+    { view: "map", level: "mod", focus: "sys:web", group: "src/app~1", node: "mod:src-app@web" },
+    { view: "lenses", lens: "how-refunds-work", node: "route:MUTATION order.refund" },
   ];
   it.each(cases)("round-trips %j", (r) => {
     expect(parseHash(formatHash(r))).toEqual(r);
+  });
+
+  it("percent-encodes the characters of an id that would break the hash", () => {
+    const hash = formatHash({ view: "map", level: "file", node: "route:ACTION app/actions#save" });
+    expect(hash).toBe("#level=file&node=route:ACTION%20app/actions%23save");
+    expect(hash.indexOf("#", 1)).toBe(-1);
+    expect(formatHash({ view: "map", level: "mod", focus: "mod:src@database" })).toBe("#level=mod&focus=mod:src%40database");
+    expect(formatHash({ view: "map", node: "file:a&b=c.ts" })).toBe("#node=file:a%26b%3Dc.ts");
+    // A pasted, already-decoded link still reads.
+    expect(parseHash("#level=mod&focus=mod:src@database")).toEqual({ view: "map", level: "mod", focus: "mod:src@database" });
   });
 
   it("reads the documented forms and keeps ids readable", () => {

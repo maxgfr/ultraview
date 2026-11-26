@@ -1,16 +1,19 @@
 // The SVG map: lays a scene out (ELK, cached), draws groups, edges and cards,
 // and handles pan / zoom (wheel, drag, pinch, keyboard), hover neighbourhoods
-// and roving keyboard focus between nodes. The camera lives in a ref and is
+// and roving keyboard focus between nodes. Lines into a hub (lib/hubs.ts) are
+// not laid out: the hub wears a "used by N" badge, and hovering or selecting it
+// (or one of its users) draws them as straight connectors. The camera lives in a ref and is
 // applied straight to the DOM, so panning never re-renders the cards.
 
 import type { JSX } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { OverlayKind } from "../lib/changes.js";
 import type { Box, Layout, Pt } from "../lib/elk.js";
+import { connector, revealedHubEdges } from "../lib/hubs.js";
 import { t } from "../lib/i18n.js";
 import { ERD_HEAD, ERD_MAX_FIELDS, ERD_ROW, type Scene, type SceneEdge, type SceneNode } from "../lib/levels.js";
 import { useApp } from "./context.js";
-import { capVar, describeNode, ellipsize, fitParts, groupParts, kindName, sceneLabel, sublineParts } from "./format.js";
+import { capVar, describeNode, ellipsize, fitParts, groupParts, kindName, sceneLabel, sublineParts, textWidth } from "./format.js";
 import { Glyph, Icon } from "./icons.js";
 import { cachedLayout, layoutScene, releaseLayout } from "./layout.js";
 import { perfPainted, perfStep } from "./perf.js";
@@ -87,7 +90,7 @@ const strokeWidth = (e: SceneEdge) => {
   return e.kind === "import" || e.kind === "uses" || e.kind === "config" ? Math.max(1, base * 0.75) : base;
 };
 
-const MARKER_KINDS = ["import", "call", "http", "data", "event", "queue", "extends", "config", "uses", "contains", "step"] as const;
+const MARKER_KINDS = ["import", "call", "http", "rpc", "data", "event", "queue", "extends", "config", "uses", "contains", "step"] as const;
 
 export function Graph(p: GraphProps): JSX.Element {
   const { ix, version, state } = useApp();
@@ -275,7 +278,7 @@ export function Graph(p: GraphProps): JSX.Element {
   const byId = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene]);
   const adjacency = useMemo(() => {
     const adj = new Map<string, Set<string>>();
-    for (const e of scene.edges) {
+    for (const e of [...scene.edges, ...scene.hubEdges]) {
       if (!adj.has(e.from)) adj.set(e.from, new Set());
       if (!adj.has(e.to)) adj.set(e.to, new Set());
       adj.get(e.from)!.add(e.to);
@@ -285,6 +288,8 @@ export function Graph(p: GraphProps): JSX.Element {
   }, [scene]);
 
   const lit = hover ?? undefined;
+  // Summarized lines into hubs, drawn while the hub or one of its users is hovered or selected.
+  const revealed = useMemo(() => revealedHubEdges(scene.hubEdges, [hover, p.selected]), [scene, hover, p.selected]);
   const near = lit ? adjacency.get(lit) : undefined;
   const isLit = (id: string) => !lit || id === lit || !!near?.has(id) || byId.get(id)?.role === "group";
 
@@ -390,8 +395,10 @@ export function Graph(p: GraphProps): JSX.Element {
   const markerFor = (e: SceneEdge) => `url(#${uid}-ah-${e.kind})`;
   const ghostEdge = (e: SceneEdge) => byId.get(e.from)?.role === "ghost" || byId.get(e.to)?.role === "ghost";
 
-  const renderEdge = (e: SceneEdge) => {
-    const pts = layout?.edges.get(e.id);
+  const renderEdge = (e: SceneEdge, hub = false) => {
+    const a = hub ? layout?.nodes.get(e.from) : undefined;
+    const b = hub ? layout?.nodes.get(e.to) : undefined;
+    const pts = hub ? (a && b ? connector(a, b) : undefined) : layout?.edges.get(e.id);
     if (!pts) return null;
     const d = roundedPath(pts);
     const w = strokeWidth(e);
@@ -404,7 +411,7 @@ export function Graph(p: GraphProps): JSX.Element {
     return (
       <g
         key={e.id}
-        class={`e k-${e.kind}${on && lit ? " hl" : ""}${ghostEdge(e) ? " ghosty" : ""}${p.spotlight && (p.spotlight.has(e.from) && p.spotlight.has(e.to)) ? " spot" : ""}`}
+        class={`e k-${e.kind}${hub ? " hub-e" : ""}${on && lit ? " hl" : ""}${ghostEdge(e) ? " ghosty" : ""}${p.spotlight && (p.spotlight.has(e.from) && p.spotlight.has(e.to)) ? " spot" : ""}`}
       >
         <title>{title}</title>
         <path class="e-hit" d={d} />
@@ -498,12 +505,27 @@ export function Graph(p: GraphProps): JSX.Element {
     );
   };
 
+  /** "used by N" on a hub, over its top-left corner. */
+  const hubBadge = (count: number) => {
+    const text = t("graph.usedBy", { count });
+    const w = Math.ceil(textWidth(text, 11, 600)) + 14;
+    return (
+      <g class="hub-badge" transform="translate(12 -9)">
+        <rect width={w} height={18} rx={9} />
+        <text x={w / 2} y={12.5} text-anchor="middle">
+          {text}
+        </text>
+      </g>
+    );
+  };
+
   const renderNode = (n: SceneNode, box: Box) => {
     const node = ix.byId.get(n.ref);
     const sel = p.selected === n.id;
     const ov = p.overlay?.get(n.id);
     const spot = p.spotlight?.has(n.id);
     const badge = p.badges?.get(n.id);
+    const usedBy = scene.hubs.get(n.id);
     const cls = `n r-${n.role} k-${n.kind}${sel ? " sel" : ""}${isLit(n.id) && lit ? " hl" : ""}${spot ? " spot" : ""}${ov ? ` ov ov-${ov}` : ""}`;
     const agg = n.role === "agg";
     const chip = n.role === "chip" || agg;
@@ -541,7 +563,7 @@ export function Graph(p: GraphProps): JSX.Element {
         transform={`translate(${box.x} ${box.y})`}
         role="button"
         tabIndex={tabbable === n.id ? 0 : -1}
-        aria-label={`${aria}${cluster && !folder ? `. ${t("graph.clusterHint")}` : ""}${ghost ? `. ${t("graph.ghostHint")}` : ""}`}
+        aria-label={`${aria}${cluster && !folder ? `. ${t("graph.clusterHint")}` : ""}${ghost ? `. ${t("graph.ghostHint")}` : ""}${usedBy ? `. ${t("graph.hubHint", { count: usedBy })}` : ""}`}
         aria-pressed={sel}
         onClick={(e) => {
           e.stopPropagation();
@@ -592,6 +614,7 @@ export function Graph(p: GraphProps): JSX.Element {
             </text>
           </g>
         ) : null}
+        {usedBy ? hubBadge(usedBy) : null}
         {ov ? (
           <g class="ov-badge" transform={`translate(${box.w - 8} ${-6})`}>
             <rect x={-44} y={-8} width={52} height={16} rx={8} />
@@ -649,7 +672,10 @@ export function Graph(p: GraphProps): JSX.Element {
             const box = layout!.nodes.get(n.id);
             return box ? renderGroup(n, box) : null;
           })}
-          <g class="edges">{layout ? scene.edges.map(renderEdge) : null}</g>
+          <g class="edges">
+            {layout ? scene.edges.map((e) => renderEdge(e)) : null}
+            {layout ? revealed.map((e) => renderEdge(e, true)) : null}
+          </g>
           {items.map((n) => {
             const box = layout!.nodes.get(n.id);
             return box ? renderNode(n, box) : null;

@@ -7,7 +7,9 @@ import { type ChangeView, normalizeChanges, OVERLAY_KINDS, type OverlayKind, tim
 import { num, t } from "../lib/i18n.js";
 import { erdScene, type SceneNode, subgraphScene } from "../lib/levels.js";
 import { stripCites } from "../lib/markdown.js";
+import { askMode } from "../lib/live.js";
 import { askAboutInsight, reaskLens, retraceFlow } from "../lib/prompts.js";
+import { AskBox } from "./Ask.js";
 import { useApp } from "./context.js";
 import { kindName } from "./format.js";
 import { Graph } from "./Graph.js";
@@ -249,7 +251,8 @@ export function FlowsView(): JSX.Element {
 // Lenses
 
 export function LensesView(): JSX.Element {
-  const { ix, version, state, update, reveal, narrow } = useApp();
+  const { ix, version, state, update, reveal, narrow, live } = useApp();
+  const asking = askMode(live) !== "off";
   const lenses = ix.view.lenses ?? [];
   const lens = lenses.find((l) => l.id === state.lens) ?? (lenses.length === 1 ? lenses[0] : undefined);
   useEffect(() => {
@@ -268,89 +271,105 @@ export function LensesView(): JSX.Element {
   }, [lens, ix, version]);
   if (!lenses.length) {
     return (
-      <Empty icon="lens" title={t("lenses.emptyTitle")}>
-        <p>{t("lenses.emptyBody")}</p>
-        <p>
-          <Cmd>ultraview lens save &lt;file&gt;</Cmd>
-        </p>
-      </Empty>
+      <div class="lenses">
+        {asking ? (
+          <header class="view-head">
+            <AskBox />
+          </header>
+        ) : null}
+        <Empty icon="lens" title={t("lenses.emptyTitle")}>
+          <p>{asking ? t("lenses.emptyAsk") : t("lenses.emptyBody")}</p>
+          {asking ? null : (
+            <p>
+              <Cmd>ultraview lens save &lt;file&gt;</Cmd>
+            </p>
+          )}
+        </Empty>
+      </div>
     );
   }
   const stale = lens ? ix.staleLenses.has(lens.id) : false;
   const focus = lens?.focus ?? lens?.nodes[0];
   return (
-    <div class="split">
-      <Rail label={t("lenses.list")}>
-        {lenses.map((l) => {
-          const isStale = ix.staleLenses.has(l.id);
-          return (
-            <li key={l.id}>
-              <button
-                type="button"
-                class={`rail-item${l.id === lens?.id ? " on" : ""}${isStale ? " stale" : ""}`}
-                aria-current={l.id === lens?.id ? "true" : undefined}
-                onClick={() => update({ lens: l.id, selected: l.focus ?? l.nodes[0] }, "push")}
-              >
-                <span class="rail-title">{l.question}</span>
-                <span class="rail-meta">
-                  {t("lenses.nodes", { count: l.nodes.length })}
-                  {isStale ? <span class="tag tag-warn">{t("stale.badge")}</span> : null}
-                </span>
-              </button>
-              {isStale ? (
-                <div class="rail-extra">
-                  <CopyButton text={reaskLens(l.id, l.question)} label={t("stale.reask")} message={t("toast.promptCopied")} icon="refresh" />
-                </div>
+    <div class="lenses">
+      {asking ? (
+        <header class="view-head">
+          <AskBox />
+        </header>
+      ) : null}
+      <div class="split">
+        <Rail label={t("lenses.list")}>
+          {lenses.map((l) => {
+            const isStale = ix.staleLenses.has(l.id);
+            return (
+              <li key={l.id}>
+                <button
+                  type="button"
+                  class={`rail-item${l.id === lens?.id ? " on" : ""}${isStale ? " stale" : ""}`}
+                  aria-current={l.id === lens?.id ? "true" : undefined}
+                  onClick={() => update({ lens: l.id, selected: l.focus ?? l.nodes[0] }, "push")}
+                >
+                  <span class="rail-title">{l.question}</span>
+                  <span class="rail-meta">
+                    {t("lenses.nodes", { count: l.nodes.length })}
+                    {isStale ? <span class="tag tag-warn">{t("stale.badge")}</span> : null}
+                  </span>
+                </button>
+                {isStale ? (
+                  <div class="rail-extra">
+                    <CopyButton text={reaskLens(l.id, l.question)} label={t("stale.reask")} message={t("toast.promptCopied")} icon="refresh" />
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
+        </Rail>
+        {lens && scene ? (
+          <div class="split-main">
+            <article class={`answer${stale ? " stale" : ""}`} aria-labelledby="lens-q">
+              <h2 id="lens-q">{lens.question}</h2>
+              {stale ? (
+                <p class="stale-note">
+                  <Icon name="warning" size={14} />
+                  {t("stale.lens")}
+                  <CopyButton text={reaskLens(lens.id, lens.question)} label={t("stale.reask")} message={t("toast.promptCopied")} icon="refresh" />
+                </p>
               ) : null}
-            </li>
-          );
-        })}
-      </Rail>
-      {lens && scene ? (
-        <div class="split-main">
-          <article class={`answer${stale ? " stale" : ""}`} aria-labelledby="lens-q">
-            <h2 id="lens-q">{lens.question}</h2>
-            {stale ? (
-              <p class="stale-note">
-                <Icon name="warning" size={14} />
-                {t("stale.lens")}
-                <CopyButton text={reaskLens(lens.id, lens.question)} label={t("stale.reask")} message={t("toast.promptCopied")} icon="refresh" />
-              </p>
-            ) : null}
-            <Markdown text={lens.answer} />
-            {focus ? (
-              <button type="button" class="btn btn-quiet" onClick={() => reveal(focus, { ids: lens.nodes, label: t("spot.lens", { q: lens.question }) })}>
-                <Icon name="map" size={14} />
-                {t("lenses.showOnMap")}
-              </button>
-            ) : null}
-          </article>
-          <div class="map-canvas sub">
-            {state.listMode || narrow ? (
-              <SceneList
-                scene={scene}
-                selected={state.selected}
-                onSelect={(n) => update({ selected: n.ref, panelOpen: true })}
-                onActivate={(n) => reveal(n.ref)}
-              />
-            ) : (
-              <Graph
-                scene={scene}
-                label={t("lenses.aria", { q: lens.question })}
-                selected={state.selected ?? focus}
-                center={focus ? { id: focus, nonce: 0 } : undefined}
-                onSelect={(n) => update({ selected: n?.ref, panelOpen: !!n })}
-                onActivate={(n) => reveal(n.ref)}
-              />
-            )}
-            <Legend scene={scene} />
+              <Markdown text={lens.answer} />
+              {focus ? (
+                <button type="button" class="btn btn-quiet" onClick={() => reveal(focus, { ids: lens.nodes, label: t("spot.lens", { q: lens.question }) })}>
+                  <Icon name="map" size={14} />
+                  {t("lenses.showOnMap")}
+                </button>
+              ) : null}
+            </article>
+            <div class="map-canvas sub">
+              {state.listMode || narrow ? (
+                <SceneList
+                  scene={scene}
+                  selected={state.selected}
+                  onSelect={(n) => update({ selected: n.ref, panelOpen: true })}
+                  onActivate={(n) => reveal(n.ref)}
+                />
+              ) : (
+                <Graph
+                  scene={scene}
+                  label={t("lenses.aria", { q: lens.question })}
+                  selected={state.selected ?? focus}
+                  center={focus ? { id: focus, nonce: 0 } : undefined}
+                  onSelect={(n) => update({ selected: n?.ref, panelOpen: !!n })}
+                  onActivate={(n) => reveal(n.ref)}
+                />
+              )}
+              <Legend scene={scene} />
+            </div>
           </div>
-        </div>
-      ) : (
-        <Empty icon="lens" title={t("lenses.pick")}>
-          <p>{t("lenses.pickBody")}</p>
-        </Empty>
-      )}
+        ) : (
+          <Empty icon="lens" title={t("lenses.pick")}>
+            <p>{t("lenses.pickBody")}</p>
+          </Empty>
+        )}
+      </div>
     </div>
   );
 }

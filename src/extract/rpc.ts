@@ -66,6 +66,7 @@ import type {
   RpcProcedure,
   RpcRouterHint,
 } from "./types.js";
+import { RPC_METHODS } from "./types.js";
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
 const STRIP_EXT = /\.(?:[cm]?[jt]sx?)$/;
@@ -496,8 +497,6 @@ function composeTrpcRoutes(hints: readonly RpcRouterHint[]): RouteFact[] {
   }
   return routes;
 }
-
-const RPC_METHODS = new Set(["QUERY", "MUTATION", "SUBSCRIPTION", "ACTION"]);
 
 /**
  * Compose tRPC routers into procedure routes; settle tRPC calls (terminal-less

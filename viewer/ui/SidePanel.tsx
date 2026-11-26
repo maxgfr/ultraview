@@ -1,5 +1,7 @@
 // The selected node, explained: what it is, where it sits, what it serves,
 // what it holds, what it uses and what uses it — every claim with its chip.
+// A file also lists its outbound hyperlinks (never drawn on the map), an
+// infrastructure unit the files that declare it (environment overlays).
 
 import type { JSX } from "preact";
 import { useEffect, useRef } from "preact/hooks";
@@ -294,6 +296,32 @@ export function SidePanel(): JSX.Element | null {
 
         {n.kind !== "actor" ? <Edges title={t("panel.uses")} edges={outE} side="out" /> : null}
         <Edges title={t("panel.usedByEdges")} edges={inE.filter((e) => !(n.kind === "entity" && e.kind === "data" && e.from.startsWith("file:")))} side="in" />
+
+        {n.links?.length && path ? (
+          <Section title={t("panel.links")} count={n.links.length}>
+            <p class="muted small">{t("panel.linksNote")}</p>
+            <ul class="plain-list">
+              {n.links.map((l) => (
+                <li key={`${l.host}:${l.line}`} class="link-row">
+                  <Icon name="link" size={14} />
+                  <span class="link-host">{l.host}</span>
+                  <LocationChip at={`${path}:${l.line}`} full={dev} />
+                </li>
+              ))}
+            </ul>
+          </Section>
+        ) : null}
+
+        {n.overlays?.length ? (
+          <Section title={t("panel.overlays")} count={n.overlays.length}>
+            <p class="muted small">{t("panel.overlaysNote")}</p>
+            <div class="chips">
+              {n.overlays.map((f) => (
+                <LocationChip key={f} at={`${f}:1`} full />
+              ))}
+            </div>
+          </Section>
+        ) : null}
 
         {n.cites.length ? (
           <Section title={t("panel.sources")} count={n.cites.length}>

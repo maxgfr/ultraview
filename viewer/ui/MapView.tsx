@@ -52,7 +52,7 @@ export function spotIds(ix: Index, scene: Scene, ids: readonly string[]): Set<st
   return out;
 }
 
-const EDGE_LEGEND = ["call", "import", "uses", "http", "data", "event", "queue", "extends", "config"] as const;
+const EDGE_LEGEND = ["call", "import", "uses", "http", "rpc", "data", "event", "queue", "extends", "config"] as const;
 const FREE_KINDS: readonly FreeKind[] = ["entity", "ext", "infra"];
 
 /** Business without a business map: what it would show, and the prompt that writes it. */
@@ -81,9 +81,10 @@ function BusinessEmpty({ onSystems }: { onSystems: () => void }): JSX.Element {
 }
 
 export function Legend({ scene }: { scene: Scene }): JSX.Element | null {
-  const kinds = new Set(scene.edges.map((e) => e.kind));
+  const kinds = new Set([...scene.edges, ...scene.hubEdges].map((e) => e.kind));
   const shown = EDGE_LEGEND.filter((k) => kinds.has(k));
-  if (!shown.length) return null;
+  const hubs = scene.hubs.size > 0;
+  if (!shown.length && !hubs) return null;
   return (
     <ul class="legend" aria-label={t("map.legend")}>
       {shown.map((k) => (
@@ -95,6 +96,14 @@ export function Legend({ scene }: { scene: Scene }): JSX.Element | null {
           {t(`edge.${k}`)}
         </li>
       ))}
+      {hubs ? (
+        <li class="legend-note">
+          <span class="hub-key" aria-hidden="true">
+            N
+          </span>
+          {t("map.hubsNote")}
+        </li>
+      ) : null}
     </ul>
   );
 }

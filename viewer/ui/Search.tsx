@@ -1,17 +1,20 @@
 // ⌘K: find any node by label, id or path; results grouped by kind, arrow
 // keys to move, Enter to select and reveal it on the map at the right level.
+// When `ultraview serve` runs the Ask bridge, the last option asks the typed
+// text as a question ("Ask: …") and opens the Lenses view to follow it.
 
 import type { JSX } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { t } from "../lib/i18n.js";
 import { nodeLabels } from "../lib/labels.js";
+import { askMode, questionOk } from "../lib/live.js";
 import { groupHits, type Hit, search } from "../lib/search.js";
 import { useApp } from "./context.js";
 import { kindName } from "./format.js";
 import { Icon } from "./icons.js";
 
 export function Search(): JSX.Element | null {
-  const { ix, docs, state, update, reveal } = useApp();
+  const { ix, docs, state, update, reveal, live, ask } = useApp();
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -19,6 +22,11 @@ export function Search(): JSX.Element | null {
   const hits = useMemo(() => search(docs, q, 60), [docs, q]);
   const groups = useMemo(() => groupHits(hits), [hits]);
   const flat: Hit[] = groups.flatMap((g) => g.hits);
+  const mode = askMode(live);
+  // The "Ask: …" option, after the hits: shown while the bridge is on, usable when it is idle.
+  const askable = mode !== "off" && questionOk(q);
+  const askIndex = askable ? flat.length : -1;
+  const options = flat.length + (askable ? 1 : 0);
   const labels = useMemo(
     () =>
       nodeLabels(
@@ -48,11 +56,18 @@ export function Search(): JSX.Element | null {
     update({ searchOpen: false });
     reveal(h.id);
   };
+  const askIt = () => {
+    if (mode !== "ready") return;
+    ask(q);
+    update({ searchOpen: false, view: "lenses", spotlight: undefined }, "push");
+  };
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === "ArrowDown") setActive((a) => Math.min(flat.length - 1, a + 1));
+    if (e.key === "ArrowDown") setActive((a) => Math.min(options - 1, a + 1));
     else if (e.key === "ArrowUp") setActive((a) => Math.max(0, a - 1));
-    else if (e.key === "Enter") choose(flat[active]);
-    else if (e.key === "Escape") close();
+    else if (e.key === "Enter") {
+      if (active === askIndex) askIt();
+      else choose(flat[active]);
+    } else if (e.key === "Escape") close();
     else if (e.key === "Tab") {
       // keep focus in the dialog: the input is its only control
     } else return;
@@ -69,9 +84,9 @@ export function Search(): JSX.Element | null {
             ref={input}
             type="text"
             role="combobox"
-            aria-expanded={flat.length > 0}
+            aria-expanded={options > 0}
             aria-controls="search-results"
-            aria-activedescendant={flat.length ? `sr-${active}` : undefined}
+            aria-activedescendant={options ? `sr-${active}` : undefined}
             aria-autocomplete="list"
             placeholder={t("search.placeholder")}
             aria-label={t("search.title")}
@@ -114,6 +129,28 @@ export function Search(): JSX.Element | null {
               })}
             </div>
           ))}
+          {askable ? (
+            <div role="group" aria-label={t("search.askGroup")}>
+              <div class="search-group" aria-hidden="true">
+                {t("search.askGroup")}
+              </div>
+              <div
+                id={`sr-${askIndex}`}
+                role="option"
+                tabIndex={-1}
+                aria-selected={active === askIndex}
+                aria-disabled={mode !== "ready"}
+                class={`search-hit search-ask${active === askIndex ? " on" : ""}${mode !== "ready" ? " disabled" : ""}`}
+                onMouseMove={() => setActive(askIndex)}
+                onClick={askIt}
+                onKeyDown={onKey}
+              >
+                <Icon name="ask" size={14} />
+                <span class="hit-label">{t("search.ask", { q: q.trim() })}</span>
+                <span class="hit-path">{mode === "ready" ? t("search.askHint", { agent: live.ask?.agent ?? "" }) : t("ask.busy")}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
         <div class="search-foot" aria-hidden="true">
           <span>

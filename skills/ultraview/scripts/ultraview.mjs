@@ -32576,6 +32576,7 @@ var entityUseLinker = {
 // src/extract/types.ts
 var FACTS_SCHEMA = 2;
 var FACT_KINDS = ["routes", "calls", "screens", "entities", "entityUses", "jobs", "externals", "infra"];
+var RPC_METHODS = /* @__PURE__ */ new Set(["QUERY", "MUTATION", "SUBSCRIPTION", "ACTION"]);
 
 // src/extract/py.ts
 function isPython(rel2) {
@@ -37156,7 +37157,6 @@ function composeTrpcRoutes(hints) {
   }
   return routes;
 }
-var RPC_METHODS = /* @__PURE__ */ new Set(["QUERY", "MUTATION", "SUBSCRIPTION", "ACTION"]);
 var rpcLinker = {
   id: "rpc",
   link(facts, ctx) {
@@ -37423,7 +37423,7 @@ var VIEW_SCHEMA = 1;
 var SYSTEM_KINDS = ["ui", "service", "worker", "library", "data", "external", "infra", "script", "test", "config"];
 var AUDIENCES = ["everyone", "developers"];
 var NODE_KINDS = ["cap", "sys", "mod", "file", "sym", "route", "screen", "entity", "job", "ext", "infra"];
-var EDGE_KINDS3 = ["import", "call", "http", "data", "event", "queue", "extends", "config", "contains"];
+var EDGE_KINDS3 = ["import", "call", "http", "rpc", "data", "event", "queue", "extends", "config", "contains"];
 var TIMELINE_SOURCES = ["agent", "pr", "manual"];
 var CHANGE_KINDS = ["new", "changed", "removed"];
 var CHANGE_SCHEMA = 1;
@@ -37752,6 +37752,7 @@ function insightsOf(repoArg, ctx = {}) {
 
 // src/model/assemble.ts
 var SYMBOLS_PER_FILE = 50;
+var LINKS_PER_FILE = 10;
 var cmp6 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var round4 = (x) => Math.round(x * 1e4) / 1e4;
 var zeroMetrics = () => ({ loc: 0, pagerank: 0, churn: 0, tests: 0 });
@@ -37834,6 +37835,10 @@ function mapEdgeKind(kind) {
     default:
       return void 0;
   }
+}
+function routeEdgeKind(route) {
+  const p = parseId(route);
+  return p?.kind === "route" && RPC_METHODS.has(p.method) ? "rpc" : "http";
 }
 var EXTERNAL_EDGE = { sdk: "call", host: "http", env: "config" };
 var LEVEL_FREE = /* @__PURE__ */ new Set(["entity", "ext", "infra"]);
@@ -37944,6 +37949,24 @@ function assembleWithNotes(inp) {
     });
   }
   const hasFile = (rel2) => nodes.has(fileId(rel2));
+  const linksByFile = /* @__PURE__ */ new Map();
+  for (const l of facts.links ?? []) {
+    if (!hasFile(l.file)) continue;
+    const list = linksByFile.get(l.file) ?? [];
+    list.push({ host: l.host, line: l.line });
+    linksByFile.set(l.file, list);
+  }
+  for (const [rel2, list] of linksByFile) {
+    const seen = /* @__PURE__ */ new Set();
+    const kept = list.sort((a, b) => a.line - b.line || cmp6(a.host, b.host)).filter((l) => {
+      const k = `${l.host}
+${l.line}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }).slice(0, LINKS_PER_FILE);
+    nodes.get(fileId(rel2)).links = kept;
+  }
   if (inp.symbols) {
     const byFile = /* @__PURE__ */ new Map();
     for (const [name2, defs] of Object.entries(inp.symbols.defs)) {
@@ -38005,7 +38028,7 @@ function assembleWithNotes(inp) {
     extVias.set(x.id, vias);
   }
   for (const [id, vias] of extVias) nodes.get(extId(id)).tags = uniqSorted(vias);
-  for (const i2 of facts.infra) factNode(infraId(i2.id), "infra", i2.id, i2.file, i2.line, [i2.kind]);
+  for (const i2 of facts.infra) factNode(infraId(i2.id), "infra", i2.id, i2.file, i2.line, [i2.kind], i2.overlays?.length ? { overlays: uniqSorted(i2.overlays) } : {});
   const children = /* @__PURE__ */ new Map();
   for (const n of nodes.values()) {
     if (!n.parent) continue;
@@ -38117,7 +38140,7 @@ ${kind}`;
     if (!kind || e.dangling) continue;
     addBase(fileId(e.from), fileId(e.to), kind, e.weight || 1);
   }
-  for (const c2 of facts.calls) if (c2.route) addBase(fileId(c2.file), c2.route, "http", 1);
+  for (const c2 of facts.calls) if (c2.route) addBase(fileId(c2.file), c2.route, routeEdgeKind(c2.route), 1);
   for (const u of facts.entityUses) addBase(fileId(u.file), entityId(u.entity), "data", 1, u.op);
   for (const e of facts.entities) {
     for (const f of e.fields) if (f.relation) addBase(entityId(e.name), entityId(f.relation), "data", 1, f.name);

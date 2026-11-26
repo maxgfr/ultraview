@@ -234,8 +234,10 @@ flows + lenses + timeline + latest change + insights. Shape:
                "label": "…", "parent": "…", "summary": "…", "cites": ["path:line"],
                "metrics": { "loc": 0, "pagerank": 0, "churn": 0, "tests": 0 },
                "caps": ["cap:checkout"], "tags": [],
-               "slice": { "of": "mod:src", "system": "sys:database", "qualifier": "@ Database" } } ],
-  "edges": [ { "from": "…", "to": "…", "kind": "import|call|http|data|event|queue|extends|config", "weight": 1, "derived": true } ],
+               "slice": { "of": "mod:src", "system": "sys:database", "qualifier": "@ Database" },
+               "links": [ { "host": "cnil.fr", "line": 31 } ],
+               "overlays": ["env/dev/db.yaml", "env/prod/db.yaml"] } ],
+  "edges": [ { "from": "…", "to": "…", "kind": "import|call|http|rpc|data|event|queue|extends|config", "weight": 1, "derived": true } ],
   "flows": [], "lenses": [], "timeline": [], "changes": null, "insights": [], "glossary": [], "tour": [],
   "coverage": { "filesInSystems": 0.97, "modulesInCapabilities": 0.82 },
   "stale": { "lenses": [], "flows": [], "prose": [] } }
@@ -251,6 +253,15 @@ flows + lenses + timeline + latest change + insights. Shape:
   so one commit always gives the same numbers; codeindex `gitChurn`); on a
   module slice, system or capability, the sum of its files' churn
   (file-commit touches). 0 outside git.
+- Edge kinds of a matched call: `rpc` when the route it reaches is a tRPC
+  procedure or a server action (`route:QUERY|MUTATION|SUBSCRIPTION|ACTION …`),
+  `http` for any other route (and for an external reached `via: host`). Both
+  roll up like every other kind (module, system, capability).
+- `links` (file nodes only): the file's outbound hyperlinks from facts
+  `links`, by line then host, deduplicated, at most `LINKS_PER_FILE` = 10.
+  Side-panel data: never a node or an edge, so a link to a regulator's site
+  never draws as a dependency. `overlays` (infra nodes only): every file
+  declaring the unit, sorted, when more than one does.
 - `timeline`: every valid line of timeline.jsonl, newest first (by `at`; equal
   times keep the later line first). `changes`: the latest recorded change set
   (highest id under `changes/`), or null. `insights`: `insightsOf`, most
@@ -422,8 +433,46 @@ when stale and logs any error to `.ultraview/hook.log`.
   SVG rendering with pan/zoom, layout in a Web Worker, cached per level.
 - **Map** with semantic zoom: Business (capabilities + actors + externals +
   entities) → Systems → Modules → Files → Symbols (expand a file in place).
-  Double-click drills down; breadcrumb climbs. Edge kinds styled distinctly;
-  hover highlights neighborhood.
+  Double-click drills down; breadcrumb climbs. Edge kinds styled distinctly
+  (line style first, colour second: `http` dashed, `rpc` dash-dot in the
+  accent colour, "Calls the server (RPC)", `data` dotted, `config` dash-dot
+  grey, `event` / `queue` double); hover highlights neighborhood. Parallel
+  edges of one pair merge into one line styled by its strongest kind
+  (`step` > `rpc` > `http` > `event` > `queue` > `data` > `call` > …).
+- **Big repositories** (viewer/lib/groups.ts, levels.ts, hubs.ts):
+  - *Folder grouping.* A view of more than `GROUP_LIMIT` = 40 members (the
+    hard cap) shows folders instead: members sit in a tree of their paths
+    (a module at its directory, a file at its path, a symbol at its file);
+    the view starts at their common folder, skips single-child chains, and
+    opens the biggest folders in place while it stays within `FILL_TARGET` =
+    28 cards. A folder holding more than 40 direct entries is cut into
+    balanced parts of at most 28 (`dir~0`, `dir~1`, …). A level with 2–6
+    boxes (systems around their modules) groups each box on its own with a
+    share of the budget (at least 8). Folder cards carry what they hold by
+    kind (modules, files, routes, data models); every member is reachable as
+    a card in exactly one leaf view. A "show all" banner draws every member.
+  - *Aggregate chips.* Entities, externals and infrastructure joining a view
+    collapse into one chip per kind past 2 of that kind (8 at Business),
+    lines summed; opening the chip shows them one by one (an entity chip opens
+    the Data view), and revealing one of them pins it out of its chip.
+  - *Hub summaries.* In every drawn map view, a node receiving lines from
+    more than `HUB_SHARE` = 35% of the visible cards, and from at least
+    `HUB_MIN_SOURCES` = 6 of them, is a hub: those lines are left out of the
+    layout and the per-view line cap, and the hub wears a "used by N" badge
+    (N distinct users). Hovering or selecting the hub draws all of them as
+    straight connectors; hovering or selecting one user draws its own. The
+    legend says "Links to widely used parts are summarized"; the list view
+    counts them and tags the hub. Lens, flow and Data views never summarize.
+    On egapro (289 modules in one system) this takes the app system's module
+    view from 90 drawn lines over 45 cards to 66 over 33, with 33 lines into
+    `src/modules` and `src` summarized; its pages folder from 91 to 47.
+  - *Line cap.* At most `EDGE_LIMIT` = 150 lines (and at most twice the
+    cards, at least 40), each card's strongest first; a banner offers "show
+    all links".
+  - Same-named cards get the shortest folder tail that tells them apart.
+- **No business map yet.** When the agent has not written capabilities, the
+  map opens on Systems; the Business level shows what it would hold, the
+  prompt that writes `model.json` (copy button) and a way to the Systems map.
 - **Data**: ERD of entities with relations; selecting an entity highlights
   the routes/files that read/write it on the map.
 - **Flows**: stepper; each step highlights its node and shows the cited note.
@@ -437,11 +486,35 @@ when stale and logs any error to `.ultraview/hook.log`.
 - **Tour**: "Start here" narrated stops.
 - Side panel: summary + citations (open in editor: `vscode://file/{abs}:{line}`
   default, configurable `cursor`, `idea`, `zed`, or `{remote}/blob/{commit}/{path}#L{line}`
-  when not local), routes, entities, tests, churn, capabilities, "ask your
+  when not local), routes, entities, tests, churn, capabilities, what it uses
+  and what uses it by edge kind, a file's "Outbound links" (host + line chip;
+  never drawn), an infrastructure unit's "Declared in" overlays, "ask your
   agent about this" (copies a prompt naming the node id).
-- Cmd/Ctrl-K search across every node kind.
+- Cmd/Ctrl-K search across every node kind; with the Ask bridge on, the last
+  option is "Ask: <query>".
 - Audience toggle: business hides files/symbols and technical labels.
-- Deep links: `#view=`, `#node=`, `#lens=`, `#flow=`, `#change=`.
+- Deep links: `#view=`, `#level=`, `#focus=`, `#group=` (a folder of a
+  grouped view, `dir~n` its part n + 1), `#node=`, `#lens=`, `#flow=` +
+  `&step=`, `#change=`. Values are percent-encoded except `:` and `/`, which
+  stay readable: `route:ACTION app/actions#save` is written
+  `node=route:ACTION%20app/actions%23save`, `mod:src@database` is
+  `mod:src%40database`; reading decodes them (and accepts a pasted decoded
+  form). Unknown keys and values are ignored.
+- **Live** (only when served over http and a `hello` event arrived; a static
+  file never shows these):
+  - a non-blocking banner under the top bar on `stale` (or a stale
+    `hello.stale`): "The code changed since this map was built (N files).
+    Run `ultraview build`", with the first changed paths; dismissible until
+    the counts change, gone when the index is fresh again;
+  - an **Ask box** in the Lenses view header (also on its empty state) when
+    `hello.ask` is non-null: it posts `{question}` (≤ 500 characters) to
+    `/api/ask` as JSON from the same origin, shows the `ask-progress` stages
+    in a polite live region (sending, started, running with the bytes so far,
+    validating), and is disabled while any ask runs (`busy`, a 409, or
+    another page's progress). On `ask-done` for its own question it waits
+    for the lens id to appear in the live data (the `view` event brings it)
+    and navigates to `#lens=<id>`; on `ask-error` it shows the error and the
+    `lens save` problems. Asks from another page only mark the box busy.
 - Light/dark, keyboard navigable, responsive down to phone (list fallback
   for the graph below 600px), WCAG AA contrast.
 
@@ -489,8 +562,9 @@ also polled every second and a move re-assembles too. Source files are watched (
 one watch per indexed directory elsewhere, a 30 s poll beyond 2000
 directories) but a change never rebuilds: after 1 s it re-runs ultraindex
 `runCheck` and pushes `stale`; `build` (by the agent) refreshes the index,
-which the `.ultraindex/` watch picks up. The viewer has no UI for `stale`
-or `ask-*` yet; it ignores events it does not know.
+which the `.ultraindex/` watch picks up. The viewer turns `stale` into its
+banner and `ask-*` into the Ask box's progress (§8, viewer/lib/live.ts); it
+ignores events it does not know.
 
 **Security.** Binds `127.0.0.1` by default; a non-loopback `--host` is
 refused unless passed explicitly, then served with a warning, and `/api/ask`

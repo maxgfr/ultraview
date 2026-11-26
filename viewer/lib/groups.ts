@@ -5,14 +5,18 @@
 // the members' common folder with one card per next path segment, then opens
 // the biggest folders in place while the view stays within the limit, so a
 // shallow tree shows its detail and a deep one stays a handful of folders.
-// A folder that holds more direct members than the limit is cut into parts.
+// It opens folders while the view stays within FILL_TARGET cards (fewer
+// cards, fewer lines), never past GROUP_LIMIT. A folder that holds more
+// direct members than the limit is cut into parts of at most FILL_TARGET.
 //
 // A view is named by its group: a folder path ("src/app"), or a part of one
 // ("src/app~1", 0-based), which deep links carry as `group=`. Pure and
 // deterministic: same members, same group, same cards.
 
-/** Cards a view draws at most before it groups by folder. */
+/** Cards a view draws at most before it groups by folder: the hard cap. */
 export const GROUP_LIMIT = 40;
+/** Cards a grouped view aims for: folders open in place while the view stays within it. */
+export const FILL_TARGET = 28;
 
 export interface PathMember {
   id: string;
@@ -133,9 +137,13 @@ function entryLabel(e: Entry, base: string): string {
 /**
  * Group a level's members for one view. Members without a path always show
  * as themselves (outside any group view); a `group` keeps only the members
- * under its folder. `limit` Infinity turns grouping off (show all).
+ * under its folder. A view of at most `limit` members shows them all
+ * (`limit` Infinity turns grouping off: show all); a bigger one opens folders
+ * while it stays within `target` cards, and cuts a folder holding more than
+ * `limit` direct entries into parts of at most `target`.
  */
-export function groupMembers(members: readonly PathMember[], group: string | undefined, limit = GROUP_LIMIT): Grouping {
+export function groupMembers(members: readonly PathMember[], group: string | undefined, limit = GROUP_LIMIT, target = Math.min(limit, FILL_TARGET)): Grouping {
+  const fill = Math.max(1, Math.min(limit, target));
   const g = group ? parseGroup(group) : undefined;
   const pathless = g ? [] : members.filter((m) => m.path === undefined);
   const pathed = members.filter((m) => m.path !== undefined && (!g || isUnder(m.path, g.dir)));
@@ -154,10 +162,10 @@ export function groupMembers(members: readonly PathMember[], group: string | und
 
   const cache = new Map<Trie, Entry[]>();
   let entries = open(baseNode, cache);
-  if (g?.part !== undefined) entries = parts(entries, limit)[g.part] ?? [];
+  if (g?.part !== undefined) entries = parts(entries, fill)[g.part] ?? [];
   else if (pathless.length + entries.length > limit) {
     // An over-full folder: one card per part.
-    const ps = parts(entries, limit);
+    const ps = parts(entries, fill);
     const items: GroupItem[] = ps.map((p, i) => ({
       type: "dir",
       group: `${base}~${i}`,
@@ -168,8 +176,8 @@ export function groupMembers(members: readonly PathMember[], group: string | und
     return { items: [...asMembers(pathless), ...items], base, total };
   }
 
-  // Open the biggest folders in place while the view stays within the limit.
-  const budget = limit - pathless.length;
+  // Open the biggest folders in place while the view stays within the fill target.
+  const budget = fill - pathless.length;
   for (;;) {
     let best = -1;
     for (let i = 0; i < entries.length; i++) {

@@ -11,6 +11,8 @@ import {
   assignSystems,
   globSpecificity,
   humanizeSegment,
+  LINKS_PER_FILE,
+  routeEdgeKind,
   systemOfFile,
   systemRules,
   type ViewInputs,
@@ -401,5 +403,84 @@ describe("module slices", () => {
     const shuffled = { ...g, files: [...g.files].reverse(), modules: [...g.modules].reverse(), fileEdges: [...g.fileEdges].reverse() };
     expect(stableJson(assembleView({ ...inputs, graph: shuffled }))).toBe(a);
     expect(stableJson(assembleView(inputs))).toBe(a);
+  });
+});
+
+describe("rpc edges, outbound links and infra overlays", () => {
+  const files: [string, string, number, number][] = [
+    ["web/page.tsx", "web", 10, 0.2],
+    ["web/form.tsx", "web", 10, 0.2],
+    ["api/router.ts", "api", 20, 0.3],
+    ["api/actions.ts", "api", 20, 0.3],
+    ["api/rest.ts", "api", 20, 0.3],
+  ];
+  const model: Partial<Model> = { systems: [system("front", ["web/**"]), system("back", ["api/**"])] };
+  const inputs = (): ViewInputs => {
+    const inp = syntheticInputs(files, [], model);
+    const f = inp.facts;
+    f.routes.push(
+      { method: "QUERY", path: "user.byId", file: "api/router.ts", line: 3, framework: "trpc" },
+      { method: "MUTATION", path: "user.update", file: "api/router.ts", line: 9, framework: "trpc" },
+      { method: "ACTION", path: "api/actions#save", file: "api/actions.ts", line: 2, framework: "next-action", handler: "save" },
+      { method: "GET", path: "/api/health", file: "api/rest.ts", line: 1, framework: "next-app" },
+    );
+    f.calls.push(
+      { method: "QUERY", url: "user.byId", file: "web/page.tsx", line: 4, route: "route:QUERY user.byId" },
+      { method: "MUTATION", url: "user.update", file: "web/form.tsx", line: 7, route: "route:MUTATION user.update" },
+      { method: "ACTION", url: "api/actions#save", file: "web/form.tsx", line: 12, route: "route:ACTION api/actions#save" },
+      { method: "GET", url: "/api/health", file: "web/page.tsx", line: 8, route: "route:GET /api/health" },
+    );
+    f.links = [
+      ...Array.from({ length: 12 }, (_, i) => ({ host: `site${i}.org`, file: "web/page.tsx", line: 40 - i })),
+      { host: "cnil.fr", file: "web/form.tsx", line: 5 },
+      { host: "cnil.fr", file: "web/form.tsx", line: 5 },
+      { host: "gone.org", file: "nowhere/file.ts", line: 1 },
+    ];
+    f.infra.push(
+      { id: "db", kind: "compose-service", file: "docker-compose.yml", line: 4, overlays: ["env/prod/db.yaml", "env/dev/db.yaml"] },
+      { id: "api", kind: "dockerfile", file: "api/Dockerfile", line: 1 },
+    );
+    return inp;
+  };
+
+  it("tells an RPC route from an HTTP one", () => {
+    expect(["route:QUERY a.b", "route:MUTATION a", "route:SUBSCRIPTION a.c", "route:ACTION app/actions#save"].map(routeEdgeKind)).toEqual([
+      "rpc",
+      "rpc",
+      "rpc",
+      "rpc",
+    ]);
+    expect(["route:GET /x", "route:ALL /y", "route:POST /q"].map(routeEdgeKind)).toEqual(["http", "http", "http"]);
+  });
+
+  it("draws calls to tRPC procedures and server actions as rpc, at file level and rolled up", () => {
+    const v = assembleView(inputs());
+    expect(edge(v, "file:web/page.tsx", "route:QUERY user.byId", "rpc")).toMatchObject({ weight: 1, derived: true });
+    expect(edge(v, "file:web/form.tsx", "route:MUTATION user.update", "rpc")).toBeDefined();
+    expect(edge(v, "file:web/form.tsx", "route:ACTION api/actions#save", "rpc")).toBeDefined();
+    expect(edge(v, "file:web/page.tsx", "route:GET /api/health", "http")).toBeDefined();
+    expect(v.edges.filter((e) => e.kind === "http" && e.to.startsWith("route:") && !e.to.startsWith("route:GET"))).toEqual([]);
+    // Roll-ups keep the kind: module and system level.
+    expect(edge(v, "mod:web", "mod:api", "rpc")!.weight).toBe(3);
+    expect(edge(v, "mod:web", "mod:api", "http")!.weight).toBe(1);
+    expect(edge(v, "sys:front", "sys:back", "rpc")!.weight).toBe(3);
+  });
+
+  it("puts a file's outbound links on its node (by line, deduplicated, capped), never on the map", () => {
+    const v = assembleView(inputs());
+    const page = node(v, "file:web/page.tsx")!;
+    expect(page.links).toHaveLength(LINKS_PER_FILE);
+    expect(page.links![0]).toEqual({ host: "site11.org", line: 29 });
+    expect(page.links!.map((l) => l.line)).toEqual([...page.links!.map((l) => l.line)].sort((a, b) => a - b));
+    expect(node(v, "file:web/form.tsx")!.links).toEqual([{ host: "cnil.fr", line: 5 }]);
+    expect(node(v, "file:api/rest.ts")!.links).toBeUndefined();
+    expect(v.edges.some((e) => /site\d|cnil/.test(e.to))).toBe(false);
+    expect(v.nodes.some((n) => /cnil|site\d/.test(n.id))).toBe(false);
+  });
+
+  it("keeps an infra unit's overlays, sorted, on its node", () => {
+    const v = assembleView(inputs());
+    expect(node(v, "infra:db")!.overlays).toEqual(["env/dev/db.yaml", "env/prod/db.yaml"]);
+    expect(node(v, "infra:api")!.overlays).toBeUndefined();
   });
 });

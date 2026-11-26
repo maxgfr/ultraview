@@ -1,20 +1,22 @@
 // The app shell: state, deep links, settings, live data, and the views.
 
 import type { JSX } from "preact";
-import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "preact/hooks";
 import { normalizeChanges, normalizeInsights, timelineViews } from "../lib/changes.js";
 import { buildIndex } from "../lib/data.js";
 import { EDITORS, type Editor, type RepoRef } from "../lib/editor.js";
 import { detectLang, LANGS, type Lang, setLang, t } from "../lib/i18n.js";
 import { FREE_KINDS, locate } from "../lib/levels.js";
+import { askMode, initialLive, liveReducer, questionOk } from "../lib/live.js";
 import { defaultAudience, drillTarget, homeLevel, levelAllowed, pin, revealTarget } from "../lib/nav.js";
 import { formatHash, parseHash, type Route } from "../lib/route.js";
 import { searchDocs } from "../lib/search.js";
 import type { ViewModel } from "../../src/model/types.js";
+import { StaleBanner } from "./Ask.js";
 import { type AppApi, AppContext, type NavMode, type Settings, type UiState } from "./context.js";
 import { Icon } from "./icons.js";
 import { forgetLayoutsBefore } from "./layout.js";
-import { startLive } from "./live.js";
+import { type AskReply, postAsk, startLive } from "./live.js";
 import { MapView, sceneFor } from "./MapView.js";
 import { perfStart, perfTime } from "./perf.js";
 import { Search } from "./Search.js";
@@ -185,14 +187,20 @@ export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): J
     document.title = `${ix.view.app.name} · ultraview`;
   }, [ix]);
 
-  // Live data (served by `ultraview serve`): swap the view in place, keep camera and selection.
+  // Live data (served by `ultraview serve`): swap the view in place, keep camera and selection;
+  // the other events feed the stale banner and the Ask box.
+  const [live, dispatchLive] = useReducer(liveReducer, initialLive);
+  const liveRef = useRef(live);
+  liveRef.current = live;
   useEffect(
     () =>
-      startLive((view) =>
-        setData((d) => {
-          forgetLayoutsBefore(d.version + 1);
-          return { view, version: d.version + 1 };
-        }),
+      startLive(
+        (view) =>
+          setData((d) => {
+            forgetLayoutsBefore(d.version + 1);
+            return { view, version: d.version + 1 };
+          }),
+        dispatchLive,
       ),
     [],
   );
@@ -228,6 +236,30 @@ export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): J
   );
 
   const select = useCallback((id: string | undefined) => update({ selected: id, panelOpen: !!id }, "replace"), [update]);
+
+  const ask = useCallback((question: string) => {
+    const q = question.trim();
+    if (!questionOk(q) || askMode(liveRef.current) !== "ready") return;
+    dispatchLive({ type: "ask-sent", question: q });
+    void postAsk(q).then((r: AskReply) => {
+      if (r.ok) dispatchLive({ type: "ask-accepted", id: r.id, question: r.question, ...(r.agent ? { agent: r.agent } : {}) });
+      else {
+        const error = r.status === 409 ? t("ask.busy") : r.status === 404 ? t("ask.offError") : r.status === 0 ? t("ask.network") : r.error;
+        dispatchLive({ type: "ask-refused", status: r.status, error, ...(r.id ? { id: r.id } : {}) });
+      }
+    });
+  }, []);
+  const dismissLive = useCallback((what: "stale" | "error") => dispatchLive({ type: what === "stale" ? "dismiss-stale" : "dismiss-error" }), []);
+  // An answer this page asked for: open its lens once the live data holds it (the `view` event brings it).
+  useEffect(() => {
+    const o = live.opened;
+    if (!o) return;
+    const lens = (ix.view.lenses ?? []).find((l) => l.id === o.id);
+    if (!lens) return;
+    dispatchLive({ type: "opened" });
+    update({ view: "lenses", lens: lens.id, selected: lens.focus ?? lens.nodes[0], spotlight: undefined }, "push");
+    toast(t("ask.opened"));
+  }, [live.opened, ix]);
 
   const reveal = useCallback<AppApi["reveal"]>(
     (id, spotlight, mode = "push") => {
@@ -316,6 +348,9 @@ export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): J
     select,
     reveal,
     drill,
+    live,
+    ask,
+    dismissLive,
   };
 
   const View = { map: MapView, data: DataModelsView, flows: FlowsView, lenses: LensesView, changes: ChangesView, insights: InsightsView }[state.view];
@@ -327,6 +362,7 @@ export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): J
           {t("top.skip")}
         </a>
         <TopBar />
+        <StaleBanner />
         <div class="body">
           <main id="main" class="main" tabIndex={-1} aria-label={t(`view.${state.view}`)}>
             <View />

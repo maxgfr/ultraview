@@ -147,6 +147,9 @@ export interface Facts {
 export const FACT_KINDS = ["routes", "calls", "screens", "entities", "entityUses", "jobs", "externals", "infra"] as const;
 export type FactKind = (typeof FACT_KINDS)[number];
 
+/** Route methods that are RPC, not HTTP: tRPC procedures and Next server actions. */
+export const RPC_METHODS: ReadonlySet<string> = new Set(["QUERY", "MUTATION", "SUBSCRIPTION", "ACTION"]);
+
 export interface ExtractInput {
   /** Repo-relative path, posix separators. */
   rel: string;

@@ -7,6 +7,7 @@ import type { Index } from "../lib/data.js";
 import type { Editor, RepoRef } from "../lib/editor.js";
 import type { Lang } from "../lib/i18n.js";
 import type { MapState, ViewerAudience } from "../lib/levels.js";
+import type { LiveState } from "../lib/live.js";
 import type { ViewName } from "../lib/route.js";
 import type { SearchDoc } from "../lib/search.js";
 
@@ -65,6 +66,11 @@ export interface AppApi {
   reveal: (id: string, spotlight?: { ids: string[]; label: string }, nav?: NavMode) => void;
   /** Drill into a map node (or expand a file in place). */
   drill: (id: string) => void;
+  /** What a serving `ultraview serve` reported (stale index, Ask bridge); `connected` false on a static page. */
+  live: LiveState;
+  /** Send a question to the Ask bridge (a no-op unless it is on and idle). */
+  ask: (question: string) => void;
+  dismissLive: (what: "stale" | "error") => void;
 }
 
 export const AppContext = createContext<AppApi | null>(null);

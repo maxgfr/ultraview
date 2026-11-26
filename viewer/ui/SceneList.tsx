@@ -80,7 +80,7 @@ export function SceneList({
   }, [scene]);
   const links = useMemo(() => {
     const m = new Map<string, number>();
-    for (const e of scene.edges) {
+    for (const e of [...scene.edges, ...scene.hubEdges]) {
       m.set(e.from, (m.get(e.from) ?? 0) + 1);
       m.set(e.to, (m.get(e.to) ?? 0) + 1);
     }
@@ -172,6 +172,7 @@ export function SceneList({
                   <Icon name={folder ? "folder" : n.role === "cluster" ? "cluster" : n.kind} size={14} />
                   <span class="sl-label">{sceneLabel(n)}</span>
                   {n.role === "ghost" ? <span class="tag">{t("list.outside")}</span> : null}
+                  {scene.hubs.has(n.id) ? <span class="tag">{t("graph.usedBy", { count: scene.hubs.get(n.id)! })}</span> : null}
                 </span>
                 <span role="cell" class="muted">
                   {folder ? kindName("folder") : kindName(n.kind)}

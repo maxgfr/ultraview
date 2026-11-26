@@ -8,9 +8,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { ViewModel } from "../src/model/types.js";
 import { buildIndex, type Index } from "../viewer/lib/data.js";
-import { GROUP_LIMIT, groupMembers, groupTrail, type PathMember, parseGroup } from "../viewer/lib/groups.js";
+import { FILL_TARGET, GROUP_LIMIT, groupMembers, groupTrail, type PathMember, parseGroup } from "../viewer/lib/groups.js";
+import { borderPoint, connector, HUB_MIN_SOURCES, HUB_SHARE, isHub, revealedHubEdges, summarizeHubs } from "../viewer/lib/hubs.js";
 import { disambiguate, fitParts, nodeLabels } from "../viewer/lib/labels.js";
-import { buildScene, levelMembers, locate, type MapState, type Scene } from "../viewer/lib/levels.js";
+import { buildScene, levelMembers, locate, type MapState, type Scene, type SceneEdge, type SceneNode } from "../viewer/lib/levels.js";
 import { breadcrumb, homeLevel, revealTarget } from "../viewer/lib/nav.js";
 import { formatHash, parseHash, type Route } from "../viewer/lib/route.js";
 
@@ -129,7 +130,7 @@ describe("grouping by folder", () => {
     ]);
   });
 
-  it("cuts an over-full folder into balanced parts, each opening to at most the limit", () => {
+  it("cuts an over-full folder into balanced parts of at most the fill target", () => {
     const pm: PathMember[] = Array.from({ length: 100 }, (_, i) => ({
       id: `f${i}`,
       label: `f${String(i).padStart(3, "0")}.sql`,
@@ -137,12 +138,13 @@ describe("grouping by folder", () => {
     }));
     const g = groupMembers(pm, undefined);
     expect(g.items.map((i) => (i.type === "dir" ? [i.group, i.ids.length, i.label] : i.id))).toEqual([
-      ["db/migrations~0", 34, "f000.sql – f033.sql"],
-      ["db/migrations~1", 34, "f034.sql – f067.sql"],
-      ["db/migrations~2", 32, "f068.sql – f099.sql"],
+      ["db/migrations~0", 25, "f000.sql – f024.sql"],
+      ["db/migrations~1", 25, "f025.sql – f049.sql"],
+      ["db/migrations~2", 25, "f050.sql – f074.sql"],
+      ["db/migrations~3", 25, "f075.sql – f099.sql"],
     ]);
     const part = groupMembers(pm, "db/migrations~1");
-    expect(part.items).toHaveLength(34);
+    expect(part.items).toHaveLength(25);
     expect(part.items.every((i) => i.type === "member")).toBe(true);
     expect(parseGroup("db/migrations~1")).toEqual({ dir: "db/migrations", part: 1 });
     expect(groupTrail(pm, "db/migrations~1")).toEqual([{ group: "db/migrations~1", label: "", part: 1 }]);
@@ -152,8 +154,10 @@ describe("grouping by folder", () => {
     const s = buildScene(ix, { level: "mod", focus: "sys:app" }, "developer");
     const sharedCard = locate(ix, s, "mod:src-modules-shared")!;
     // Every module but shared imports shared with weight 2: each card's line carries 2 × its members (minus shared itself).
+    // Every card uses shared, so those lines are its hub summary rather than drawn ones.
+    expect(s.hubs.has(sharedCard)).toBe(true);
     for (const n of s.nodes.filter((x) => x.role === "cluster")) {
-      const e = s.edges.find((x) => x.from === n.id && x.to === sharedCard);
+      const e = [...s.edges, ...s.hubEdges].find((x) => x.from === n.id && x.to === sharedCard);
       if (n.id === sharedCard) continue;
       const own = levelMembers(ix, { level: "mod", focus: "sys:app" }).filter((m) => locate(ix, s, m.id) === n.id && m.id !== "mod:src-modules-shared");
       expect(e?.weight, n.id).toBe(2 * own.length);
@@ -288,5 +292,125 @@ describe("card sublines", () => {
     expect(fitParts(["3 modules", "1 route", "3 data models"], 130, width, cut)).toBe("3 modules · 1 route");
     expect(fitParts(["3 modules", "1 route"], 60, width, cut)).toBe("3 modules");
     expect(fitParts(["a very long single part"], 60, width, cut)).toBe("a very l…");
+  });
+});
+
+describe("fill target", () => {
+  const flat = (n: number, dirs: number): PathMember[] =>
+    Array.from({ length: n }, (_, i) => ({ id: `m${i}`, label: `m${i}`, path: `src/d${String(i % dirs).padStart(2, "0")}/m${String(i).padStart(3, "0")}` }));
+
+  it("shows a view of up to the hard cap whole", () => {
+    const g = groupMembers(flat(GROUP_LIMIT, 8), undefined);
+    expect(g.items).toHaveLength(GROUP_LIMIT);
+    expect(g.items.every((i) => i.type === "member")).toBe(true);
+  });
+
+  it("opens folders past the cap only while the view stays within the fill target", () => {
+    // 12 folders of 5: opening any one of them adds 4 cards; 12 + 4k ≤ 28 opens 4 of them, not the 7 that 40 would allow.
+    const g = groupMembers(flat(60, 12), undefined);
+    expect(g.items.length).toBeLessThanOrEqual(FILL_TARGET);
+    expect(g.items.filter((i) => i.type === "dir")).toHaveLength(8);
+    expect(g.items.filter((i) => i.type === "member")).toHaveLength(20);
+    // The old budget of 40 would have opened more.
+    const wide = groupMembers(flat(60, 12), undefined, GROUP_LIMIT, GROUP_LIMIT);
+    expect(wide.items.length).toBeGreaterThan(FILL_TARGET);
+    expect(wide.items.length).toBeLessThanOrEqual(GROUP_LIMIT);
+  });
+
+  it("never asks for more than the hard cap, and a target above it is the cap", () => {
+    const g = groupMembers(flat(60, 12), undefined, GROUP_LIMIT, 100);
+    expect(g.items.length).toBeLessThanOrEqual(GROUP_LIMIT);
+  });
+
+  it("keeps every folder view of the monorepo within the fill target plus its few outside chips", () => {
+    walk(ix, { level: "mod", focus: "sys:app" }, (s) => {
+      const memberCards = s.nodes.filter((n) => n.role === "card" || n.role === "cluster");
+      if (s.grouped) expect(memberCards.length).toBeLessThanOrEqual(FILL_TARGET);
+    });
+  });
+});
+
+describe("hub summaries", () => {
+  const card = (id: string, role: SceneNode["role"] = "card"): SceneNode => ({ id, ref: id, role, kind: "mod", label: id, w: 216, h: 64 });
+  const line = (from: string, to: string, kind: SceneEdge["kind"] = "import", weight = 1): SceneEdge => ({
+    id: `${from}->${to}`,
+    from,
+    to,
+    kind,
+    kinds: [kind],
+    weight,
+  });
+
+  it("needs more than the share of the visible cards, and at least the minimum of sources", () => {
+    expect(HUB_SHARE).toBe(0.35);
+    expect(HUB_MIN_SOURCES).toBe(6);
+    expect(isHub(5, 6)).toBe(false); // most of a tiny view, but under the minimum
+    expect(isHub(6, 17)).toBe(true); // 6 > 5.95
+    expect(isHub(6, 18)).toBe(false); // 6 is not > 6.3
+    expect(isHub(35, 100)).toBe(false);
+    expect(isHub(36, 100)).toBe(true);
+  });
+
+  it("hides the lines into a hub, counts distinct users, keeps the rest and flow steps", () => {
+    const nodes = [card("box", "group"), card("hub"), ...Array.from({ length: 9 }, (_, i) => card(`c${i}`))];
+    const edges = [
+      ...Array.from({ length: 6 }, (_, i) => line(`c${i}`, "hub")),
+      line("c0", "hub", "call"), // same source, another kind: merged already, counted once
+      line("c6", "c7"),
+      line("hub", "c8"),
+      line("c7", "hub", "step"),
+    ];
+    // 10 visible cards (the box does not count): 6 users > 3.5.
+    const split = summarizeHubs(nodes, edges);
+    expect([...split.hubs]).toEqual([["hub", 6]]);
+    expect(split.hidden.map((e) => e.from)).toEqual(["c0", "c1", "c2", "c3", "c4", "c5", "c0"]);
+    expect(split.kept.map((e) => e.id)).toEqual(["c6->c7", "hub->c8", "c7->hub"]);
+    // Five users of 10 cards: no hub, nothing hidden.
+    const few = summarizeHubs(nodes, edges.slice(1, 6));
+    expect(few.hubs.size).toBe(0);
+    expect(few.hidden).toEqual([]);
+  });
+
+  it("reveals a hub's lines on hover or selection of the hub, or the one line of a hovered user", () => {
+    const hidden = Array.from({ length: 6 }, (_, i) => line(`c${i}`, "hub"));
+    expect(revealedHubEdges(hidden, [undefined, undefined])).toEqual([]);
+    expect(revealedHubEdges(hidden, ["hub", undefined])).toHaveLength(6);
+    expect(revealedHubEdges(hidden, [undefined, "hub"])).toHaveLength(6);
+    expect(revealedHubEdges(hidden, ["c2", undefined]).map((e) => e.id)).toEqual(["c2->hub"]);
+    expect(revealedHubEdges(hidden, ["c2", "c4"]).map((e) => e.id)).toEqual(["c2->hub", "c4->hub"]);
+    expect(revealedHubEdges(hidden, ["elsewhere", undefined])).toEqual([]);
+  });
+
+  it("draws a revealed line straight, border to border", () => {
+    const a = { x: 0, y: 0, w: 100, h: 50 };
+    const b = { x: 300, y: 0, w: 100, h: 50 };
+    expect(connector(a, b)).toEqual([
+      { x: 100, y: 25 },
+      { x: 300, y: 25 },
+    ]);
+    const below = { x: 0, y: 200, w: 100, h: 50 };
+    expect(connector(a, below)).toEqual([
+      { x: 50, y: 50 },
+      { x: 50, y: 200 },
+    ]);
+    expect(borderPoint(a, { x: 50, y: 25 })).toEqual({ x: 50, y: 25 });
+  });
+
+  it("summarizes the module every page imports in the monorepo's module view, and draws its lines on demand", () => {
+    const s = buildScene(ix, { level: "mod", focus: "sys:app" }, "developer");
+    const shared = locate(ix, s, "mod:src-modules-shared")!;
+    expect(s.hubs.get(shared)).toBeGreaterThanOrEqual(HUB_MIN_SOURCES);
+    expect(s.edges.some((e) => e.to === shared)).toBe(false);
+    expect(s.hubEdges.length).toBe(s.hubs.get(shared));
+    expect(s.hubEdges.every((e) => e.to === shared)).toBe(true);
+    // The layout never sees them; the drawn lines stay within the per-view cap.
+    expect(s.edgesTotal).toBe(s.edges.length);
+    // Deterministic.
+    expect(buildScene(ix, { level: "mod", focus: "sys:app" }, "developer").hubEdges).toEqual(s.hubEdges);
+  });
+
+  it("leaves a small app alone", () => {
+    const small = buildIndex(shop);
+    for (const level of ["biz", "sys", "mod", "file"] as const) expect(buildScene(small, { level }, "developer").hubs.size, level).toBe(0);
   });
 });
