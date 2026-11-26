@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.9.2](https://github.com/maxgfr/ultraview/compare/v1.9.1...v1.9.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **sql:** read ALTER TABLE foreign keys and merge re-created tables ([8acad8b](https://github.com/maxgfr/ultraview/commit/8acad8b9597cf6c685d13f41d95c3c5c138be3e3)), closes [#17](https://github.com/maxgfr/ultraview/issues/17)
+
 ## [1.9.1](https://github.com/maxgfr/ultraview/compare/v1.9.0...v1.9.1) (2026-11-26)
 
 
