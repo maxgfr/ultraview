@@ -40514,7 +40514,7 @@ function openFile(file, platform = process.platform) {
 
 // src/ask.ts
 import { spawn as spawn3 } from "child_process";
-import { accessSync as accessSync2, constants, createWriteStream, existsSync as existsSync26, mkdirSync as mkdirSync11, mkdtempSync as mkdtempSync4, readFileSync as readFileSync32, rmSync as rmSync8, statSync as statSync19 } from "fs";
+import { accessSync as accessSync2, closeSync as closeSync2, constants, existsSync as existsSync26, mkdirSync as mkdirSync11, mkdtempSync as mkdtempSync4, openSync as openSync2, readFileSync as readFileSync32, rmSync as rmSync8, statSync as statSync19, writeSync } from "fs";
 import { tmpdir as tmpdir2 } from "os";
 import { delimiter, dirname as dirname17, join as join50, resolve as resolve29 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
@@ -41402,6 +41402,31 @@ function checkQuestion(q) {
 function askLensId(repo, question) {
   return proposeLensId(repo, question).id;
 }
+function openAskLog(file) {
+  let fd;
+  try {
+    fd = openSync2(file, "a");
+  } catch {
+    fd = void 0;
+  }
+  return {
+    write(data) {
+      if (fd === void 0) return;
+      try {
+        writeSync(fd, typeof data === "string" ? Buffer.from(data, "utf8") : data);
+      } catch {
+      }
+    },
+    close() {
+      if (fd === void 0) return;
+      try {
+        closeSync2(fd);
+      } catch {
+      }
+      fd = void 0;
+    }
+  };
+}
 function askAgent(req, id = askLensId(req.repo, req.question)) {
   const repo = resolve29(req.repo);
   const { question, agent } = req;
@@ -41409,9 +41434,7 @@ function askAgent(req, id = askLensId(req.repo, req.question)) {
   const tmpDir = mkdtempSync4(join50(tmpdir2(), "ultraview-ask-"));
   const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir });
   mkdirSync11(join50(repo, VIEW_DIR), { recursive: true });
-  const log = createWriteStream(join50(repo, ASK_LOG), { flags: "a" });
-  log.on("error", () => {
-  });
+  const log = openAskLog(join50(repo, ASK_LOG));
   log.write(
     `=== ${(/* @__PURE__ */ new Date()).toISOString()} ask ${id} (${agent.name})
 question: ${question}
@@ -41437,7 +41460,7 @@ ${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : 
 
 `
       );
-      log.end();
+      log.close();
       rmSync8(tmpDir, { recursive: true, force: true });
       done(o);
     };

@@ -18,7 +18,7 @@
 // Never prints, never exits.
 
 import { type ChildProcess, spawn } from "node:child_process";
-import { accessSync, constants, createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { accessSync, closeSync, constants, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -280,6 +280,39 @@ export function askLensId(repo: string, question: string): string {
   return proposeLensId(repo, question).id;
 }
 
+/**
+ * `.ultraview/ask.log`, appended synchronously: every line is on disk, in
+ * order, when `write` returns, so the log is complete before an ask's outcome
+ * is announced. A log that cannot be opened or written is skipped, never fatal.
+ */
+function openAskLog(file: string): { write: (data: string | Buffer) => void; close: () => void } {
+  let fd: number | undefined;
+  try {
+    fd = openSync(file, "a");
+  } catch {
+    fd = undefined;
+  }
+  return {
+    write(data) {
+      if (fd === undefined) return;
+      try {
+        writeSync(fd, typeof data === "string" ? Buffer.from(data, "utf8") : data);
+      } catch {
+        // a log write never fails the ask
+      }
+    },
+    close() {
+      if (fd === undefined) return;
+      try {
+        closeSync(fd);
+      } catch {
+        // already gone
+      }
+      fd = undefined;
+    },
+  };
+}
+
 /** Run one ask to completion: spawn the agent, read its reply, save the lens. Never throws. */
 export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.question)): Promise<AskOutcome> {
   const repo = resolve(req.repo);
@@ -288,8 +321,7 @@ export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.q
   const tmpDir = mkdtempSync(join(tmpdir(), "ultraview-ask-"));
   const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir });
   mkdirSync(join(repo, VIEW_DIR), { recursive: true });
-  const log = createWriteStream(join(repo, ASK_LOG), { flags: "a" });
-  log.on("error", () => {});
+  const log = openAskLog(join(repo, ASK_LOG));
   log.write(
     `=== ${new Date().toISOString()} ask ${id} (${agent.name})\nquestion: ${question}\n$ ${[inv.cmd, ...inv.args].map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")}\n`,
   );
@@ -307,10 +339,12 @@ export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.q
       if (timer) clearTimeout(timer);
       if (killTimer) clearTimeout(killTimer);
       req.onChild?.(undefined);
+      // Appended and closed synchronously, so the log is complete before the outcome is announced;
+      // `finished` keeps anything the agent prints from now on out of it: this line is the last one.
       log.write(
         `--- ${o.ok ? `saved ${o.file}` : `failed: ${o.error}${o.problems?.length ? `\n${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : ""}`}\n\n`,
       );
-      log.end();
+      log.close();
       rmSync(tmpDir, { recursive: true, force: true });
       done(o);
     };
