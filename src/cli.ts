@@ -1,20 +1,31 @@
 // The ultraview CLI. The only module that prints or sets an exit status:
 // every command is a library call (src/build.ts, src/status.ts, src/check.ts,
-// src/dossier.ts, src/show.ts, src/save.ts) whose result this file renders, as
-// plain text for an agent or as JSON with --json.
+// src/dossier.ts, src/show.ts, src/save.ts, src/changes.ts, src/timeline.ts,
+// src/hook.ts, src/insights.ts, src/export.ts) whose result this file renders,
+// as plain text for an agent or as JSON with --json.
 
-import { readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildMap } from "./build.js";
+import { changeMarkdown, computeDiff, formatChange, readGitDiff, recordChange } from "./changes.js";
 import { type CheckReport, checkMap, formatIssue } from "./check.js";
 import { DOSSIER_BUDGET, renderNodeDossier } from "./dossier.js";
-import { codeindex, ULTRAINDEX_VERSION } from "./engine.js";
+import { codeindex, indexExists, ULTRAINDEX_VERSION } from "./engine.js";
+import { EXPORT_LEVELS, type ExportLevel, exportBrief, exportMermaid, exportSvg, exportView } from "./export.js";
+import { type HookResult, installHook, uninstallHook } from "./hook.js";
+import { insightsOf } from "./insights.js";
+import { writeFileAtomic } from "./json.js";
+import { latestChange } from "./model/load.js";
+import { TIMELINE_SOURCES, type TimelineItem, type TimelineSource } from "./model/types.js";
+import type { Problem } from "./model/validate.js";
+import { viewPaths } from "./paths.js";
 import { type SaveResult, saveFlow, saveLens } from "./save.js";
 import { openFile, renderMap } from "./render.js";
 import { formatNodeCard, liveView, nodeCard, similarIds } from "./show.js";
 import { formatBuildSummary } from "./summary.js";
 import { readStatus, type StatusReport } from "./status.js";
+import { addTimelineEntry, itemsFromFlags, parseItems } from "./timeline.js";
 import { ULTRAVIEW_VERSION } from "./version.js";
 
 export const EXIT_OK = 0;
@@ -25,6 +36,7 @@ export const HELP = `ultraview v${ULTRAVIEW_VERSION} (ultraindex ${ULTRAINDEX_VE
 See your app instead of reading its code: a cited map of a repository, built
 from the ultraindex index plus deterministic extractors (routes, data models,
 …) and the meaning the agent writes into .ultraview/ (model, flows, lenses),
+plus the history of every change (diff, timeline) and engine insights,
 drawn as one offline HTML page.
 
 Usage:
@@ -60,6 +72,38 @@ Commands:
                      (or --out): the map with semantic zoom, data models,
                      flows, saved questions, changes, search and tour.
                      --open opens it in the default browser.
+  diff               What changed, on the map: the engine's delta mapped onto
+                     every level (capabilities, systems, modules, files,
+                     symbols, routes, screens, entities, jobs) as added /
+                     changed / removed / impacted (blast radius), with
+                     per-module risk and imports broken by a removal. Against
+                     --base <ref> (default: origin/HEAD, origin/main, main…),
+                     --staged (staged vs HEAD) or --worktree (staged, unstaged
+                     and untracked vs HEAD). Rebuilds the map first when it is
+                     stale. --record writes .ultraview/changes/<id>.json and
+                     appends a timeline entry; --markdown prints a PR summary
+                     with a Mermaid diagram of the impacted modules.
+  timeline add       Append a narrated entry to .ultraview/timeline.jsonl:
+                     --title, --summary (every sentence cites [path:line]),
+                     optional --request, --source, and items as repeated
+                     --ref <node-id> [--change new|changed|removed] [--note …]
+                     or --items '<json array>'. Refused when invalid.
+  hook install       Opt-in: add a Claude Code Stop hook to
+                     <repo>/.claude/settings.local.json (personal, not
+                     committed) that records every agent turn (diff --worktree
+                     --record, silent, never fails the turn). --shared writes
+                     the committed .claude/settings.json instead (warns: the
+                     command holds this machine's absolute path). Other keys
+                     and hooks are kept; --dry-run shows the file and diff.
+  hook uninstall     Remove that hook, and only it, from whichever of the two
+                     files holds it.
+  insights           Engine-grounded findings: hotspots, hidden coupling,
+                     import cycles, dead code, untested hubs, repeated
+                     literals; each with a ready prompt for your agent.
+  export             The map for a README or PR: --mermaid (flowchart),
+                     --svg (laid-out diagram) at --level cap|sys|mod or of one
+                     --lens <id> / --flow <id>, or --md (an architecture brief).
+                     --out <file> writes it (atomically) instead of printing.
 
 Options:
   --repo <dir>   Repository to map (default: the current directory)
@@ -71,20 +115,86 @@ Options:
   --budget <n>   dossier: token budget (default ${DOSSIER_BUDGET}, ~4 characters a token)
   --force        lens save / flow save: replace a different question / title
                  saved under the same id
-  --out <file>   render: where to write the page (default
-                 <repo>/.ultraview/index.html)
   --open         render: open the page with the OS opener afterwards
+  --base <ref>   diff: the ref to compare with (its merge-base with HEAD)
+  --staged       diff: staged changes only, against HEAD
+  --worktree     diff: everything uncommitted, against HEAD
+  --depth <n>    diff: blast-radius depth in hops (default 2)
+  --record       diff: write the change set and append a timeline entry
+  --source <s>   diff --record / timeline add: agent, pr or manual (default:
+                 manual for diff, agent for timeline add)
+  --title <t>    diff --record / timeline add: entry title (diff: from counts)
+  --summary <s>  diff --record / timeline add: cited summary (diff: an auto
+                 summary from counts, flagged auto)
+  --request <r>  diff --record / timeline add: what was asked
+  --ref <id>     timeline add: an item's node id (repeatable)
+  --change <c>   timeline add: the last --ref's change: new, changed (default)
+                 or removed
+  --note <n>     timeline add: the last --ref's note
+  --items <json> timeline add: items as a JSON array of { ref, change, note }
+  --markdown     diff: print a PR-ready Markdown summary
+  --quiet        diff: print nothing on success
+  --hook         diff: hook mode — exit 0 whatever happens, errors to
+                 .ultraview/hook.log, skip when nothing new to record
+  --agent <a>    hook: the agent to hook (only claude)
+  --dry-run      hook: print the settings file and diff, write nothing
+  --shared       hook install: .claude/settings.json (committed) instead of
+                 .claude/settings.local.json
+  --mermaid      export: Mermaid flowchart
+  --svg          export: SVG diagram
+  --md           export: Markdown architecture brief
+  --level <l>    export: cap, sys (default) or mod
+  --lens <id>    export: the subgraph of one saved lens
+  --flow <id>    export: the steps of one saved flow
+  --out <file>   render: where to write the page (default
+                 <repo>/.ultraview/index.html); export: write to this file
+                 instead of stdout
   --json         Machine-readable output (the full result object)
   -h, --help     Show this help
   -v, --version  Show the version
 
-Exit codes: 0 ok, 1 failure (check failed, save refused), 2 usage error or
-unknown node id.
+Exit codes: 0 ok, 1 failure (check failed, save / record / timeline entry
+refused), 2 usage error or unknown node id. diff --hook always exits 0.
 `;
 
-export const COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render"];
-export const VALUE_FLAGS = ["repo", "budget", "out"];
-export const BOOL_FLAGS = ["json", "no-ast", "strict", "force", "open"];
+export const COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render", "diff", "timeline", "hook", "insights", "export"];
+export const VALUE_FLAGS = [
+  "repo",
+  "budget",
+  "base",
+  "depth",
+  "source",
+  "title",
+  "summary",
+  "request",
+  "ref",
+  "change",
+  "note",
+  "items",
+  "agent",
+  "level",
+  "lens",
+  "flow",
+  "out",
+];
+export const BOOL_FLAGS = [
+  "json",
+  "no-ast",
+  "strict",
+  "force",
+  "staged",
+  "worktree",
+  "record",
+  "markdown",
+  "quiet",
+  "hook",
+  "dry-run",
+  "shared",
+  "mermaid",
+  "md",
+  "svg",
+  "open",
+];
 
 /** Positional arguments each command takes (after the command name). */
 const ARITY: Record<string, { min: number; max: number; usage: string }> = {
@@ -96,6 +206,11 @@ const ARITY: Record<string, { min: number; max: number; usage: string }> = {
   lens: { min: 2, max: 2, usage: "lens save <file>" },
   flow: { min: 2, max: 2, usage: "flow save <file>" },
   render: { min: 0, max: 0, usage: "render [--out <file>] [--open]" },
+  diff: { min: 0, max: 0, usage: "diff [--base <ref> | --staged | --worktree] [--record] [--markdown]" },
+  timeline: { min: 1, max: 1, usage: "timeline add --title … --summary …" },
+  hook: { min: 1, max: 1, usage: "hook install|uninstall [--agent claude]" },
+  insights: { min: 0, max: 0, usage: "insights" },
+  export: { min: 0, max: 0, usage: "export --mermaid|--svg|--md [--level cap|sys|mod] [--lens <id>] [--flow <id>] [--out <file>]" },
 };
 
 export interface Io {
@@ -111,6 +226,8 @@ const processIo: Io = {
 export interface Parsed {
   command?: string;
   values: Record<string, string>;
+  /** Every value flag in command-line order (repeatable flags: `--ref a --change new --ref b`). */
+  seq: [string, string][];
   bools: Set<string>;
   positional: string[];
   help: boolean;
@@ -118,7 +235,7 @@ export interface Parsed {
 }
 
 export function parseArgs(argv: readonly string[]): Parsed | { error: string } {
-  const parsed: Parsed = { values: {}, bools: new Set(), positional: [], help: false, version: false };
+  const parsed: Parsed = { values: {}, seq: [], bools: new Set(), positional: [], help: false, version: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] as string;
     if (arg === "-h" || arg === "--help") {
@@ -146,6 +263,7 @@ export function parseArgs(argv: readonly string[]): Parsed | { error: string } {
         i++;
       }
       parsed.values[key] = value;
+      parsed.seq.push([key, value]);
       continue;
     }
     if (arg.startsWith("-") && arg !== "-") return { error: `unknown option: ${arg} (run --help for the options)` };
@@ -284,6 +402,187 @@ async function cmdRender(p: Parsed, io: Io): Promise<number> {
   return EXIT_OK;
 }
 
+function usage(io: Io, message: string): number {
+  io.err(`ultraview: ${message}\n`);
+  return EXIT_USAGE;
+}
+
+const problemLines = (errors: readonly Problem[]) => errors.map((e) => `  ${e.path || "(root)"}: ${e.message}`).join("\n");
+
+/** `--source`, checked; undefined when absent. */
+function sourceOf(p: Parsed): TimelineSource | undefined | { error: string } {
+  const v = p.values.source;
+  if (v === undefined) return undefined;
+  return (TIMELINE_SOURCES as readonly string[]).includes(v)
+    ? (v as TimelineSource)
+    : { error: `--source must be one of ${TIMELINE_SOURCES.join(", ")} (got ${v})` };
+}
+
+async function runDiff(p: Parsed, io: Io, repo: string, hook: boolean): Promise<number> {
+  const { staged, worktree } = { staged: p.bools.has("staged"), worktree: p.bools.has("worktree") };
+  if (staged && worktree) return usage(io, "--staged and --worktree are exclusive");
+  if (p.values.base !== undefined && (staged || worktree)) return usage(io, "--base compares committed work with a branch: drop --staged / --worktree");
+  let depth: number | undefined;
+  if (p.values.depth !== undefined) {
+    depth = Number(p.values.depth);
+    if (!Number.isInteger(depth) || depth < 0) return usage(io, `--depth must be a non-negative integer (got ${p.values.depth})`);
+  }
+  const source = sourceOf(p);
+  if (source && typeof source === "object") return usage(io, source.error);
+  const record = p.bools.has("record");
+  const quiet = p.bools.has("quiet");
+  const asJson = p.bools.has("json");
+  if (hook && !indexExists(viewPaths(repo).index)) {
+    io.err("no ultraindex index: run `ultraview build` once, the hook then keeps the timeline\n");
+    return EXIT_FAILURE;
+  }
+  const opts = { base: p.values.base, staged, worktree, depth, ast: !p.bools.has("no-ast") };
+  const git = readGitDiff(repo, opts);
+  if (record) {
+    // Nothing (new) to record: an empty diff, or the same one as the last change set.
+    const last = latestChange(repo);
+    const skipped = !git.diff.files.length ? "nothing changed" : last?.fingerprint === git.fingerprint ? `already recorded as ${last.id}` : undefined;
+    if (skipped) {
+      if (asJson) io.out(json({ recorded: false, reason: skipped }));
+      else if (!quiet) io.out(`diff       ${skipped}: nothing recorded\n`);
+      return EXIT_OK;
+    }
+  }
+  const { change, view } = await computeDiff(repo, opts, git);
+  let recorded: ReturnType<typeof recordChange> | undefined;
+  if (record) {
+    recorded = recordChange(repo, change, {
+      source: source ?? (hook ? "agent" : "manual"),
+      title: p.values.title,
+      summary: p.values.summary,
+      request: p.values.request,
+    });
+    if (!recorded.ok) {
+      if (asJson) io.out(json({ recorded: false, errors: recorded.errors }));
+      io.err(`ultraview: change not recorded:\n${problemLines(recorded.errors)}\n`);
+      return EXIT_FAILURE;
+    }
+  }
+  if (quiet) return EXIT_OK;
+  if (asJson)
+    io.out(json(recorded ? { change: { ...change, id: recorded.entry!.change }, recorded: true, file: recorded.file, entry: recorded.entry } : { change }));
+  else if (p.bools.has("markdown")) io.out(changeMarkdown(change, view));
+  else io.out(`${formatChange(change)}${recorded ? `recorded   ${recorded.file}; timeline entry appended\n` : ""}`);
+  return EXIT_OK;
+}
+
+async function cmdDiff(p: Parsed, io: Io): Promise<number> {
+  const repo = resolve(p.values.repo ?? ".");
+  if (!p.bools.has("hook")) return runDiff(p, io, repo, false);
+  // Hook mode: never a word on stdout, never a failing exit; problems go to .ultraview/hook.log.
+  // A refresh inside an agent's turn uses cached grammars or the regex tier, never the network.
+  const pull = process.env.CODEINDEX_NO_GRAMMARS_PULL;
+  process.env.CODEINDEX_NO_GRAMMARS_PULL = "1";
+  const errs: string[] = [];
+  try {
+    await runDiff(p, { out: () => {}, err: (s) => void errs.push(s) }, repo, true);
+  } catch (e) {
+    errs.push(`${(e as Error).message}\n`);
+  } finally {
+    if (pull === undefined) delete process.env.CODEINDEX_NO_GRAMMARS_PULL;
+    else process.env.CODEINDEX_NO_GRAMMARS_PULL = pull;
+  }
+  if (errs.length) {
+    try {
+      const log = viewPaths(repo).hookLog;
+      if (!existsSync(viewPaths(repo).dir)) mkdirSync(viewPaths(repo).dir, { recursive: true });
+      appendFileSync(log, errs.map((e) => `${new Date().toISOString()} ${e.replace(/^ultraview: /, "")}`).join(""));
+    } catch {
+      // Nowhere to log: still never fail the agent's turn.
+    }
+  }
+  return EXIT_OK;
+}
+
+async function cmdTimeline(p: Parsed, io: Io): Promise<number> {
+  if (p.positional[0] !== "add") return usage(io, `unknown timeline action: ${p.positional[0]} (only \`timeline add\`)`);
+  if (p.values.title === undefined || p.values.summary === undefined) return usage(io, "timeline add needs --title and --summary");
+  const source = sourceOf(p);
+  if (source && typeof source === "object") return usage(io, source.error);
+  const items: TimelineItem[] = [];
+  const problems: Problem[] = [];
+  if (p.values.items !== undefined) {
+    const r = parseItems(p.values.items);
+    items.push(...r.items);
+    problems.push(...r.problems);
+  }
+  const flagged = itemsFromFlags(p.seq);
+  items.push(...flagged.items);
+  problems.push(...flagged.problems);
+  const r = problems.length
+    ? { ok: false, file: ".ultraview/timeline.jsonl", errors: problems }
+    : addTimelineEntry(p.values.repo ?? ".", { title: p.values.title, summary: p.values.summary, request: p.values.request, source, items });
+  if (p.bools.has("json")) io.out(json(r));
+  else if (r.ok) io.out(`appended   ${r.file} (${items.length} item(s))\n`);
+  else io.err(`ultraview: timeline entry not appended:\n${problemLines(r.errors)}\n`);
+  return r.ok ? EXIT_OK : EXIT_FAILURE;
+}
+
+/** The ultraview.mjs this process runs (the bundle when run as the skill). */
+function scriptPath(): string {
+  const self = fileURLToPath(import.meta.url);
+  try {
+    return realpathSync(self);
+  } catch {
+    return self;
+  }
+}
+
+async function cmdHook(p: Parsed, io: Io): Promise<number> {
+  const action = p.positional[0];
+  if (action !== "install" && action !== "uninstall") return usage(io, `unknown hook action: ${action} (install or uninstall)`);
+  const repo = p.values.repo ?? ".";
+  const opts = { agent: p.values.agent, dryRun: p.bools.has("dry-run"), shared: p.bools.has("shared") };
+  const r: HookResult = action === "install" ? installHook(repo, scriptPath(), opts) : uninstallHook(repo, opts);
+  if (p.bools.has("json")) io.out(json(r));
+  else if (!r.ok) io.err(`ultraview: ${r.errors.join("; ")}\n`);
+  else {
+    const verb = { installed: "installed", updated: "updated", unchanged: "already installed", removed: "removed", absent: "not installed" }[r.action];
+    io.out(
+      `hook       ${r.dryRun ? "(dry run) would be " : ""}${verb}: ${r.files.length ? r.files.join(", ") : r.file}${r.command ? `\ncommand    ${r.command}` : ""}\n${r.dryRun && r.diff ? r.diff : ""}`,
+    );
+  }
+  if (r.warning) io.err(`ultraview: warning: ${r.warning}\n`);
+  return r.ok ? EXIT_OK : EXIT_FAILURE;
+}
+
+async function cmdInsights(p: Parsed, io: Io): Promise<number> {
+  const insights = insightsOf(p.values.repo ?? ".");
+  if (p.bools.has("json")) io.out(json(insights));
+  else if (!insights.length) io.out("insights   none: no hotspot, hidden coupling, cycle, dead code, untested hub or repeated literal past the thresholds\n");
+  else {
+    const lines = [`insights   ${insights.length}`];
+    for (const i of insights) lines.push(`  [${i.severity}] ${i.kind}  ${i.title}`, `      ${i.detail}`, `      prompt: ${i.prompt}`);
+    io.out(`${lines.join("\n")}\n`);
+  }
+  return EXIT_OK;
+}
+
+async function cmdExport(p: Parsed, io: Io): Promise<number> {
+  const formats = (["mermaid", "svg", "md"] as const).filter((f) => p.bools.has(f));
+  if (formats.length !== 1) return usage(io, "export needs exactly one of --mermaid, --svg, --md");
+  const format = formats[0]!;
+  const picks = (["level", "lens", "flow"] as const).filter((k) => p.values[k] !== undefined);
+  if (picks.length > 1) return usage(io, "use one of --level, --lens, --flow");
+  if (format === "md" && picks.length) return usage(io, "--md is the whole brief: --level / --lens / --flow are for --mermaid and --svg");
+  const level = p.values.level;
+  if (level !== undefined && !(EXPORT_LEVELS as readonly string[]).includes(level))
+    return usage(io, `--level must be one of ${EXPORT_LEVELS.join(", ")} (got ${level})`);
+  const view = exportView(p.values.repo ?? ".", { insights: format === "md" });
+  const opts = { level: level as ExportLevel | undefined, lens: p.values.lens, flow: p.values.flow };
+  const content = format === "md" ? exportBrief(view) : format === "svg" ? exportSvg(view, opts) : exportMermaid(view, opts);
+  if (p.values.out !== undefined) {
+    writeFileAtomic(p.values.out, content);
+    io.out(p.bools.has("json") ? json({ format, file: resolve(p.values.out) }) : `wrote      ${p.values.out}\n`);
+  } else io.out(p.bools.has("json") ? json({ format, content }) : content);
+  return EXIT_OK;
+}
+
 export async function main(argv: readonly string[], io: Io = processIo): Promise<number> {
   const p = parseArgs(argv);
   if ("error" in p) {
@@ -326,6 +625,16 @@ export async function main(argv: readonly string[], io: Io = processIo): Promise
         return await cmdSave(p, io, p.command);
       case "render":
         return await cmdRender(p, io);
+      case "diff":
+        return await cmdDiff(p, io);
+      case "timeline":
+        return await cmdTimeline(p, io);
+      case "hook":
+        return await cmdHook(p, io);
+      case "insights":
+        return await cmdInsights(p, io);
+      case "export":
+        return await cmdExport(p, io);
       default:
         return await cmdStatus(p, io);
     }

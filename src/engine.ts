@@ -18,6 +18,9 @@
 export type {
   BuildResult,
   CheckResult,
+  DeltaChange,
+  DeltaModule,
+  DeltaResult,
   FileNode,
   Graph,
   Manifest,
@@ -36,6 +39,7 @@ export {
   indexExists,
   indexPaths,
   loadEnrichedProse,
+  loadCache,
   loadGraph,
   loadManifest,
   loadSymbols,
@@ -45,4 +49,5 @@ export {
   runBuild,
   runCheck,
   runStatus,
+  withEntries,
 } from "./vendor/ultraindex-engine.mjs";

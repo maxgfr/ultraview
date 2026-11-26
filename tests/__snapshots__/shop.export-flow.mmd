@@ -1,0 +1,8 @@
+flowchart LR
+  route_POST__api_orders>"POST /api/orders"]
+  sym_src_services_orders_ts_placeOrder["placeOrder"]
+  entity_Order[("Order")]
+  route_POST__api_orders -->|"1"| sym_src_services_orders_ts_placeOrder
+  sym_src_services_orders_ts_placeOrder -->|"2"| entity_Order
+  classDef focus stroke-width:3px
+  class route_POST__api_orders focus

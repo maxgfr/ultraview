@@ -12,7 +12,8 @@
 //   - the capability overlay (every node's `caps`, `cap:_foundations` for the rest)
 //   - edges: file-level ones from the graph and facts, then rolled up to
 //     module, system and capability level (weight = summed references)
-//   - metrics, labels, summaries, coverage and staleness
+//   - metrics (churn included), labels, summaries, coverage and staleness
+//   - the timeline newest first, the latest change set and the insights, as given
 
 import { codeindex, type Graph, parseCitations, type SymbolIndex } from "../engine.js";
 import type { Facts } from "../extract/types.js";
@@ -38,8 +39,10 @@ import {
   UNASSIGNED_SYS,
 } from "./ids.js";
 import {
+  type ChangeSet,
   type ViewEdgeKind,
   type Flow,
+  type Insight,
   type Lens,
   type Model,
   type ModelSystem,
@@ -63,6 +66,10 @@ export interface WorkspaceRef {
 
 export interface ViewInputs {
   repoName: string;
+  /** Absolute repository path (machine-local: open-in-editor links). */
+  root?: string;
+  /** `origin` as an https URL, credentials stripped. */
+  remote?: string;
   commit?: string;
   graph: Graph;
   symbols?: SymbolIndex;
@@ -80,6 +87,11 @@ export interface ViewInputs {
   proseStale: string[];
   /** Current sha256 of every path a flow / lens `sources` names; null = file gone. */
   currentHashes: Map<string, string | null>;
+  /** Repo-relative path → commits touching it in the churn window; absent = not measured (0). */
+  churn?: Map<string, number>;
+  /** The latest recorded change set. */
+  changes?: ChangeSet | null;
+  insights?: Insight[];
 }
 
 /** A glob in model.json that matched no indexed file (likely a typo). */
@@ -261,6 +273,8 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
 
   // --- files and their systems -------------------------------------------
   const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp(a.rel, b.rel));
+  // Commits touching each file in the churn window; aggregates sum their files' (file-commit touches).
+  const churnOf = (rel: string) => inp.churn?.get(rel) ?? 0;
   const rels = files.map((f) => f.rel);
   const testMap = codeindex.computeTestMap(graph);
 
@@ -329,7 +343,7 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
         metrics: {
           loc: sliceFiles.reduce((n, f) => n + f.lines, 0),
           pagerank: round4((m.pagerank ?? 0) * (split ? share : 1)),
-          churn: 0, // TODO(churn): from git history (codeindex.gitChurn) once `diff` lands.
+          churn: sliceFiles.reduce((n, f) => n + churnOf(f.rel), 0),
           // A slice: the distinct test files covering its own files.
           tests: split ? new Set(sliceFiles.flatMap((f) => testMap.testedByFile.get(f.rel) ?? [])).size : (m.testedBy?.length ?? 0),
         },
@@ -368,7 +382,7 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
       label: f.rel.split("/").pop() ?? f.rel,
       parent: fileParent.get(f.rel) ?? modId(f.module),
       cites: [],
-      metrics: { loc: f.lines, pagerank: round4(f.pagerank ?? 0), churn: 0, tests: testMap.testedByFile.get(f.rel)?.length ?? 0 },
+      metrics: { loc: f.lines, pagerank: round4(f.pagerank ?? 0), churn: churnOf(f.rel), tests: testMap.testedByFile.get(f.rel)?.length ?? 0 },
       caps: [],
       tags: uniqSorted([f.fileKind, ...(f.testFile ? ["test"] : [])]),
     });
@@ -541,6 +555,7 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
     const m = nodes.get(target)!.metrics;
     m.loc += f.metrics.loc;
     m.pagerank = round4(m.pagerank + f.metrics.pagerank);
+    m.churn += f.metrics.churn;
     m.tests += f.metrics.tests;
   };
   for (const f of fileNodes) {
@@ -639,7 +654,12 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
 
   const view: ViewModel = {
     schema: VIEW_SCHEMA,
-    repo: { name: inp.repoName, ...(inp.commit ? { commit: inp.commit } : {}) },
+    repo: {
+      name: inp.repoName,
+      ...(inp.commit ? { commit: inp.commit } : {}),
+      ...(inp.remote ? { remote: inp.remote } : {}),
+      ...(inp.root ? { root: inp.root } : {}),
+    },
     app: {
       name: model?.app.name ?? inp.repoName,
       ...(model?.app.summary ? { summary: model.app.summary } : {}),
@@ -650,9 +670,9 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
     edges,
     flows,
     lenses,
-    timeline: [...inp.timeline],
-    changes: null,
-    insights: [],
+    timeline: timelineNewestFirst(inp.timeline),
+    changes: inp.changes ?? null,
+    insights: [...(inp.insights ?? [])],
     glossary: [...(model?.glossary ?? [])],
     tour: [...(model?.tour ?? [])],
     coverage: { filesInSystems: ratio(inSystems, codeFiles.length), modulesInCapabilities: ratio(inCaps, codeModules.length) },
@@ -663,6 +683,14 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
     },
   };
   return { view, fileSystems, emptyGlobs };
+}
+
+/** Timeline entries newest first (by `at`); entries with the same time put the later line first. */
+export function timelineNewestFirst(entries: readonly TimelineEntry[]): TimelineEntry[] {
+  return entries
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => cmp(b.t.at, a.t.at) || b.i - a.i)
+    .map(({ t }) => t);
 }
 
 /** The merged view-model of loaded inputs. Pure: same inputs, same object. */

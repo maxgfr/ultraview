@@ -17,5 +17,16 @@ ultraindex index, extracts the repository's routes and data models into
 node; `lens save` / `flow save` stamp and store a saved question or flow;
 `render` writes the map as one offline page, `.ultraview/index.html` (`--open`
 opens it; deep links such as `#lens=<id>` or `#view=map&node=<id>` point the
-user at a view). The full agent loop arrives in later releases. Run
-`node scripts/ultraview.mjs --help` for the current surface.
+user at a view).
+
+After a change, `diff --worktree --record --source agent --title "…" --summary
+"… [path:line]"` maps what changed (and what it impacts) onto the map, writes
+`.ultraview/changes/<id>.json` and appends one timeline entry; `diff
+--markdown` prints a PR summary with a Mermaid diagram. `timeline add` appends
+a note without a change. `hook install` (only when the user asks) records every
+Claude Code turn automatically, from `.claude/settings.local.json` (`--shared`
+for the committed `.claude/settings.json`). `insights` lists hotspots, hidden
+coupling, cycles, dead code, untested hubs and repeated literals, each with a
+prompt to hand back to the user; `export --md` / `--mermaid` / `--svg` produce
+a brief or a diagram for a README or PR. The full agent loop arrives in later
+releases. Run `node scripts/ultraview.mjs --help` for the current surface.

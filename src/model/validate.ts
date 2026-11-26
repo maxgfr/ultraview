@@ -21,6 +21,7 @@ export interface Problem {
 type Spec =
   | { t: "string"; enum?: readonly string[]; slug?: boolean; nonEmpty?: boolean; nodeId?: readonly NodeKind[] }
   | { t: "literal"; value: number }
+  | { t: "boolean" }
   | { t: "array"; of: Spec; nonEmpty?: boolean; unique?: boolean }
   | { t: "record"; of: Spec }
   | { t: "object"; fields: Record<string, Spec>; required: readonly string[] };
@@ -114,6 +115,8 @@ const TIMELINE_SPEC = obj(
     items: arr(obj({ ref: nodeRef(), change: str({ enum: CHANGE_KINDS }), note: text }, ["ref", "change"])),
     base: text,
     head: text,
+    change: text,
+    auto: { t: "boolean" },
   },
   ["at", "source", "title", "summary", "items"],
 );
@@ -128,6 +131,9 @@ function walkSpec(spec: Spec, value: unknown, path: string, out: Problem[]): und
   switch (spec.t) {
     case "literal":
       if (value !== spec.value) fail(`must be ${spec.value} (got ${JSON.stringify(value) ?? "undefined"})`);
+      return;
+    case "boolean":
+      if (typeof value !== "boolean") fail(`must be true or false (got ${typeName(value)})`);
       return;
     case "string": {
       if (typeof value !== "string") return fail(`must be a string (got ${typeName(value)})`);

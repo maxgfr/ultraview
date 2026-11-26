@@ -3,7 +3,8 @@
 //
 //   errors    schema problems; node ids that resolve to nothing; dead citations
 //             (ultraindex `checkCitations` against the index's line table);
-//             sentences without a citation; coverage below the thresholds;
+//             sentences without a citation (timeline `auto` summaries
+//             aside); coverage below the thresholds;
 //             a stale index or missing facts (re-run `build` first)
 //   warnings  stale lenses / flows (errors with `strict`), stale ultraindex
 //             prose, globs that match no file, systems / capabilities without
@@ -174,7 +175,10 @@ export function checkMap(repoArg: string, opts: CheckMapOptions = {}): CheckRepo
     prose(file, "answer", l.answer);
     if (!l.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview lens save`" });
   }
-  timeline.forEach((t, i) => prose(TIMELINE_FILE, `line ${i + 1}.summary`, t.summary));
+  // An `auto` summary is generated from a change set's counts, not written: it has nothing to cite.
+  timeline.forEach((t, i) => {
+    if (!t.auto) prose(TIMELINE_FILE, `line ${i + 1}.summary`, t.summary);
+  });
 
   const staleSink = opts.strict ? errors : warnings;
   for (const id of view.stale.lenses)

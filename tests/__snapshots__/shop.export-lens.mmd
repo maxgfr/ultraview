@@ -1,0 +1,7 @@
+flowchart LR
+  route_DELETE__api_orders__id>"DELETE /api/orders/:id"]
+  sym_src_services_orders_ts_cancelOrder["cancelOrder"]
+  entity_Order[("Order")]
+  route_DELETE__api_orders__id -->|"data"| entity_Order
+  classDef focus stroke-width:3px
+  class route_DELETE__api_orders__id focus

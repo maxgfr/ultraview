@@ -41,7 +41,9 @@ describe("assembleView", () => {
     // Rebuild so the saved lens and flow are in the view.
     const r = await buildMap({ repo, ast: false });
     const first = readFileSync(join(repo, ".ultraview", "view.json"), "utf8");
-    await expect(first).toMatchFileSnapshot("./__snapshots__/shop.view.json");
+    // repo.root is the machine-local absolute path: the only part that differs between machines.
+    expect(JSON.parse(first).repo.root).toBe(repo);
+    await expect(first.replace(JSON.stringify(repo), '"<repo>"')).toMatchFileSnapshot("./__snapshots__/shop.view.json");
     await buildMap({ repo, ast: false });
     expect(readFileSync(join(repo, ".ultraview", "view.json"), "utf8")).toBe(first);
     expect(r.view).toMatchObject({ nodes: 40, coverage: { filesInSystems: 1, modulesInCapabilities: 1 }, oversize: false, problems: [] });

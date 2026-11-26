@@ -1,7 +1,8 @@
 // `ultraview build`, as a library call: refresh the ultraindex index
-// (incremental), run the extractors over the files it indexed, merge
-// everything into the view-model, and write `.ultraview/facts.json`,
-// `.ultraview/view.json` plus `.ultraview/.gitignore`.
+// (incremental), run the extractors over the files it indexed, read the git
+// history (churn) and the engine's insights, merge everything into the
+// view-model, and write `.ultraview/facts.json`, `.ultraview/view.json` plus
+// `.ultraview/.gitignore`.
 //
 // Never prints, never exits: the result comes back as a value and the CLI
 // decides what to say (src/cli.ts, src/summary.ts).
@@ -10,6 +11,7 @@ import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { codeindex, type Graph, loadManifest, prepareGrammars, runBuild } from "./engine.js";
 import { type ExtractorFailure, type Facts, runExtractors } from "./extract/index.js";
+import { insightsOf, repoHistory } from "./insights.js";
 import { stableJson } from "./json.js";
 import { assembleView } from "./model/assemble.js";
 import { type FileProblem, loadViewInputs } from "./model/load.js";
@@ -140,7 +142,9 @@ export async function buildMap(opts: MapBuildOptions): Promise<MapBuildResult> {
   writeFileSync(paths.facts, stableJson(facts));
   writeFileSync(paths.gitignore, GITIGNORE_BODY);
 
-  const loaded = loadViewInputs(repo, { graph, facts });
+  const history = repoHistory(repo);
+  const insights = insightsOf(repo, { graph, history });
+  const loaded = loadViewInputs(repo, { graph, facts, churn: history.churn, insights });
   const view = assembleView(loaded.inputs);
   const viewText = stableJson(view);
   writeFileSync(paths.view, viewText);

@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -80,4 +81,54 @@ export async function builtShop(cleanups: (() => void)[], opts: ShopOptions = {}
 /** Run every extractor and linker over an in-memory repo (keys are repo-relative paths). */
 export function factsOfFiles(files: Record<string, string>) {
   return runExtractors("/repo", Object.keys(files), (abs) => files[abs.slice("/repo/".length)]);
+}
+
+// --- git repos for the change / history tests --------------------------------
+
+let gitClock = Date.parse("2026-01-01T00:00:00Z");
+
+/**
+ * Run git in `dir`, isolated from the machine's git config (no global or
+ * system file: hermetic identity, branch name and dates), so commits made in
+ * throwaway test repos are byte-identical everywhere.
+ */
+export function git(dir: string, args: string[], opts: { date?: string } = {}): string {
+  const date = opts.date ?? new Date((gitClock += 60_000)).toISOString();
+  return execFileSync("git", args, {
+    cwd: dir,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_CONFIG_GLOBAL: join(dir, ".git-test-config-absent"),
+      GIT_CONFIG_NOSYSTEM: "1",
+      GIT_AUTHOR_NAME: "Test",
+      GIT_AUTHOR_EMAIL: "test@example.com",
+      GIT_COMMITTER_NAME: "Test",
+      GIT_COMMITTER_EMAIL: "test@example.com",
+      GIT_AUTHOR_DATE: date,
+      GIT_COMMITTER_DATE: date,
+    },
+  });
+}
+
+/** `git init` + one commit of everything in `dir` (`.ultraindex/` ignored). */
+export function gitInit(dir: string, date = "2026-01-01T00:00:00Z"): void {
+  writeFileSync(join(dir, ".gitignore"), ".ultraindex/\n");
+  git(dir, ["init", "-q", "-b", "main"], { date });
+  git(dir, ["add", "-A"], { date });
+  git(dir, ["commit", "-q", "-m", "init"], { date });
+}
+
+/**
+ * A built shop fixture under git: the model and `.ultraview/.gitignore`
+ * committed with the sources, the index fresh. Edits after this are "the change".
+ */
+export async function gitShop(cleanups: (() => void)[]): Promise<string> {
+  const { dir, cleanup } = copyFixture("shop-express-prisma");
+  cleanups.push(cleanup);
+  writeFileSync(join(dir, ".gitignore"), ".ultraindex/\n");
+  writeView(dir, "model.json", readModelFile("shop.model.json"));
+  await buildMap({ repo: dir, ast: false, builtAt: "2026-01-01T00:00:00.000Z" });
+  gitInit(dir);
+  return dir;
 }

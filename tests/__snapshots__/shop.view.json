@@ -295,7 +295,26 @@
       "term": "Order item"
     }
   ],
-  "insights": [],
+  "insights": [
+    {
+      "cites": [
+        "src/server.ts:1",
+        "src/routes/orders.ts:1",
+        "src/services/orders.ts:1"
+      ],
+      "detail": "3 modules import each other in a loop (src → src/routes → src/services → src): none of them can change or be tested alone.",
+      "id": "cycle:src>src-routes>src-services",
+      "kind": "cycle",
+      "nodes": [
+        "mod:src",
+        "mod:src-routes",
+        "mod:src-services"
+      ],
+      "prompt": "Using ultraview and ultraindex, propose a safe refactor to break the import cycle between src, src/routes, src/services (mod:src, mod:src-routes, mod:src-services), citing files.",
+      "severity": "medium",
+      "title": "Import cycle: src → src/routes → src/services → src"
+    }
+  ],
   "lenses": [
     {
       "answer": "DELETE /api/orders/:id hands the id from the URL to cancelOrder. [src/routes/orders.ts:19-21]\n\nThe order is not deleted: its status is set back to PENDING. [src/services/orders.ts:26]",
@@ -1211,7 +1230,8 @@
     }
   ],
   "repo": {
-    "name": "shop-express-prisma"
+    "name": "shop-express-prisma",
+    "root": "<repo>"
   },
   "schema": 1,
   "stale": {

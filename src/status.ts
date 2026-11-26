@@ -9,10 +9,13 @@
 //   ready             nothing to do
 //
 // Each situation is a probe; a later milestone adds its probe to PROBES and
-// nothing else changes. Never prints, never exits.
+// nothing else changes. On top of the situation, a cheap git check notes work
+// that differs from the last recorded change set (once one was recorded).
+// Never prints, never exits.
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { unrecordedChanges } from "./changes.js";
 import { type CheckReport, checkMap, formatIssue } from "./check.js";
 import { indexExists, runCheck } from "./engine.js";
 import { viewPaths, type ViewPaths } from "./paths.js";
@@ -41,6 +44,8 @@ export interface StatusReport {
   model: { exists: boolean };
   /** The check gate's verdict, when status ran it. */
   check?: { ok: boolean; errors: number; warnings: number; coverage: CheckReport["coverage"] };
+  /** Changes since the last recorded change set (only once one was recorded): its id and mode. */
+  unrecorded?: { last: string; mode: string };
 }
 
 /** What every probe can look at, computed once. */
@@ -153,6 +158,12 @@ export function readStatus(repoArg: string, probes: readonly Probe[] = PROBES): 
       break;
     }
   }
+  // Not a situation of its own: a note on top of whichever holds.
+  const unrecorded = unrecordedChanges(repo);
+  if (unrecorded) {
+    hit.reasons = [...hit.reasons, `the ${unrecorded.mode} differs from the last recorded change (${unrecorded.last})`];
+    hit.worklist = [...hit.worklist, `record it: \`ultraview diff ${unrecorded.mode === "base" ? "" : `--${unrecorded.mode} `}--record\``];
+  }
   return {
     repo,
     ...hit,
@@ -160,5 +171,6 @@ export function readStatus(repoArg: string, probes: readonly Probe[] = PROBES): 
     facts: inputs.facts,
     model: inputs.model,
     ...(report ? { check: { ok: report.ok, errors: report.errors.length, warnings: report.warnings.length, coverage: report.coverage } } : {}),
+    ...(unrecorded ? { unrecorded } : {}),
   };
 }

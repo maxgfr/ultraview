@@ -1,0 +1,6 @@
+flowchart LR
+  sys_api["Main server"]
+  sys_database["Database"]
+  sys__unassigned["Unassigned"]
+  sys_api --> sys_database
+  sys_database -.->|"connection string from DATABASE_URL"| sys_api

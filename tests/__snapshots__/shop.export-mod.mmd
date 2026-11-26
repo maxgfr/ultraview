@@ -1,0 +1,11 @@
+flowchart LR
+  mod_src_routes["Routes"]
+  mod_src_services["Services"]
+  mod_src_database["Src @ Database"]
+  mod_src["Src"]
+  mod_docs["Docs"]
+  mod_prisma["Prisma"]
+  mod_root["Root"]
+  mod_src_routes --> mod_src_services
+  mod_src --> mod_src_routes
+  mod_src_services --> mod_src_database

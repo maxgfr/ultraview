@@ -420,6 +420,49 @@ describe("changes and insights (defensive)", () => {
     expect(normalizeChanges([{ items: "nope" }, 3])).toEqual([{ id: "change-1", title: "change-1", items: [], source: "change" }]);
   });
 
+  it("reads the recorded ChangeSet shape: nodes by status, module risk by bucket, base / head shas", () => {
+    const [c] = normalizeChanges({
+      schema: 1,
+      id: "20260203-040506-worktree",
+      at: "2026-02-03T04:05:06.000Z",
+      mode: "worktree",
+      base: { ref: "HEAD", sha: "a1b2c3d4e5f6" },
+      head: { sha: "a1b2c3d4e5f6", dirty: true },
+      nodes: [
+        { id: "file:src/a.ts", kind: "file", label: "a.ts", status: "added", parent: "mod:src" },
+        { id: "mod:src", kind: "mod", label: "Src", status: "changed", changedFiles: 1, impactedFiles: 0 },
+        { id: "mod:src@database", kind: "mod", label: "Src @ Database", status: "impacted" },
+        { id: "route:GET /x", kind: "route", label: "GET /x", status: "removed" },
+      ],
+      risk: [{ id: "mod:src", label: "Src", path: "src", score: 45, bucket: "medium", reasons: [] }],
+    });
+    expect(c).toEqual({
+      id: "20260203-040506-worktree",
+      title: "20260203-040506-worktree",
+      at: "2026-02-03T04:05:06.000Z",
+      base: "a1b2c3d4e5f6",
+      head: "a1b2c3d4e5f6",
+      items: [
+        { ref: "file:src/a.ts", change: "new" },
+        { ref: "mod:src", change: "changed", risk: "medium" },
+        { ref: "mod:src@database", change: "impacted", risk: "medium" },
+        { ref: "route:GET /x", change: "removed" },
+      ],
+      source: "change",
+    });
+  });
+
+  it("reads view.timeline newest first, with ids stable as entries are added", () => {
+    const older = { at: "2026-01-01T00:00:00Z", source: "agent" as const, title: "first", summary: "s", items: [] };
+    const newer = { at: "2026-01-02T00:00:00Z", source: "pr" as const, title: "second", summary: "s", items: [] };
+    expect(timelineViews([newer, older]).map((c) => [c.id, c.title])).toEqual([
+      ["t2", "second"],
+      ["t1", "first"],
+    ]);
+    const newest = { ...newer, at: "2026-01-03T00:00:00Z", title: "third" };
+    expect(timelineViews([newest, newer, older]).find((c) => c.title === "first")!.id).toBe("t1");
+  });
+
   it("replays timeline entries latest first", () => {
     const tl = timelineViews([
       { at: "2026-01-01T00:00:00Z", source: "agent", title: "first", summary: "s", items: [{ ref: "file:a", change: "new" }] },
@@ -428,6 +471,33 @@ describe("changes and insights (defensive)", () => {
     expect(tl.map((c) => [c.id, c.title, c.origin])).toEqual([
       ["t2", "second", "pr"],
       ["t1", "first", "agent"],
+    ]);
+  });
+
+  it("reads the Insight shape (detail as the summary)", () => {
+    expect(
+      normalizeInsights([
+        {
+          id: "cycle:a>b",
+          kind: "cycle",
+          severity: "medium",
+          title: "Import cycle: a → b → a",
+          detail: "2 modules import each other.",
+          nodes: ["mod:a", "mod:b"],
+          cites: ["a/x.ts:1"],
+          prompt: "Using ultraview and ultraindex, …",
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "cycle:a>b",
+        kind: "cycle",
+        severity: "medium",
+        title: "Import cycle: a → b → a",
+        summary: "2 modules import each other.",
+        nodes: ["mod:a", "mod:b"],
+        prompt: "Using ultraview and ultraindex, …",
+      },
     ]);
   });
 

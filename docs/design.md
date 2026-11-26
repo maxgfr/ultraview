@@ -41,11 +41,16 @@
   facts.json                 # GENERATED (extractors), gitignored
   view.json                  # GENERATED (merged view-model), gitignored
   index.html                 # GENERATED, gitignored
-  .gitignore                 # written by `build`: facts.json, view.json, index.html
+  hook.log                   # WRITTEN by the Stop hook on error only, gitignored
+  .gitignore                 # written by `build`: facts.json, view.json, index.html, hook.log
 ```
 
 `ultraview build` writes `.ultraview/.gitignore` itself so the committed part is
-exactly the meaning + history, never regenerable data.
+exactly the meaning + history, never regenerable data. Nothing committed holds
+a machine-local path: `repo.root` lives only in the gitignored view.json.
+Outside `.ultraview/`, only `hook install` writes, and only into
+`<repo>/.claude/settings.local.json` (personal, not committed; or the shared
+`.claude/settings.json` with `--shared`), when asked.
 
 ## 2. Node identity
 
@@ -218,7 +223,7 @@ Produced by `build`/`render` from ultraindex graph + symbols + facts + model +
 flows + lenses + timeline + latest change + insights. Shape:
 
 ```json
-{ "schema": 1, "repo": { "name": "…", "commit": "…", "remote": "https://github.com/o/r" },
+{ "schema": 1, "repo": { "name": "…", "commit": "…", "remote": "https://github.com/o/r", "root": "/abs/path" },
   "nodes": [ { "id": "…", "kind": "cap|sys|mod|file|sym|route|screen|entity|job|ext",
                "label": "…", "parent": "…", "summary": "…", "cites": ["path:line"],
                "metrics": { "loc": 0, "pagerank": 0, "churn": 0, "tests": 0 },
@@ -230,17 +235,151 @@ flows + lenses + timeline + latest change + insights. Shape:
   "stale": { "lenses": [], "flows": [], "prose": [] } }
 ```
 
+- `repo.remote`: `origin` in https form, credentials stripped
+  (`git@github.com:o/r.git` → `https://github.com/o/r`); absent without one.
+  `repo.root`: the absolute repository path on the machine that built the view,
+  **machine-local**, for open-in-editor links only; never written to a
+  committed file.
+- `metrics.churn`: on a file, the commits touching it within the churn window
+  (`CHURN_WINDOW_MONTHS` = 6 months ending at HEAD's committer date, not "now",
+  so one commit always gives the same numbers; codeindex `gitChurn`); on a
+  module slice, system or capability, the sum of its files' churn
+  (file-commit touches). 0 outside git.
+- `timeline`: every valid line of timeline.jsonl, newest first (by `at`; equal
+  times keep the later line first). `changes`: the latest recorded change set
+  (highest id under `changes/`), or null. `insights`: `insightsOf`, most
+  severe first.
+
 Edge aggregation: file edges roll up to module, system and capability levels
 (weight = count), computed at build time so the viewer never aggregates on
 the fly for big repos. Symbol-level call edges embedded only for the top N
 files by PageRank (default 300 files) — `serve` answers the rest on demand
 (`/api/callgraph?sym=`). Size budget: warn when view.json > 15 MB.
 
+### changes / timeline / insights shapes
+
+Exact types: `src/model/types.ts` (`ChangeSet`, `TimelineEntry`, `Insight`).
+Every array is sorted as stated; optional fields are absent, never null.
+
+**ChangeSet** (`changes/<id>.json`, and `view.changes`):
+
+| field | type | meaning |
+|---|---|---|
+| `schema` | `1` | |
+| `id` | string | `<YYYYMMDD-HHMMSS>-<short head sha>` (UTC) for committed work, `-worktree` instead of the sha when uncommitted work is included; `-2`, `-3`… on a same-second clash |
+| `at` | ISO time | when it was recorded (with `id`, the only time-dependent part) |
+| `mode` | `"base" \| "staged" \| "worktree"` | `base`: worktree + commits against the merge-base of `--base` (default origin/HEAD, origin/main, origin/master, main, master); `staged`: the index against HEAD; `worktree`: staged + unstaged + untracked against HEAD |
+| `base` | `{ ref, sha }` | the ref asked for and the commit it resolved to |
+| `head` | `{ sha?, dirty }` | HEAD; `dirty` when uncommitted changes are part of the set |
+| `depth` | number | blast-radius hops (default 2) |
+| `counts` | `Record<"cap"\|"sys"\|"mod"\|"file"\|"sym"\|"route"\|"screen"\|"entity"\|"job", { added, changed, removed, impacted }>` | every kind always present |
+| `nodes` | `ChangedNode[]`, by id | see below |
+| `risk` | `ModuleRisk[]`, score desc then slug | the engine's per-module risk |
+| `broken` | `{ from, spec, target, renamedTo?, kind: "import"\|"doc-link" }[]` | imports still pointing at a removed file; `from` / `target` / `renamedTo` are `file:` ids |
+| `unindexed` | string[] | changed paths outside the index (not mapped) |
+| `notes` | string[] | engine and ultraview notes |
+| `fingerprint` | string | sha1 of mode, base sha, head sha and every changed path with status, old path, content hash and hunks: equal = the same change (the hook and `--record` skip it) |
+
+`ChangedNode`: `{ id, kind, label, status: "added"|"changed"|"removed"|"impacted", parent?, at?, changedFiles?, impactedFiles?, linesAdded?, linesDeleted?, hunks?: [start, end][], oldPath?, depth? }`.
+`parent` is the view parent (kept so a removed node can be placed); `at`
+(`path:line`, base location for a removed fact) on symbols and facts;
+`changedFiles` / `impactedFiles` on `cap` / `sys` / `mod`; `linesAdded`,
+`linesDeleted`, `hunks` (new-file lines, 1-based inclusive), `oldPath` on
+changed files; `depth` on impacted files. A `removed` id may name a node no
+longer in `view.nodes`. Classification:
+
+- **file**: git added → `added`; modified or renamed → `changed`; deleted →
+  `removed`. `impacted`: the reverse dependency closure of the changed files
+  within `depth` hops (codeindex `reverseClosure`, inferred calls skipped, the
+  same walk as the engine's risk), plus the importers of a removed file and
+  their dependents; never a directly changed file.
+- **sym**: exported top-level symbols whose span a hunk touches (a member
+  counts for its top-level owner): `added` in an added file, else `changed`.
+- **route / screen / entity / job**: the extractors re-run over the base tree
+  (unchanged files from disk, changed ones from git at the base commit; skipped
+  past 500 changed files, with a note): an id only in the new tree → `added`,
+  only in the base → `removed`; in both → `changed` when its definition differs
+  (file, handler, fields, schedule…) or a hunk touches the lines it owns (its
+  line up to the next fact of the same file), else `impacted` when its file is
+  changed or impacted.
+- **mod / sys / cap**, rolled up from the files under them (a module slice, its
+  system, every capability the file serves): `removed` when the node left the
+  map, `added` when every file under it is new, `changed` when any file under it
+  is added / changed / removed, else `impacted`.
+
+`ModuleRisk`: `{ id: "mod:<slug>", label, path, score, bucket: "high"|"medium"|"low", reasons[], changedFiles[], changedSymbols: { total, exported }, impact: { directFiles, transitiveFiles, modules: mod ids }, tests: { status: "covered"|"gap"|"n/a", files[] } }`
+— the engine's delta module (weights in codeindex `RISK_WEIGHTS`), keyed by
+the whole module (its slices share it).
+
+```json
+{ "schema": 1, "id": "20260203-040506-worktree", "at": "2026-02-03T04:05:06.000Z", "mode": "worktree",
+  "base": { "ref": "HEAD", "sha": "a1b2c3d…" }, "head": { "sha": "a1b2c3d…", "dirty": true }, "depth": 2,
+  "counts": { "file": { "added": 0, "changed": 1, "removed": 1, "impacted": 1 }, "mod": { "added": 0, "changed": 1, "removed": 1, "impacted": 0 }, "…": {} },
+  "nodes": [
+    { "id": "file:src/routes/orders.ts", "kind": "file", "label": "orders.ts", "status": "removed", "parent": "mod:src-routes" },
+    { "id": "file:src/server.ts", "kind": "file", "label": "server.ts", "status": "impacted", "parent": "mod:src", "depth": 1 },
+    { "id": "file:src/services/orders.ts", "kind": "file", "label": "orders.ts", "status": "changed", "parent": "mod:src-services",
+      "linesAdded": 1, "linesDeleted": 1, "hunks": [[26, 26]] },
+    { "id": "mod:src-routes", "kind": "mod", "label": "Routes", "status": "removed", "parent": "sys:api", "changedFiles": 1, "impactedFiles": 0 },
+    { "id": "route:POST /api/orders", "kind": "route", "label": "POST /api/orders", "status": "removed",
+      "parent": "file:src/routes/orders.ts", "at": "src/routes/orders.ts:10" },
+    { "id": "sym:src/services/orders.ts#cancelOrder", "kind": "sym", "label": "cancelOrder", "status": "changed",
+      "parent": "file:src/services/orders.ts", "at": "src/services/orders.ts:24" } ],
+  "risk": [ { "id": "mod:src-routes", "label": "Routes", "path": "src/routes", "score": 40, "bucket": "medium",
+              "reasons": ["removed src/routes/orders.ts is still imported by 1 file (src/server.ts)"],
+              "changedFiles": [], "changedSymbols": { "total": 0, "exported": 0 },
+              "impact": { "directFiles": 1, "transitiveFiles": 1, "modules": ["mod:src"] }, "tests": { "status": "n/a", "files": [] } } ],
+  "broken": [ { "from": "file:src/server.ts", "spec": "./routes/orders.js", "target": "file:src/routes/orders.ts", "kind": "import" } ],
+  "unindexed": [], "notes": [], "fingerprint": "5f0c…" }
+```
+
+**TimelineEntry** (one line of timeline.jsonl, and `view.timeline[]`):
+`{ at, source: "agent"|"pr"|"manual", title, request?, summary, items: { ref, change: "new"|"changed"|"removed", note? }[], base?, head?, change?, auto? }`.
+`summary` is cited prose (one citation per sentence, every citation
+resolving) unless `auto: true` (generated from a change set's counts by
+`diff --record` without `--summary`; `check` exempts it). `change` is the id of
+the change set the entry records; `base` / `head` are commit shas. A recorded
+entry's `items` are its directly changed nodes, symbols aside, capabilities
+first then systems, modules, facts, files (at most 100). Each line is one
+stable-JSON object (sorted keys, no indentation); the file is append-only and a
+line that fails validation is refused, never written.
+
+```json
+{"at":"2026-02-03T04:05:06.000Z","auto":true,"base":"a1b2c3d…","change":"20260203-040506-worktree","head":"a1b2c3d…","items":[{"change":"changed","ref":"cap:order-tracking"},{"change":"changed","ref":"cap:ordering"},{"change":"changed","ref":"sys:api"},{"change":"changed","ref":"mod:src-services"},{"change":"changed","ref":"file:src/services/orders.ts"}],"source":"agent","summary":"1 file changed (0 added, 1 changed, 0 removed) and 2 impacted within 2 hops. Capabilities: changed Following orders, Placing an order; impacted Health check. Highest risk: Services (medium, score 45).","title":"1 file changed in Following orders, Placing an order"}
+```
+
+**Insight** (`view.insights[]`, `ultraview insights --json`):
+`{ id: "<kind>:<key>", kind, severity: "high"|"medium"|"low", title, detail, nodes: view ids, cites: "path:line"[], prompt }`,
+at most 10 per kind and 30 overall, most severe first, then by kind in this
+order, then by the kind's own score. Built only from engine analyses; the
+thresholds are constants in `src/insights.ts`:
+
+| kind | engine source | kept when | severity |
+|---|---|---|---|
+| `hotspot` | codeindex `rankHotspots` (commits × log2 lines) + `riskHotspots` (complexity) over the churn window | non-test code file, ≥ 5 commits | high ≥ 20, medium ≥ 10 commits |
+| `hidden-coupling` | codeindex `changeCoupling { hidden }` over the window | two non-test code files, changed together ≥ 3 times, no edge between them, confidence (Wilson lower bound) ≥ 0.4 | high ≥ 0.7, medium ≥ 0.55 |
+| `cycle` | codeindex `checkRules` builtin `cycles` (module import SCCs) | any | high ≥ 4 modules, medium 3, low 2 |
+| `dead-code` | codeindex `findDeadCode`, one insight per file | any unused export | high ≥ 5 unreferenced, medium any unreferenced, low only uncalled |
+| `untested-hub` | codeindex `untestedModules` | non-test code module with ≥ 3 incoming dependencies | high ≥ 10, medium ≥ 5 |
+| `literal` | codeindex `findLiteralDuplications` (engine defaults) | any | competing high, bypassed medium, uncentralized low |
+
+File-level evidence with no line of its own cites line 1. History kinds are
+absent outside git.
+
+```json
+{ "id": "cycle:src>src-routes>src-services", "kind": "cycle", "severity": "medium",
+  "title": "Import cycle: src → src/routes → src/services → src",
+  "detail": "3 modules import each other in a loop (src → src/routes → src/services → src): none of them can change or be tested alone.",
+  "nodes": ["mod:src", "mod:src-routes", "mod:src-services"],
+  "cites": ["src/server.ts:1", "src/routes/orders.ts:1", "src/services/orders.ts:1"],
+  "prompt": "Using ultraview and ultraindex, propose a safe refactor to break the import cycle between src, src/routes, src/services (mod:src, mod:src-routes, mod:src-services), citing files." }
+```
+
 ## 7. CLI (`node scripts/ultraview.mjs <cmd>`; every command `--json`)
 
 | command | does |
 |---|---|
-| `status` | routes the agent: `no-index` / `index-stale` / `no-model` / `model-incomplete` / `stale-views` / `ready`, with a short worklist |
+| `status` | routes the agent: `no-index` / `index-stale` / `no-model` / `model-incomplete` / `stale-views` / `ready`, with a short worklist; once a change set was recorded, also notes (cheap git check) when the work differs from the last one |
 | `build [--repo .]` | ultraindex `runBuild` (incremental) + extractors → facts.json + view.json; prints a ≤150-line summary for the agent (entrypoints, workspaces, top modules by PageRank, routes/screens/entities/jobs/externals counts, uncovered paths) — the agent never reads facts.json/view.json |
 | `dossier <node-id>` | evidence pack to write about a node (ultraindex dossier + facts + neighbors), budgeted |
 | `check` | schema, ids resolve, citations resolve (ultraindex `checkCitations`), coverage thresholds (systems ≥ 90% code files, capabilities ≥ 70% non-test modules), stale lenses/flows, exit 1 on failure |
@@ -249,12 +388,23 @@ files by PageRank (default 300 files) — `serve` answers the rest on demand
 | `lens new "<question>"` | evidence pack (ultraindex find + neighbors + dossier) + the target path + template |
 | `lens save <file>` / `flow save <file>` | validate, stamp `sources`, write under `.ultraview/` |
 | `lens list` | with stale flags |
-| `diff [--base ref] [--staged] [--record] [--markdown]` | codeindex/ultraindex delta → changed + impacted nodes at every level, risk per module, broken imports; `--record` writes changes/<id>.json and appends timeline; `--markdown` prints a PR summary with a Mermaid diagram of the impacted subgraph |
-| `timeline add --title … --request … --summary … [--ref …]` | append an agent task entry (summary must cite) |
-| `hook install|uninstall [--agent claude]` | opt-in: adds a Stop hook to `.claude/settings.json` that runs `diff --staged --record --quiet` so every agent turn lands in the timeline |
-| `insights` | engine-grounded: hotspots, hidden coupling, cycles, dead code, untested hubs, uncentralised literals — each with a ready prompt |
+| `diff [--base ref \| --staged \| --worktree] [--depth n] [--record] [--markdown]` | the engine delta (codeindex `readDeltaDiff` + `deltaOfDiff` with the scan, so removed files' importers are traced; ultraindex `withEntries`) → a ChangeSet (§6): changed + impacted nodes at every level, risk per module, broken imports; rebuilds the map first when it is stale; `--record` writes changes/<id>.json and appends one timeline entry (`--source`, `--title`, `--request`, `--summary`; without `--summary` an `auto` one), skipping an empty diff or one equal to the last record (fingerprint); `--markdown` prints a PR summary: headline counts, what it touches in plain words, risk table, broken imports, a Mermaid map of the impacted modules (systems past 40) |
+| `timeline add --title … --summary … [--request …] [--source …] [--ref <id> [--change new\|changed\|removed] [--note …]]… \| [--items <json>]` | append a narrated entry (summary must cite; item ids must resolve, except `removed` ones); refused, not written, when invalid |
+| `hook install\|uninstall [--agent claude] [--shared] [--dry-run]` | opt-in: adds to `<repo>/.claude/settings.local.json` (personal, never committed: the command holds this machine's absolute path) one Claude Code `Stop` hook — `--shared` writes the committed `.claude/settings.json` instead and prints a warning that the command is machine-specific — `{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node '<abs>/ultraview.mjs' diff --worktree --record --quiet --source agent --hook --repo \"$CLAUDE_PROJECT_DIR\"", "timeout": 30 } ] } ] } }`; the file is spliced, not re-serialised (every other byte kept), ours is found by the marker `--source agent --hook`, uninstall removes exactly what install added from whichever of the two files holds it (both if both); `--dry-run` prints the file(s) and the diff |
+| `insights` | engine-grounded (§6): hotspots, hidden coupling, cycles, dead code, untested hubs, repeated literals — each with a ready prompt |
 | `show <node-id>` | compact node card for an agent (what it is, members, edges, cites) |
-| `export --mermaid|--md|--svg [--level cap|sys|mod] [--lens id]` | for READMEs and PRs (SVG via elkjs in node) |
+| `export --mermaid\|--svg\|--md [--level cap\|sys\|mod] [--lens id] [--flow id] [--out file]` | for READMEs and PRs: a flowchart of one level (its kind plus the externals — and entities at `cap` — it touches; ≤ 40 nodes by PageRank, ≤ 80 edges by weight), of a lens's nodes or of a flow's steps; `--svg` the same subgraph laid out by ultraview (layered: longest path, one barycentre pass, no dependency); `--md` an architecture brief (app, systems table, capabilities with cited summaries, data, externals, flows as numbered lists, top 10 insights); `--out` writes atomically |
+
+**The hook.** Claude Code runs `Stop` hooks when the agent finishes a turn.
+The hook records **worktree** mode (staged + unstaged + untracked against
+HEAD), not `--staged`: an agent edits files and rarely stages them, so a staged
+diff would record almost nothing. Each entry therefore shows the whole
+uncommitted state after that turn; turns that changed nothing new are skipped
+(same fingerprint as the last record), and once the work is committed the next
+diff starts again from the new HEAD. Nothing is written into `.git`. In
+`--hook` mode the command prints nothing, always exits 0, needs a built index
+(it never runs a first build inside a turn), refreshes the map incrementally
+when stale and logs any error to `.ultraview/hook.log`.
 
 ## 8. Viewer
 
@@ -299,8 +449,10 @@ files by PageRank (default 300 files) — `serve` answers the rest on demand
    in plain words + top insights.
 3. A question → `lens new` → read evidence → write lens → `lens save` →
    `check` → point the user at `#lens=<id>` (live if served).
-4. After a change / for a PR → `diff --record` + `timeline add` → `#view=changes`;
-   `--markdown` for the PR body.
+4. After a change / for a PR → `diff --worktree --record --source agent
+   --title … --summary …` (one cited timeline entry for the task; `timeline
+   add` for a note without a change) → `#view=changes`; `diff --markdown` for
+   the PR body; `insights` / `export` when asked.
 5. Stale → `build` → `check` → re-ask only stale lenses/flows, re-describe
    only stale capabilities.
 6. Big repo (> ~40 modules or > 150 capabilities' worth of evidence) → fan out
@@ -309,4 +461,5 @@ files by PageRank (default 300 files) — `serve` answers the rest on demand
 Invariants: never read facts.json/view.json/graph.json whole; never write a
 sentence without a citation; never hand-copy a detected edge; never delete a
 lens or timeline entry; never commit index.html; changes nothing outside
-`.ultraview/` except `hook install` (asked explicitly).
+`.ultraview/` except `hook install` (asked explicitly; `.claude/settings.local.json`
+unless `--shared`).

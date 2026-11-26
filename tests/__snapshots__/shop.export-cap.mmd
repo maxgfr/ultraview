@@ -1,0 +1,19 @@
+flowchart LR
+  cap__foundations(["Shared foundations"])
+  cap_ordering(["Placing an order"])
+  cap_order_tracking(["Following orders"])
+  cap_health(["Health check"])
+  entity_Order[("Order")]
+  entity_Product[("Product")]
+  cap_order_tracking --> cap_ordering
+  cap_ordering --> cap_order_tracking
+  cap_order_tracking -->|"data"| entity_Order
+  cap_ordering -->|"data"| entity_Order
+  cap_health --> cap_order_tracking
+  cap_health --> cap_ordering
+  cap_order_tracking --> cap__foundations
+  cap_order_tracking -->|"data"| entity_Product
+  cap_ordering --> cap__foundations
+  cap_ordering -->|"data"| entity_Product
+  classDef derived stroke-dasharray:4 2
+  class cap__foundations derived
