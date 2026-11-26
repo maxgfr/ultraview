@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.10.0](https://github.com/maxgfr/ultraview/compare/v1.9.4...v1.10.0) (2026-11-26)
+
+
+### Features
+
+* **lens:** questions in any language with --terms ([93af919](https://github.com/maxgfr/ultraview/commit/93af919190d3d38fe08b31cbaaff6efef11d0be7)), closes [#19](https://github.com/maxgfr/ultraview/issues/19)
+
 ## [1.9.4](https://github.com/maxgfr/ultraview/compare/v1.9.3...v1.9.4) (2026-11-26)
 
 
