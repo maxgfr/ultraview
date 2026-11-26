@@ -1,6 +1,6 @@
 {
   "name": "ultraview",
-  "version": "1.13.5",
+  "version": "1.13.6",
   "description": "See your app instead of reading its code: an interactive, cited map of a repository for the business and for developers — capabilities, systems, data, flows, saved questions and every change your agent makes. The visual layer over ultraindex. A skills.sh agent skill.",
   "type": "module",
   "packageManager": "pnpm@10.33.0",

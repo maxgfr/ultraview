@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.6](https://github.com/maxgfr/ultraview/compare/v1.13.5...v1.13.6) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ask:** cite the opening summary ([79a4b56](https://github.com/maxgfr/ultraview/commit/79a4b56eedd6971535e87d980831de639dc08f06))
+* **ask:** make the first answer pass the citation gate ([12c66c9](https://github.com/maxgfr/ultraview/commit/12c66c9a453c01294b1cae69e5214648907f89d3)), closes [#27](https://github.com/maxgfr/ultraview/issues/27)
+
 ## [1.13.5](https://github.com/maxgfr/ultraview/compare/v1.13.4...v1.13.5) (2026-11-26)
 
 
