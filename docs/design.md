@@ -55,7 +55,7 @@ Every node has a namespaced id, stable across runs:
 |---|---|---|
 | `cap:` | `cap:checkout` | model.json capabilities |
 | `sys:` | `sys:web` | model.json systems (else derived from workspaces) |
-| `mod:` | `mod:src-payments` | ultraindex module slug |
+| `mod:` | `mod:src-payments`, `mod:src@database` | ultraindex module slug (`@<sys>`: a slice, below) |
 | `file:` | `file:src/pay/stripe.ts` | graph |
 | `sym:` | `sym:src/pay/stripe.ts#createCharge` | symbols |
 | `route:` | `route:POST /api/checkout` | facts |
@@ -65,7 +65,27 @@ Every node has a namespaced id, stable across runs:
 | `ext:` | `ext:stripe` | facts (SDK import / host / env prefix) |
 
 Containment (structural tree): `sys ⊃ mod ⊃ file ⊃ sym`; routes/screens/jobs
-hang off the file that defines them; entities off the schema file.
+hang off the file that defines them; entities off the schema file. A file's
+system is decided by one rule, `systemOfFile` (src/model/assemble.ts): the
+most specific matching model glob (longest literal prefix, ties by
+declaration order, `exclude` honoured), else the deepest workspace package,
+else `sys:app`; a file nothing matches sits in `sys:_unassigned`. The tree,
+coverage, `show`, `dossier` and `check` all read that one assignment, so a
+file always sits in the system its glob declares. A module whose files span
+several systems is cut into **slices**, one per system: `mod:<slug>` sits in
+the system holding most of its files (ties by declaration order,
+`_unassigned` last) and `mod:<slug>@<sys>` in each other one
+(`mod:src@database`). Slices share the module's label; a minority slice is
+tagged `slice` and carries `slice: { of: "mod:<slug>", system: "sys:<id>",
+qualifier: "@ <system label>" }` for the viewer to tell them apart. Each file
+hangs under the slice of its own system. Roll-ups (module, system and
+capability edges; system metrics) run over slices, so an import from one
+system into a file of another shows as an edge between those systems. A
+slice's `loc` and `tests` are its own files'; a split module's PageRank is
+shared out by its files' PageRank. A capability member `mod:<slug>` claims
+every slice of the module, `mod:<slug>@<sys>` that slice only; coverage
+counts a module once, claimed when any slice is. Unsplit modules (and, without
+a model, modules inside one workspace) are unchanged.
 Capabilities are an **overlay**: a capability selects members (systems,
 modules, files by glob, routes, entities); one file can serve several
 capabilities. Files no capability claims fall into the derived
@@ -168,7 +188,8 @@ flows + lenses + timeline + latest change + insights. Shape:
   "nodes": [ { "id": "…", "kind": "cap|sys|mod|file|sym|route|screen|entity|job|ext",
                "label": "…", "parent": "…", "summary": "…", "cites": ["path:line"],
                "metrics": { "loc": 0, "pagerank": 0, "churn": 0, "tests": 0 },
-               "caps": ["cap:checkout"], "tags": [] } ],
+               "caps": ["cap:checkout"], "tags": [],
+               "slice": { "of": "mod:src", "system": "sys:database", "qualifier": "@ Database" } } ],
   "edges": [ { "from": "…", "to": "…", "kind": "import|call|http|data|event|queue|extends|config", "weight": 1, "derived": true } ],
   "flows": [], "lenses": [], "timeline": [], "changes": null, "insights": [], "glossary": [], "tour": [],
   "coverage": { "filesInSystems": 0.97, "modulesInCapabilities": 0.82 },

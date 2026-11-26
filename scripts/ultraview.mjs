@@ -36339,6 +36339,7 @@ var APP_SYS = "sys:app";
 var capId = (slug) => `cap:${slug}`;
 var sysId = (slug) => `sys:${slug}`;
 var modId = (slug) => `mod:${slug}`;
+var sliceId = (slug, sys) => `mod:${slug}@${sys.startsWith("sys:") ? sys.slice(4) : sys}`;
 var fileId = (rel2) => `file:${rel2}`;
 var symId = (rel2, name2) => `sym:${rel2}#${name2}`;
 var routeId = (method, path) => `route:${method.toUpperCase()} ${path}`;
@@ -36379,6 +36380,13 @@ function parseId(id) {
       return { kind, name: rest };
   }
 }
+function parseSlice(id) {
+  if (!id.startsWith("mod:")) return void 0;
+  const at = id.indexOf("@");
+  if (at <= 4 || at === id.length - 1) return void 0;
+  return { of: id.slice(0, at), system: sysId(id.slice(at + 1)) };
+}
+var baseModuleOf = (id) => parseSlice(id)?.of ?? id;
 function fileOfId(id) {
   const p = parseId(id);
   return p && (p.kind === "file" || p.kind === "sym") ? p.path : void 0;
@@ -36404,35 +36412,17 @@ function globMatcher2(glob2) {
   const globs = /[*?]/.test(g) ? [g] : [g, `${g}/**`];
   return codeindex_engine_exports.compileGlobs(globs) ?? (() => false);
 }
-function assignSystems(files, systems, emptyGlobs) {
-  const compiled = systems.map((s) => ({
-    id: sysId(s.id),
-    paths: s.paths.map((g) => ({ glob: g, match: globMatcher2(g), spec: globSpecificity(g), hits: 0 })),
-    exclude: s.exclude?.length ? s.exclude.map(globMatcher2) : []
-  }));
-  const out2 = /* @__PURE__ */ new Map();
-  for (const rel2 of files) {
-    let best;
-    for (const sys of compiled) {
-      if (sys.exclude.some((m) => m(rel2))) continue;
-      for (const p of sys.paths) {
-        if (!p.match(rel2)) continue;
-        p.hits++;
-        if (!best || p.spec > best.spec) best = { id: sys.id, spec: p.spec };
-      }
-    }
-    out2.set(rel2, best?.id ?? UNASSIGNED_SYS);
+function systemRules(model, workspaces = []) {
+  if (model) {
+    return {
+      systems: model.systems.map((s) => ({ id: sysId(s.id), label: s.label, ...s.summary ? { summary: s.summary } : {}, role: s.kind })),
+      globs: model.systems.map((s) => ({
+        id: sysId(s.id),
+        paths: s.paths.map((g) => ({ match: globMatcher2(g), spec: globSpecificity(g) })),
+        exclude: s.exclude?.length ? s.exclude.map(globMatcher2) : []
+      }))
+    };
   }
-  if (emptyGlobs) {
-    systems.forEach((s, i2) => {
-      compiled[i2].paths.forEach((p, j) => {
-        if (!p.hits) emptyGlobs.push({ path: `systems[${i2}].paths[${j}]`, glob: s.paths[j] });
-      });
-    });
-  }
-  return out2;
-}
-function workspaceSystems(files, workspaces) {
   const pkgs = workspaces.filter((w) => w.dir).map((w) => ({
     id: sysId(
       w.dir.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app"
@@ -36440,17 +36430,34 @@ function workspaceSystems(files, workspaces) {
     label: w.name || w.dir,
     dir: w.dir
   })).sort((a, b) => cmp3(a.dir, b.dir));
-  const of = /* @__PURE__ */ new Map();
-  if (!pkgs.length) {
-    for (const rel2 of files) of.set(rel2, APP_SYS);
-    return { order: [{ id: APP_SYS, label: "App" }], of };
-  }
-  for (const rel2 of files) {
+  if (!pkgs.length) return { systems: [{ id: APP_SYS, label: "App" }] };
+  return { systems: pkgs.map(({ id, label }) => ({ id, label })), dirs: pkgs.map(({ id, dir }) => ({ id, dir })) };
+}
+function systemOfFile(rules, rel2) {
+  if (rules.globs) {
     let best;
-    for (const p of pkgs) if ((rel2 === p.dir || rel2.startsWith(`${p.dir}/`)) && (!best || p.dir.length > best.dir.length)) best = p;
-    of.set(rel2, best?.id ?? UNASSIGNED_SYS);
+    for (const sys of rules.globs) {
+      if (sys.exclude.some((m) => m(rel2))) continue;
+      for (const p of sys.paths) if (p.match(rel2) && (!best || p.spec > best.spec)) best = { id: sys.id, spec: p.spec };
+    }
+    return best?.id ?? UNASSIGNED_SYS;
   }
-  return { order: pkgs.map(({ id, label }) => ({ id, label })), of };
+  if (rules.dirs) {
+    let best;
+    for (const p of rules.dirs) if ((rel2 === p.dir || rel2.startsWith(`${p.dir}/`)) && (!best || p.dir.length > best.dir.length)) best = p;
+    return best?.id ?? UNASSIGNED_SYS;
+  }
+  return APP_SYS;
+}
+function emptySystemGlobs(files, rules, systems) {
+  const out2 = [];
+  (rules.globs ?? []).forEach((sys, i2) => {
+    const kept = files.filter((rel2) => !sys.exclude.some((m) => m(rel2)));
+    sys.paths.forEach((p, j) => {
+      if (!kept.some(p.match)) out2.push({ path: `systems[${i2}].paths[${j}]`, glob: systems[i2].paths[j] });
+    });
+  });
+  return out2;
 }
 function citesOf(text2) {
   if (!text2) return [];
@@ -36482,18 +36489,14 @@ function assembleWithNotes(inp) {
   const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp3(a.rel, b.rel));
   const rels = files.map((f) => f.rel);
   const testMap = codeindex_engine_exports.computeTestMap(graph);
-  let systemOrder;
-  let fileSystems;
-  if (model) {
-    fileSystems = assignSystems(rels, model.systems, emptyGlobs);
-    systemOrder = model.systems.map((s) => ({ id: sysId(s.id), label: s.label, summary: s.summary, role: s.kind }));
-  } else {
-    const ws = workspaceSystems(rels, inp.workspaces);
-    fileSystems = ws.of;
-    systemOrder = ws.order;
-  }
+  const rules = systemRules(model, inp.workspaces);
+  const systemOrder = rules.systems;
+  const fileSystems = new Map(rels.map((rel2) => [rel2, systemOfFile(rules, rel2)]));
+  if (model) emptyGlobs.push(...emptySystemGlobs(rels, rules, model.systems));
   const sysRank = new Map(systemOrder.map((s, i2) => [s.id, i2]));
   sysRank.set(UNASSIGNED_SYS, systemOrder.length);
+  const sysLabel = new Map(systemOrder.map((s) => [s.id, s.label]));
+  sysLabel.set(UNASSIGNED_SYS, UNASSIGNED_LABEL);
   const filesByModule = /* @__PURE__ */ new Map();
   for (const f of files) {
     const list = filesByModule.get(f.module) ?? [];
@@ -36503,43 +36506,55 @@ function assembleWithNotes(inp) {
   const usedSystems = new Set(systemOrder.map((s) => s.id));
   const modules = [...graph.modules].filter((m) => filesByModule.has(m.slug)).sort((a, b) => cmp3(a.slug, b.slug));
   const testModules = /* @__PURE__ */ new Set();
+  const slicesOf = /* @__PURE__ */ new Map();
+  const fileParent = /* @__PURE__ */ new Map();
   for (const m of modules) {
     const members = filesByModule.get(m.slug);
-    const votes = /* @__PURE__ */ new Map();
+    const bySystem = /* @__PURE__ */ new Map();
     for (const f of members) {
       const s = fileSystems.get(f.rel);
-      votes.set(s, (votes.get(s) ?? 0) + 1);
+      const list = bySystem.get(s) ?? [];
+      list.push(f);
+      bySystem.set(s, list);
     }
-    let parent = UNASSIGNED_SYS;
-    let bestVotes = -1;
-    for (const [s, n] of votes) {
-      if (n > bestVotes || n === bestVotes && sysRank.get(s) < sysRank.get(parent)) {
-        parent = s;
-        bestVotes = n;
-      }
-    }
-    usedSystems.add(parent);
+    const systems = [...bySystem.keys()].sort((a, b) => bySystem.get(b).length - bySystem.get(a).length || sysRank.get(a) - sysRank.get(b));
     const codeMembers = members.filter((f) => f.fileKind === "code");
     const isTest = members.every((f) => f.testFile) || codeMembers.length > 0 && codeMembers.every((f) => f.testFile);
     if (isTest) testModules.add(m.slug);
     const summary = inp.moduleProse.get(m.slug);
-    add({
-      id: modId(m.slug),
-      kind: "mod",
-      label: humanizeSegment(m.path),
-      parent,
-      ...summary ? { summary } : {},
-      cites: citesOf(summary),
-      metrics: {
-        loc: members.reduce((n, f) => n + f.lines, 0),
-        pagerank: round4(m.pagerank ?? 0),
-        churn: 0,
-        // TODO(churn): from git history (codeindex.gitChurn) once `diff` lands.
-        tests: m.testedBy?.length ?? 0
-      },
-      caps: [],
-      tags: uniqSorted([`tier-${m.tier}`, ...isTest ? ["test"] : []])
+    const tags = [`tier-${m.tier}`, ...isTest ? ["test"] : []];
+    const split = systems.length > 1;
+    const prOf = (fs2) => fs2.reduce((n, f) => n + (f.pagerank ?? 0), 0);
+    const prTotal = prOf(members);
+    const ids = [];
+    systems.forEach((sys, i2) => {
+      const sliceFiles = bySystem.get(sys);
+      const id = i2 === 0 ? modId(m.slug) : sliceId(m.slug, sys);
+      ids.push(id);
+      usedSystems.add(sys);
+      for (const f of sliceFiles) fileParent.set(f.rel, id);
+      const share = prTotal > 0 ? prOf(sliceFiles) / prTotal : sliceFiles.length / members.length;
+      add({
+        id,
+        kind: "mod",
+        label: humanizeSegment(m.path),
+        parent: sys,
+        ...summary ? { summary } : {},
+        cites: citesOf(summary),
+        metrics: {
+          loc: sliceFiles.reduce((n, f) => n + f.lines, 0),
+          pagerank: round4((m.pagerank ?? 0) * (split ? share : 1)),
+          churn: 0,
+          // TODO(churn): from git history (codeindex.gitChurn) once `diff` lands.
+          // A slice: the distinct test files covering its own files.
+          tests: split ? new Set(sliceFiles.flatMap((f) => testMap.testedByFile.get(f.rel) ?? [])).size : m.testedBy?.length ?? 0
+        },
+        caps: [],
+        tags: uniqSorted([...tags, ...i2 > 0 ? ["slice"] : []]),
+        ...i2 > 0 ? { slice: { of: modId(m.slug), system: sys, qualifier: `@ ${sysLabel.get(sys) ?? sys}` } } : {}
+      });
     });
+    slicesOf.set(m.slug, ids);
   }
   for (const rel2 of rels) usedSystems.add(fileSystems.get(rel2));
   for (const s of systemOrder) {
@@ -36563,7 +36578,7 @@ function assembleWithNotes(inp) {
       id: fileId(f.rel),
       kind: "file",
       label: f.rel.split("/").pop() ?? f.rel,
-      parent: modId(f.module),
+      parent: fileParent.get(f.rel) ?? modId(f.module),
       cites: [],
       metrics: { loc: f.lines, pagerank: round4(f.pagerank ?? 0), churn: 0, tests: testMap.testedByFile.get(f.rel)?.length ?? 0 },
       caps: [],
@@ -36668,7 +36683,11 @@ function assembleWithNotes(inp) {
       ...c2.actors?.length ? { actors: [...c2.actors] } : {}
     });
     const claimed = /* @__PURE__ */ new Set();
-    for (const m of c2.members ?? []) if (nodes.has(m) && kindOf2(m) !== "cap") claimed.add(m);
+    for (const m of c2.members ?? []) {
+      if (!nodes.has(m) || kindOf2(m) === "cap") continue;
+      claimed.add(m);
+      if (kindOf2(m) === "mod" && !parseSlice(m)) for (const s of slicesOf.get(m.slice("mod:".length)) ?? []) claimed.add(s);
+    }
     (c2.paths ?? []).forEach((g, j) => {
       const match = globMatcher2(g);
       let hits = 0;
@@ -36694,7 +36713,7 @@ function assembleWithNotes(inp) {
     return set;
   };
   for (const id of nodes.keys()) capsOf(id);
-  const foundations = modules.filter((m) => !testModules.has(m.slug) && capsOf(modId(m.slug)).size === 0).map((m) => modId(m.slug));
+  const foundations = modules.filter((m) => !testModules.has(m.slug)).flatMap((m) => slicesOf.get(m.slug).filter((id) => capsOf(id).size === 0));
   if (foundations.length) {
     add({ id: FOUNDATIONS_CAP, kind: "cap", label: FOUNDATIONS_LABEL, cites: [], metrics: zeroMetrics(), caps: [], tags: ["derived"] });
     for (const m of foundations) {
@@ -36797,7 +36816,7 @@ ${kind}`;
   const codeFiles = files.filter((f) => f.fileKind === "code");
   const inSystems = codeFiles.filter((f) => fileSystems.get(f.rel) !== UNASSIGNED_SYS).length;
   const codeModules = modules.filter((m) => !testModules.has(m.slug) && filesByModule.get(m.slug).some((f) => f.fileKind === "code" && !f.testFile));
-  const inCaps = codeModules.filter((m) => nodes.get(modId(m.slug)).caps.some((c2) => c2 !== FOUNDATIONS_CAP)).length;
+  const inCaps = codeModules.filter((m) => slicesOf.get(m.slug).some((id) => nodes.get(id).caps.some((c2) => c2 !== FOUNDATIONS_CAP))).length;
   const ratio = (n, d) => d === 0 ? 1 : round4(n / d);
   const isStale = (sources) => !!sources && Object.entries(sources).some(([path, hash]) => (inp.currentHashes.get(path) ?? null) !== hash);
   const flows = [...inp.flows].sort((a, b) => cmp3(a.id, b.id));
@@ -37461,11 +37480,16 @@ function nodeCard(live, id) {
     ...node.role ? { role: node.role } : {},
     ...node.actors ? { actors: node.actors } : {},
     ...node.fields ? { fields: node.fields } : {},
+    ...node.slice ? { slice: node.slice } : {},
     children: listOf(view.nodes.filter((n) => n.parent === id)),
     edges: { in: ins.length, out: outs.length },
     out: [...outs].sort(byWeight("to")).slice(0, CARD_EDGES),
     in: [...ins].sort(byWeight("from")).slice(0, CARD_EDGES)
   };
+  if (node.kind === "mod" && !node.slice) {
+    const slices = view.nodes.filter((n) => n.slice?.of === id).map((n) => n.id);
+    if (slices.length) card.slices = slices;
+  }
   if (node.kind === "cap") {
     const serving = view.nodes.filter((n) => n.caps.includes(id));
     const coarse = serving.filter((n) => n.kind !== "file" && n.kind !== "sym");
@@ -37496,6 +37520,8 @@ function formatNodeCard(c2) {
   if (c2.at) row2("at", c2.at);
   if (c2.cites.length) row2("cites", c2.cites.join(", "));
   row2("parent", c2.parent ?? "(top level)");
+  if (c2.slice) row2("slice of", `${c2.slice.of} ${c2.slice.qualifier}`);
+  if (c2.slices) row2("slices", c2.slices.join(", "));
   if (c2.kind !== "cap") row2("caps", c2.caps.length ? c2.caps.join(", ") : "(none)");
   if (c2.actors?.length) row2("actors", c2.actors.join(", "));
   if (c2.tags.length) row2("tags", c2.tags.join(", "));
@@ -37650,7 +37676,6 @@ function groupDossier(live, repo, n, budget) {
       }
     }
     under2.delete(n.id);
-    for (const [rel2, sys] of live.fileSystems) if (sys === n.id) under2.add(fileId(rel2));
     members = nodes.filter((x) => under2.has(x.id));
   }
   const files = members.filter((x) => x.kind === "file");
@@ -37729,13 +37754,17 @@ function renderNodeDossier(live, repo, id, opts = {}) {
   if (!n) return void 0;
   const budget = opts.budget ?? DOSSIER_BUDGET;
   if (n.kind === "mod") {
-    const slug = id.slice("mod:".length);
+    const whole = baseModuleOf(id);
+    const slug = whole.slice("mod:".length);
     const module2 = live.loaded.inputs.graph.modules.find((m) => m.slug === slug);
     if (!module2) return void 0;
     const base = renderModuleDossier(repo, live.loaded.inputs.graph, module2, budget).trimEnd();
-    const under2 = live.view.nodes.filter((x) => x.parent && (x.parent === id || live.byId.get(x.parent)?.parent === id));
+    const slices = live.view.nodes.filter((x) => x.slice?.of === whole);
+    const roots = new Set(n.slice ? [id] : [id, ...slices.map((x) => x.id)]);
+    const under2 = live.view.nodes.filter((x) => x.parent && (roots.has(x.parent) || roots.has(live.byId.get(x.parent)?.parent ?? "")));
     const facts = factLines(under2);
-    const extra = [`## ultraview`, `node ${id} \xB7 parent ${n.parent ?? "-"} \xB7 caps ${n.caps.join(", ") || "(none)"}`, ...facts].join("\n");
+    const sliceLine = n.slice ? [`slice of ${n.slice.of} ${n.slice.qualifier}`] : slices.length ? [`slices ${slices.map((x) => `${x.id} (${x.slice.qualifier})`).join(", ")}`] : [];
+    const extra = [`## ultraview`, `node ${id} \xB7 parent ${n.parent ?? "-"} \xB7 caps ${n.caps.join(", ") || "(none)"}`, ...sliceLine, ...facts].join("\n");
     return `${base}
 
 ${extra}

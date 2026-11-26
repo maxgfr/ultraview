@@ -6,7 +6,9 @@
 // stableJson, the same bytes. Loading lives in ./load.ts.
 //
 // What it computes:
-//   - the structural tree   sys ⊃ mod ⊃ file ⊃ sym/route/screen/job/entity
+//   - the structural tree   sys ⊃ mod ⊃ file ⊃ sym/route/screen/job/entity,
+//     each file in the system `systemOfFile` gives it; a module spanning
+//     several systems is cut into one slice per system (`mod:<slug>@<sys>`)
 //   - the capability overlay (every node's `caps`, `cap:_foundations` for the rest)
 //   - edges: file-level ones from the graph and facts, then rolled up to
 //     module, system and capability level (weight = summed references)
@@ -26,8 +28,10 @@ import {
   jobId,
   kindOf,
   modId,
+  parseSlice,
   routeId,
   screenId,
+  sliceId,
   symId,
   sysId,
   UNASSIGNED_LABEL,
@@ -86,7 +90,7 @@ export interface EmptyGlob {
 
 export interface AssembleResult {
   view: ViewModel;
-  /** Each view file's own system (from the globs), before the module majority vote. */
+  /** Each view file's system (`systemOfFile`): the system its tree path runs through. */
   fileSystems: Map<string, string>;
   emptyGlobs: EmptyGlob[];
 }
@@ -122,42 +126,40 @@ export function globMatcher(glob: string): (rel: string) => boolean {
   return codeindex.compileGlobs(globs) ?? (() => false);
 }
 
-/**
- * Each file's system from model.json: the most specific matching glob wins
- * (longest literal prefix), ties by declaration order; a file a system
- * `exclude`s is not that system's. Unmatched files → `sys:_unassigned`.
- */
-export function assignSystems(files: readonly string[], systems: readonly ModelSystem[], emptyGlobs?: EmptyGlob[]): Map<string, string> {
-  const compiled = systems.map((s) => ({
-    id: sysId(s.id),
-    paths: s.paths.map((g) => ({ glob: g, match: globMatcher(g), spec: globSpecificity(g), hits: 0 })),
-    exclude: s.exclude?.length ? s.exclude.map(globMatcher) : [],
-  }));
-  const out = new Map<string, string>();
-  for (const rel of files) {
-    let best: { id: string; spec: number } | undefined;
-    for (const sys of compiled) {
-      if (sys.exclude.some((m) => m(rel))) continue;
-      for (const p of sys.paths) {
-        if (!p.match(rel)) continue;
-        p.hits++;
-        if (!best || p.spec > best.spec) best = { id: sys.id, spec: p.spec };
-      }
-    }
-    out.set(rel, best?.id ?? UNASSIGNED_SYS);
-  }
-  if (emptyGlobs) {
-    systems.forEach((s, i) => {
-      compiled[i]!.paths.forEach((p, j) => {
-        if (!p.hits) emptyGlobs.push({ path: `systems[${i}].paths[${j}]`, glob: s.paths[j]! });
-      });
-    });
-  }
-  return out;
+/** A system of the view: declared in model.json, else derived from a workspace package. */
+export interface SystemDecl {
+  id: string;
+  label: string;
+  summary?: string;
+  role?: ModelSystem["kind"];
 }
 
-/** Systems without a model: one per workspace package (deepest dir wins), else a single `sys:app`. */
-function workspaceSystems(files: readonly string[], workspaces: readonly WorkspaceRef[]): { order: { id: string; label: string }[]; of: Map<string, string> } {
+/**
+ * The rules that place a file in a system, compiled once: model.json globs,
+ * else workspace package dirs, else the single `sys:app`. `systemOfFile` is
+ * the only reader of these rules.
+ */
+export interface SystemRules {
+  /** Declared systems, in declaration order (ties go to the earliest). */
+  systems: SystemDecl[];
+  /** @internal compiled matchers; read through `systemOfFile`. */
+  globs?: { id: string; paths: { match: (rel: string) => boolean; spec: number }[]; exclude: ((rel: string) => boolean)[] }[];
+  /** @internal workspace package dirs; the longest one holding a file wins it. */
+  dirs?: { id: string; dir: string }[];
+}
+
+/** Compile the system rules of a model, or of the workspace packages when there is none. */
+export function systemRules(model: Pick<Model, "systems"> | undefined, workspaces: readonly WorkspaceRef[] = []): SystemRules {
+  if (model) {
+    return {
+      systems: model.systems.map((s) => ({ id: sysId(s.id), label: s.label, ...(s.summary ? { summary: s.summary } : {}), role: s.kind })),
+      globs: model.systems.map((s) => ({
+        id: sysId(s.id),
+        paths: s.paths.map((g) => ({ match: globMatcher(g), spec: globSpecificity(g) })),
+        exclude: s.exclude?.length ? s.exclude.map(globMatcher) : [],
+      })),
+    };
+  }
   const pkgs = workspaces
     .filter((w) => w.dir)
     .map((w) => ({
@@ -171,17 +173,56 @@ function workspaceSystems(files: readonly string[], workspaces: readonly Workspa
       dir: w.dir,
     }))
     .sort((a, b) => cmp(a.dir, b.dir));
-  const of = new Map<string, string>();
-  if (!pkgs.length) {
-    for (const rel of files) of.set(rel, APP_SYS);
-    return { order: [{ id: APP_SYS, label: "App" }], of };
+  if (!pkgs.length) return { systems: [{ id: APP_SYS, label: "App" }] };
+  return { systems: pkgs.map(({ id, label }) => ({ id, label })), dirs: pkgs.map(({ id, dir }) => ({ id, dir })) };
+}
+
+/**
+ * The system a file sits in — the one source of truth for the tree, coverage,
+ * `show`, `dossier` and `check` (docs/design.md §2).
+ *
+ *   model.json   the most specific matching glob wins (longest literal
+ *                prefix), ties by declaration order; a file a system
+ *                `exclude`s is not that system's
+ *   workspaces   the deepest package dir holding the file
+ *   neither      `sys:app`
+ *
+ * A file nothing matches is in `sys:_unassigned`.
+ */
+export function systemOfFile(rules: SystemRules, rel: string): string {
+  if (rules.globs) {
+    let best: { id: string; spec: number } | undefined;
+    for (const sys of rules.globs) {
+      if (sys.exclude.some((m) => m(rel))) continue;
+      for (const p of sys.paths) if (p.match(rel) && (!best || p.spec > best.spec)) best = { id: sys.id, spec: p.spec };
+    }
+    return best?.id ?? UNASSIGNED_SYS;
   }
-  for (const rel of files) {
-    let best: (typeof pkgs)[number] | undefined;
-    for (const p of pkgs) if ((rel === p.dir || rel.startsWith(`${p.dir}/`)) && (!best || p.dir.length > best.dir.length)) best = p;
-    of.set(rel, best?.id ?? UNASSIGNED_SYS);
+  if (rules.dirs) {
+    let best: { id: string; dir: string } | undefined;
+    for (const p of rules.dirs) if ((rel === p.dir || rel.startsWith(`${p.dir}/`)) && (!best || p.dir.length > best.dir.length)) best = p;
+    return best?.id ?? UNASSIGNED_SYS;
   }
-  return { order: pkgs.map(({ id, label }) => ({ id, label })), of };
+  return APP_SYS;
+}
+
+/** Model globs no indexed file matches (a file a system excludes does not count for it). */
+function emptySystemGlobs(files: readonly string[], rules: SystemRules, systems: readonly ModelSystem[]): EmptyGlob[] {
+  const out: EmptyGlob[] = [];
+  (rules.globs ?? []).forEach((sys, i) => {
+    const kept = files.filter((rel) => !sys.exclude.some((m) => m(rel)));
+    sys.paths.forEach((p, j) => {
+      if (!kept.some(p.match)) out.push({ path: `systems[${i}].paths[${j}]`, glob: systems[i]!.paths[j]! });
+    });
+  });
+  return out;
+}
+
+/** Each file's system from model.json globs (`systemOfFile` over a list); empty globs reported into `emptyGlobs`. */
+export function assignSystems(files: readonly string[], systems: readonly ModelSystem[], emptyGlobs?: EmptyGlob[]): Map<string, string> {
+  const rules = systemRules({ systems: [...systems] });
+  if (emptyGlobs) emptyGlobs.push(...emptySystemGlobs(files, rules, systems));
+  return new Map(files.map((rel) => [rel, systemOfFile(rules, rel)]));
 }
 
 function citesOf(text: string | undefined): string[] {
@@ -223,20 +264,20 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
   const rels = files.map((f) => f.rel);
   const testMap = codeindex.computeTestMap(graph);
 
-  let systemOrder: { id: string; label: string; summary?: string; role?: ModelSystem["kind"] }[];
-  let fileSystems: Map<string, string>;
-  if (model) {
-    fileSystems = assignSystems(rels, model.systems, emptyGlobs);
-    systemOrder = model.systems.map((s) => ({ id: sysId(s.id), label: s.label, summary: s.summary, role: s.kind }));
-  } else {
-    const ws = workspaceSystems(rels, inp.workspaces);
-    fileSystems = ws.of;
-    systemOrder = ws.order;
-  }
+  const rules = systemRules(model, inp.workspaces);
+  const systemOrder = rules.systems;
+  const fileSystems = new Map(rels.map((rel) => [rel, systemOfFile(rules, rel)]));
+  if (model) emptyGlobs.push(...emptySystemGlobs(rels, rules, model.systems));
 
-  // --- modules: parent = the system holding most of their files ----------
+  // --- modules, sliced by system -------------------------------------------
+  // A file sits in the system its globs declare. A module whose files span
+  // several systems becomes one slice per system: `mod:<slug>` in the system
+  // holding most of its files (ties by declaration order, `_unassigned` last),
+  // `mod:<slug>@<sys>` in each other one. Files hang under their system's slice.
   const sysRank = new Map(systemOrder.map((s, i) => [s.id, i]));
   sysRank.set(UNASSIGNED_SYS, systemOrder.length);
+  const sysLabel = new Map(systemOrder.map((s) => [s.id, s.label]));
+  sysLabel.set(UNASSIGNED_SYS, UNASSIGNED_LABEL);
   const filesByModule = new Map<string, typeof files>();
   for (const f of files) {
     const list = filesByModule.get(f.module) ?? [];
@@ -246,42 +287,58 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
   const usedSystems = new Set<string>(systemOrder.map((s) => s.id));
   const modules = [...graph.modules].filter((m) => filesByModule.has(m.slug)).sort((a, b) => cmp(a.slug, b.slug));
   const testModules = new Set<string>();
+  /** Module slug → its slice ids (the whole-module id first). */
+  const slicesOf = new Map<string, string[]>();
+  /** File rel → the id of the module slice it hangs under. */
+  const fileParent = new Map<string, string>();
   for (const m of modules) {
     const members = filesByModule.get(m.slug)!;
-    const votes = new Map<string, number>();
+    const bySystem = new Map<string, typeof files>();
     for (const f of members) {
       const s = fileSystems.get(f.rel)!;
-      votes.set(s, (votes.get(s) ?? 0) + 1);
+      const list = bySystem.get(s) ?? [];
+      list.push(f);
+      bySystem.set(s, list);
     }
-    let parent = UNASSIGNED_SYS;
-    let bestVotes = -1;
-    for (const [s, n] of votes) {
-      if (n > bestVotes || (n === bestVotes && sysRank.get(s)! < sysRank.get(parent)!)) {
-        parent = s;
-        bestVotes = n;
-      }
-    }
-    usedSystems.add(parent);
+    // Majority first, then declaration order.
+    const systems = [...bySystem.keys()].sort((a, b) => bySystem.get(b)!.length - bySystem.get(a)!.length || sysRank.get(a)! - sysRank.get(b)!);
     const codeMembers = members.filter((f) => f.fileKind === "code");
     const isTest = members.every((f) => f.testFile) || (codeMembers.length > 0 && codeMembers.every((f) => f.testFile));
     if (isTest) testModules.add(m.slug);
     const summary = inp.moduleProse.get(m.slug);
-    add({
-      id: modId(m.slug),
-      kind: "mod",
-      label: humanizeSegment(m.path),
-      parent,
-      ...(summary ? { summary } : {}),
-      cites: citesOf(summary),
-      metrics: {
-        loc: members.reduce((n, f) => n + f.lines, 0),
-        pagerank: round4(m.pagerank ?? 0),
-        churn: 0, // TODO(churn): from git history (codeindex.gitChurn) once `diff` lands.
-        tests: m.testedBy?.length ?? 0,
-      },
-      caps: [],
-      tags: uniqSorted([`tier-${m.tier}`, ...(isTest ? ["test"] : [])]),
+    const tags = [`tier-${m.tier}`, ...(isTest ? ["test"] : [])];
+    const split = systems.length > 1;
+    // A split module's PageRank is shared out by its files' PageRank (by file count when all are 0).
+    const prOf = (fs: typeof files) => fs.reduce((n, f) => n + (f.pagerank ?? 0), 0);
+    const prTotal = prOf(members);
+    const ids: string[] = [];
+    systems.forEach((sys, i) => {
+      const sliceFiles = bySystem.get(sys)!;
+      const id = i === 0 ? modId(m.slug) : sliceId(m.slug, sys);
+      ids.push(id);
+      usedSystems.add(sys);
+      for (const f of sliceFiles) fileParent.set(f.rel, id);
+      const share = prTotal > 0 ? prOf(sliceFiles) / prTotal : sliceFiles.length / members.length;
+      add({
+        id,
+        kind: "mod",
+        label: humanizeSegment(m.path),
+        parent: sys,
+        ...(summary ? { summary } : {}),
+        cites: citesOf(summary),
+        metrics: {
+          loc: sliceFiles.reduce((n, f) => n + f.lines, 0),
+          pagerank: round4((m.pagerank ?? 0) * (split ? share : 1)),
+          churn: 0, // TODO(churn): from git history (codeindex.gitChurn) once `diff` lands.
+          // A slice: the distinct test files covering its own files.
+          tests: split ? new Set(sliceFiles.flatMap((f) => testMap.testedByFile.get(f.rel) ?? [])).size : (m.testedBy?.length ?? 0),
+        },
+        caps: [],
+        tags: uniqSorted([...tags, ...(i > 0 ? ["slice"] : [])]),
+        ...(i > 0 ? { slice: { of: modId(m.slug), system: sys, qualifier: `@ ${sysLabel.get(sys) ?? sys}` } } : {}),
+      });
     });
+    slicesOf.set(m.slug, ids);
   }
   for (const rel of rels) usedSystems.add(fileSystems.get(rel)!);
 
@@ -309,7 +366,7 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
       id: fileId(f.rel),
       kind: "file",
       label: f.rel.split("/").pop() ?? f.rel,
-      parent: modId(f.module),
+      parent: fileParent.get(f.rel) ?? modId(f.module),
       cites: [],
       metrics: { loc: f.lines, pagerank: round4(f.pagerank ?? 0), churn: 0, tests: testMap.testedByFile.get(f.rel)?.length ?? 0 },
       caps: [],
@@ -425,7 +482,12 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
       ...(c.actors?.length ? { actors: [...c.actors] } : {}),
     });
     const claimed = new Set<string>();
-    for (const m of c.members ?? []) if (nodes.has(m) && kindOf(m) !== "cap") claimed.add(m);
+    for (const m of c.members ?? []) {
+      if (!nodes.has(m) || kindOf(m) === "cap") continue;
+      claimed.add(m);
+      // `mod:<slug>` names the whole module: every slice of it.
+      if (kindOf(m) === "mod" && !parseSlice(m)) for (const s of slicesOf.get(m.slice("mod:".length)) ?? []) claimed.add(s);
+    }
     (c.paths ?? []).forEach((g, j) => {
       const match = globMatcher(g);
       let hits = 0;
@@ -454,8 +516,8 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
   };
   for (const id of nodes.keys()) capsOf(id);
 
-  // Non-test modules no capability claims fall into the shared foundations.
-  const foundations = modules.filter((m) => !testModules.has(m.slug) && capsOf(modId(m.slug)).size === 0).map((m) => modId(m.slug));
+  // Non-test module slices no capability claims fall into the shared foundations.
+  const foundations = modules.filter((m) => !testModules.has(m.slug)).flatMap((m) => slicesOf.get(m.slug)!.filter((id) => capsOf(id).size === 0));
   if (foundations.length) {
     add({ id: FOUNDATIONS_CAP, kind: "cap", label: FOUNDATIONS_LABEL, cites: [], metrics: zeroMetrics(), caps: [], tags: ["derived"] });
     for (const m of foundations) {
@@ -564,7 +626,8 @@ export function assembleWithNotes(inp: ViewInputs): AssembleResult {
   const codeFiles = files.filter((f) => f.fileKind === "code");
   const inSystems = codeFiles.filter((f) => fileSystems.get(f.rel) !== UNASSIGNED_SYS).length;
   const codeModules = modules.filter((m) => !testModules.has(m.slug) && filesByModule.get(m.slug)!.some((f) => f.fileKind === "code" && !f.testFile));
-  const inCaps = codeModules.filter((m) => nodes.get(modId(m.slug))!.caps.some((c) => c !== FOUNDATIONS_CAP)).length;
+  // A module counts once, claimed when any of its slices is.
+  const inCaps = codeModules.filter((m) => slicesOf.get(m.slug)!.some((id) => nodes.get(id)!.caps.some((c) => c !== FOUNDATIONS_CAP))).length;
   const ratio = (n: number, d: number) => (d === 0 ? 1 : round4(n / d));
 
   // --- staleness -----------------------------------------------------------------

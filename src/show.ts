@@ -49,6 +49,10 @@ export interface NodeCard {
   role?: string;
   actors?: string[];
   fields?: ViewNode["fields"];
+  /** mod slice: the module it is part of and the system it sits in. */
+  slice?: ViewNode["slice"];
+  /** mod: its other slices, one per further system its files sit in. */
+  slices?: string[];
   /** Structural children. */
   children: NodeList;
   /** cap: the nodes serving it. */
@@ -93,11 +97,16 @@ export function nodeCard(live: Pick<LiveView, "view" | "byId" | "fileSystems">, 
     ...(node.role ? { role: node.role } : {}),
     ...(node.actors ? { actors: node.actors } : {}),
     ...(node.fields ? { fields: node.fields } : {}),
+    ...(node.slice ? { slice: node.slice } : {}),
     children: listOf(view.nodes.filter((n) => n.parent === id)),
     edges: { in: ins.length, out: outs.length },
     out: [...outs].sort(byWeight("to")).slice(0, CARD_EDGES),
     in: [...ins].sort(byWeight("from")).slice(0, CARD_EDGES),
   };
+  if (node.kind === "mod" && !node.slice) {
+    const slices = view.nodes.filter((n) => n.slice?.of === id).map((n) => n.id);
+    if (slices.length) card.slices = slices;
+  }
   if (node.kind === "cap") {
     const serving = view.nodes.filter((n) => n.caps.includes(id));
     // Business-level members first: the ids an agent writes into `members`.
@@ -144,6 +153,8 @@ export function formatNodeCard(c: NodeCard): string {
   if (c.at) row("at", c.at);
   if (c.cites.length) row("cites", c.cites.join(", "));
   row("parent", c.parent ?? "(top level)");
+  if (c.slice) row("slice of", `${c.slice.of} ${c.slice.qualifier}`);
+  if (c.slices) row("slices", c.slices.join(", "));
   if (c.kind !== "cap") row("caps", c.caps.length ? c.caps.join(", ") : "(none)");
   if (c.actors?.length) row("actors", c.actors.join(", "));
   if (c.tags.length) row("tags", c.tags.join(", "));

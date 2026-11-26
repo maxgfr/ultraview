@@ -30,6 +30,13 @@
     {
       "derived": true,
       "from": "cap:order-tracking",
+      "kind": "import",
+      "to": "cap:_foundations",
+      "weight": 1
+    },
+    {
+      "derived": true,
+      "from": "cap:order-tracking",
       "kind": "call",
       "to": "cap:ordering",
       "weight": 3
@@ -53,6 +60,13 @@
       "from": "cap:order-tracking",
       "kind": "data",
       "to": "entity:Product",
+      "weight": 1
+    },
+    {
+      "derived": true,
+      "from": "cap:ordering",
+      "kind": "import",
+      "to": "cap:_foundations",
       "weight": 1
     },
     {
@@ -214,7 +228,7 @@
       "derived": true,
       "from": "mod:src-services",
       "kind": "import",
-      "to": "mod:src",
+      "to": "mod:src@database",
       "weight": 1
     },
     {
@@ -229,6 +243,13 @@
       "from": "sys:api",
       "kind": "data",
       "to": "entity:Product",
+      "weight": 1
+    },
+    {
+      "derived": true,
+      "from": "sys:api",
+      "kind": "import",
+      "to": "sys:database",
       "weight": 1
     },
     {
@@ -309,8 +330,8 @@
       "label": "Shared foundations",
       "metrics": {
         "churn": 0,
-        "loc": 30,
-        "pagerank": 1.9839,
+        "loc": 33,
+        "pagerank": 4.0913,
         "tests": 0
       },
       "tags": [
@@ -638,7 +659,9 @@
       ]
     },
     {
-      "caps": [],
+      "caps": [
+        "cap:_foundations"
+      ],
       "cites": [],
       "id": "file:src/db.ts",
       "kind": "file",
@@ -649,7 +672,7 @@
         "pagerank": 2.1074,
         "tests": 0
       },
-      "parent": "mod:src",
+      "parent": "mod:src@database",
       "tags": [
         "code"
       ]
@@ -798,8 +821,8 @@
       "label": "Src",
       "metrics": {
         "churn": 0,
-        "loc": 31,
-        "pagerank": 1.7391,
+        "loc": 28,
+        "pagerank": 0.6706,
         "tests": 1
       },
       "parent": "sys:api",
@@ -844,6 +867,31 @@
       },
       "parent": "sys:api",
       "tags": [
+        "tier-1"
+      ]
+    },
+    {
+      "caps": [
+        "cap:_foundations"
+      ],
+      "cites": [],
+      "id": "mod:src@database",
+      "kind": "mod",
+      "label": "Src",
+      "metrics": {
+        "churn": 0,
+        "loc": 3,
+        "pagerank": 1.0685,
+        "tests": 0
+      },
+      "parent": "sys:database",
+      "slice": {
+        "of": "mod:src",
+        "qualifier": "@ Database",
+        "system": "sys:database"
+      },
+      "tags": [
+        "slice",
         "tier-1"
       ]
     },
@@ -949,7 +997,9 @@
     },
     {
       "at": "src/db.ts:3",
-      "caps": [],
+      "caps": [
+        "cap:_foundations"
+      ],
       "cites": [],
       "id": "sym:src/db.ts#prisma",
       "kind": "sym",
@@ -1129,8 +1179,8 @@
       "label": "Main server",
       "metrics": {
         "churn": 0,
-        "loc": 84,
-        "pagerank": 6.3546,
+        "loc": 81,
+        "pagerank": 4.2472,
         "tests": 1
       },
       "role": "service",
@@ -1139,6 +1189,7 @@
     },
     {
       "caps": [
+        "cap:_foundations",
         "cap:ordering"
       ],
       "cites": [
@@ -1150,8 +1201,8 @@
       "label": "Database",
       "metrics": {
         "churn": 0,
-        "loc": 54,
-        "pagerank": 0.6613,
+        "loc": 57,
+        "pagerank": 2.7687,
         "tests": 0
       },
       "role": "data",

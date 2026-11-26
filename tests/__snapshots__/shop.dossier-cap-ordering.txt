@@ -20,6 +20,7 @@ entities (3):
 ## Neighbours
 - -> cap:order-tracking (Following orders)  call w3
 - -> entity:Order (Order)  data w3
+- -> cap:_foundations (Shared foundations)  import w1
 - -> cap:order-tracking (Following orders)  import w1
 - -> entity:Product (Product)  data w1
 - <- cap:order-tracking (Following orders)  call w3

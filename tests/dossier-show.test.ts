@@ -28,6 +28,12 @@ describe("show", () => {
     await expect(formatNodeCard(card)).toMatchFileSnapshot("./__snapshots__/shop.show-cap-ordering.txt");
     await expect(formatNodeCard(nodeCard(live, "entity:Order")!)).toMatchFileSnapshot("./__snapshots__/shop.show-entity-order.txt");
     expect(nodeCard(live, "sys:_unassigned")!.unassignedFiles).toEqual([]);
+    // A module split across systems lists its slices; a slice names its module and system.
+    expect(nodeCard(live, "mod:src")!.slices).toEqual(["mod:src@database"]);
+    const slice = nodeCard(live, "mod:src@database")!;
+    expect(slice).toMatchObject({ parent: "sys:database", slice: { of: "mod:src", system: "sys:database", qualifier: "@ Database" } });
+    expect(slice.children.first).toEqual(["file:src/db.ts"]);
+    expect(formatNodeCard(slice)).toContain("\nslice of  mod:src @ Database\n");
     expect(nodeCard(live, "cap:nope")).toBeUndefined();
     expect(similarIds(live.view, "cap:order")).toEqual(["cap:ordering", "entity:Order", "entity:OrderItem", "cap:order-tracking", "route:GET /api/orders"]);
   });
@@ -59,6 +65,11 @@ describe("dossier", () => {
     expect(mod).toMatch(/^# Dossier — module `src-services`/);
     expect(mod).toContain("## ultraview\nnode mod:src-services · parent sys:api · caps cap:order-tracking, cap:ordering");
     expect(nodeDossier(repo, "sys:database").text).toBe(sys);
+    // A slice gets the whole module's engine dossier, then its own place in the map.
+    const slice = nodeDossier(repo, "mod:src@database").text!;
+    expect(slice).toMatch(/^# Dossier — module `src`/);
+    expect(slice).toContain("## ultraview\nnode mod:src@database · parent sys:database · caps cap:_foundations\nslice of mod:src @ Database");
+    expect(nodeDossier(repo, "mod:src").text!).toContain("node mod:src · parent sys:api · caps cap:health\nslices mod:src@database (@ Database)");
     expect(nodeDossier(repo, "mod:nope").text).toBeUndefined();
   });
 

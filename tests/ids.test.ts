@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  baseModuleOf,
   capId,
   entityId,
   extId,
@@ -12,8 +13,10 @@ import {
   kindOf,
   modId,
   parseId,
+  parseSlice,
   routeId,
   screenId,
+  sliceId,
   symId,
   sysId,
 } from "../src/model/ids.js";
@@ -71,5 +74,21 @@ describe("node ids", () => {
     expect(fileOfId("file:src/a.ts")).toBe("src/a.ts");
     expect(fileOfId("sym:src/a.ts#x")).toBe("src/a.ts");
     expect(fileOfId("route:GET /x")).toBeUndefined();
+  });
+
+  it("builds and reads module slice ids: mod:<slug>@<system>", () => {
+    expect(sliceId("src", "sys:database")).toBe("mod:src@database");
+    expect(sliceId("docs", "sys:_unassigned")).toBe("mod:docs@_unassigned");
+    expect(parseSlice("mod:src@database")).toEqual({ of: "mod:src", system: "sys:database" });
+    expect(parseSlice("mod:src")).toBeUndefined();
+    expect(parseSlice("mod:@x")).toBeUndefined();
+    expect(parseSlice("mod:src@")).toBeUndefined();
+    expect(parseSlice("file:a@b.ts")).toBeUndefined();
+    expect(baseModuleOf("mod:src@database")).toBe("mod:src");
+    expect(baseModuleOf("mod:src")).toBe("mod:src");
+    expect(baseModuleOf("file:a@b.ts")).toBe("file:a@b.ts");
+    // A slice is a well-formed mod: id and round-trips like any other.
+    expect(parseId("mod:src@database")).toEqual({ kind: "mod", name: "src@database" });
+    expect(formatId(parseId("mod:src@database")!)).toBe("mod:src@database");
   });
 });

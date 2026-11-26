@@ -177,11 +177,24 @@ export interface EntityFieldView {
   relation?: string;
 }
 
+/** mod: the module a slice is part of, and the system it sits in (docs/design.md §2). */
+export interface ModuleSlice {
+  /** The whole module's id (`mod:src`), itself the slice in the system holding most of its files. */
+  of: string;
+  /** The system this slice's files sit in (`sys:database`). */
+  system: string;
+  /** What to show after the shared label to tell slices apart: `@ <system label>` (`@ Database`). */
+  qualifier: string;
+}
+
 export interface ViewNode {
   id: string;
   kind: NodeKind;
   label: string;
-  /** Structural parent (sys ⊃ mod ⊃ file ⊃ sym/route/screen/job/entity). Absent for top-level nodes. */
+  /**
+   * Structural parent (sys ⊃ mod ⊃ file ⊃ sym/route/screen/job/entity). Absent for top-level nodes.
+   * A file's system is the one its globs declare; its parent is the slice of its module in that system.
+   */
   parent?: string;
   summary?: string;
   /** Citations found in `summary` (`path:line`). */
@@ -198,6 +211,12 @@ export interface ViewNode {
   actors?: string[];
   /** entity: its fields. */
   fields?: EntityFieldView[];
+  /**
+   * mod: set on a minority slice (`mod:<slug>@<sys>`, tagged `slice`) — the
+   * files of module `of` that sit in another system than the majority's.
+   * Absent on `mod:<slug>` itself.
+   */
+  slice?: ModuleSlice;
 }
 
 export interface ViewEdge {

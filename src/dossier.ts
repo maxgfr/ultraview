@@ -3,6 +3,7 @@
 // facts with file:line, and neighbours — so what it writes can cite.
 //
 //   mod                 ultraindex's module dossier + the module's facts
+//                       (a slice: the whole module's dossier + the slice's facts)
 //   cap / sys           members, facts, neighbours, then the top files by
 //                       PageRank (exports + head of each)
 //   anything else       the defining excerpt, the sites that use it, neighbours
@@ -12,7 +13,7 @@
 import { join, resolve } from "node:path";
 import { codeindex, gatherEvidence, renderModuleDossier } from "./engine.js";
 import type { Facts } from "./extract/types.js";
-import { fileId, fileOfId, kindOf, parseId } from "./model/ids.js";
+import { baseModuleOf, fileOfId, kindOf, parseId } from "./model/ids.js";
 import type { ViewEdge, ViewNode } from "./model/types.js";
 import { type LiveView, liveView } from "./show.js";
 
@@ -171,8 +172,6 @@ function groupDossier(live: LiveView, repo: string, n: ViewNode, budget: number)
       }
     }
     under.delete(n.id);
-    // A system also owns the files its globs matched, wherever the module vote put them.
-    for (const [rel, sys] of live.fileSystems) if (sys === n.id) under.add(fileId(rel));
     members = nodes.filter((x) => under.has(x.id));
   }
   const files = members.filter((x) => x.kind === "file");
@@ -256,14 +255,23 @@ export function renderNodeDossier(live: LiveView, repo: string, id: string, opts
   if (!n) return undefined;
   const budget = opts.budget ?? DOSSIER_BUDGET;
   if (n.kind === "mod") {
-    const slug = id.slice("mod:".length);
+    const whole = baseModuleOf(id);
+    const slug = whole.slice("mod:".length);
     const module = live.loaded.inputs.graph.modules.find((m) => m.slug === slug);
     if (!module) return undefined;
     // The engine's dossier first (its own budget), then what ultraview adds.
     const base = renderModuleDossier(repo, live.loaded.inputs.graph, module, budget).trimEnd();
-    const under = live.view.nodes.filter((x) => x.parent && (x.parent === id || live.byId.get(x.parent)?.parent === id));
+    // The whole module covers all its slices; a slice, only itself.
+    const slices = live.view.nodes.filter((x) => x.slice?.of === whole);
+    const roots = new Set(n.slice ? [id] : [id, ...slices.map((x) => x.id)]);
+    const under = live.view.nodes.filter((x) => x.parent && (roots.has(x.parent) || roots.has(live.byId.get(x.parent)?.parent ?? "")));
     const facts = factLines(under);
-    const extra = [`## ultraview`, `node ${id} · parent ${n.parent ?? "-"} · caps ${n.caps.join(", ") || "(none)"}`, ...facts].join("\n");
+    const sliceLine = n.slice
+      ? [`slice of ${n.slice.of} ${n.slice.qualifier}`]
+      : slices.length
+        ? [`slices ${slices.map((x) => `${x.id} (${x.slice!.qualifier})`).join(", ")}`]
+        : [];
+    const extra = [`## ultraview`, `node ${id} · parent ${n.parent ?? "-"} · caps ${n.caps.join(", ") || "(none)"}`, ...sliceLine, ...facts].join("\n");
     return `${base}\n\n${extra}\n`;
   }
   if (n.kind === "cap" || n.kind === "sys") return groupDossier(live, repo, n, budget);

@@ -4,9 +4,10 @@ Task: write this system's `summary` in .ultraview/model.json: what it is and wha
 
 Current summary: The shop's data model and the client the server reaches it with. [prisma/schema.prisma:36] [src/db.ts:3]
 
-caps cap:ordering
+caps cap:_foundations, cap:ordering
 
-## Members: 1 module(s), 2 file(s)
+## Members: 2 module(s), 2 file(s)
+- mod:src@database (Src): 1 file(s), pagerank 1.0685
 - mod:prisma (Prisma): 1 file(s), pagerank 0.2609
 
 ## Facts
@@ -18,6 +19,7 @@ entities (4):
 
 ## Neighbours
 - -> sys:api (Main server)  config w1 [prisma/schema.prisma:10]
+- <- sys:api (Main server)  import w1
 
 ## Key source (top 2 file(s) by PageRank)
 

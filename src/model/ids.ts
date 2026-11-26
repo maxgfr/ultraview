@@ -20,6 +20,13 @@ export const APP_SYS = "sys:app";
 export const capId = (slug: string) => `cap:${slug}`;
 export const sysId = (slug: string) => `sys:${slug}`;
 export const modId = (slug: string) => `mod:${slug}`;
+/**
+ * A module slice (docs/design.md §2): the part of module `slug` whose files sit
+ * in system `sys` (a `sys:` id). A module whose files span several systems is
+ * `mod:<slug>` in the system holding most of them and `mod:<slug>@<sys>` in
+ * each other one. Module slugs never contain `@`, so the split is unambiguous.
+ */
+export const sliceId = (slug: string, sys: string) => `mod:${slug}@${sys.startsWith("sys:") ? sys.slice(4) : sys}`;
 export const fileId = (rel: string) => `file:${rel}`;
 export const symId = (rel: string, name: string) => `sym:${rel}#${name}`;
 export const routeId = (method: string, path: string) => `route:${method.toUpperCase()} ${path}`;
@@ -89,6 +96,17 @@ export function formatId(p: ParsedId): string {
 }
 
 export const isNodeId = (id: string): boolean => parseId(id) !== undefined;
+
+/** A slice id's parts (`mod:src@database` → `{ of: "mod:src", system: "sys:database" }`); undefined for any other id. */
+export function parseSlice(id: string): { of: string; system: string } | undefined {
+  if (!id.startsWith("mod:")) return undefined;
+  const at = id.indexOf("@");
+  if (at <= 4 || at === id.length - 1) return undefined;
+  return { of: id.slice(0, at), system: sysId(id.slice(at + 1)) };
+}
+
+/** The whole-module id of a module or slice id (`mod:src@database` → `mod:src`); other ids unchanged. */
+export const baseModuleOf = (id: string): string => parseSlice(id)?.of ?? id;
 
 /** The repo-relative file a file / symbol id names, if any. */
 export function fileOfId(id: string): string | undefined {
