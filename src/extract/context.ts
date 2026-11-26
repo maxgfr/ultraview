@@ -1,5 +1,6 @@
 // The repo context every extractor sees: the indexed file list and, per
-// workspace, the dependencies its manifest declares.
+// workspace, the dependencies its manifests declare (package.json,
+// pyproject.toml, requirements*.txt, Pipfile, setup.cfg).
 //
 // Declared dependencies are the false-positive guard for framework
 // extractors: `app.get("/x")` is an Express route only in a workspace that
@@ -98,6 +99,69 @@ export function pyprojectDeps(text: string): string[] {
   return out;
 }
 
+/** Package names from a Pipfile's `[packages]` and `[dev-packages]` tables (bare or quoted keys). */
+export function pipfileDeps(text: string): string[] {
+  const out: string[] = [];
+  let section = "";
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/\s#.*$/, "").trim();
+    if (!line || line.startsWith("#")) continue;
+    const header = /^\[([^\]]+)\]$/.exec(line);
+    if (header) {
+      section = (header[1] as string).trim();
+      continue;
+    }
+    if (section !== "packages" && section !== "dev-packages") continue;
+    const key = /^(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9][A-Za-z0-9._-]*))\s*=/.exec(line);
+    const name = key ? (key[1] ?? key[2] ?? key[3]) : undefined;
+    if (name) out.push(normalizePy(name));
+  }
+  return out;
+}
+
+/**
+ * Requirement names from a setup.cfg: `[options] install_requires`,
+ * `setup_requires`, `tests_require`, and every `[options.extras_require]`
+ * entry — inline values and indented continuation lines alike.
+ */
+export function setupCfgDeps(text: string): string[] {
+  const out: string[] = [];
+  let section = "";
+  let collecting = false;
+  const take = (value: string) => {
+    for (const part of value.split(/[,;]/)) {
+      const v = part.trim();
+      if (!v || v.startsWith("-") || /^[a-z+]+:\/\//i.test(v)) continue;
+      const m = PY_NAME.exec(v);
+      if (m?.[1]) out.push(normalizePy(m[1]));
+    }
+  };
+  for (const raw of text.split(/\r?\n/)) {
+    if (/^\s*[#;]/.test(raw)) continue;
+    const header = /^\[([^\]]+)\]\s*$/.exec(raw.trim());
+    if (header && !/^\s/.test(raw)) {
+      section = (header[1] as string).trim();
+      collecting = false;
+      continue;
+    }
+    // A continuation line is indented; a new key starts at column 0.
+    if (/^\s+\S/.test(raw)) {
+      if (collecting) take(raw.replace(/\s#.*$/, ""));
+      continue;
+    }
+    collecting = false;
+    const kv = /^([\w.-]+)\s*[=:]\s*(.*)$/.exec(raw);
+    if (!kv) continue;
+    const key = kv[1] as string;
+    const wanted =
+      (section === "options" && (key === "install_requires" || key === "setup_requires" || key === "tests_require")) || section === "options.extras_require";
+    if (!wanted) continue;
+    collecting = true;
+    take((kv[2] as string).replace(/\s#.*$/, ""));
+  }
+  return out;
+}
+
 /** The workspace a manifest belongs to. `requirements/base.txt` belongs to the directory holding `requirements/`. */
 function manifestWorkspace(rel: string): string {
   const dir = dirOf(rel);
@@ -105,10 +169,22 @@ function manifestWorkspace(rel: string): string {
   return dir;
 }
 
-function manifestKind(rel: string): "npm" | "pyproject" | "requirements" | undefined {
+type ManifestKind = "npm" | "pyproject" | "requirements" | "pipfile" | "setup-cfg";
+
+const READERS: Record<ManifestKind, (text: string) => string[]> = {
+  npm: packageJsonDeps,
+  pyproject: pyprojectDeps,
+  requirements: requirementsDeps,
+  pipfile: pipfileDeps,
+  "setup-cfg": setupCfgDeps,
+};
+
+function manifestKind(rel: string): ManifestKind | undefined {
   const base = baseOf(rel);
   if (base === "package.json") return "npm";
   if (base === "pyproject.toml") return "pyproject";
+  if (base === "Pipfile") return "pipfile";
+  if (base === "setup.cfg") return "setup-cfg";
   if (/^requirements[\w.-]*\.txt$/i.test(base)) return "requirements";
   if (baseOf(dirOf(rel)) === "requirements" && base.endsWith(".txt")) return "requirements";
   return undefined;
@@ -123,7 +199,7 @@ export function createRepoContext(files: readonly string[], readText: (rel: stri
     if (!kind) continue;
     const text = readText(rel);
     if (text === undefined) continue;
-    const names = kind === "npm" ? packageJsonDeps(text) : kind === "pyproject" ? pyprojectDeps(text) : requirementsDeps(text);
+    const names = READERS[kind](text);
     const ws = manifestWorkspace(rel);
     let set = deps.get(ws);
     if (!set) deps.set(ws, (set = new Set()));

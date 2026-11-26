@@ -1,0 +1,281 @@
+{
+  "calls": [
+    {
+      "file": "orders/views.py",
+      "line": 24,
+      "method": "GET",
+      "url": "/stock/:p"
+    },
+    {
+      "file": "orders/views.py",
+      "line": 40,
+      "method": "POST",
+      "url": "https://hooks.slack.com/services/T000/B000/XXX"
+    }
+  ],
+  "entities": [
+    {
+      "fields": [
+        {
+          "name": "user",
+          "type": "OneToOneField"
+        },
+        {
+          "name": "email",
+          "type": "EmailField"
+        }
+      ],
+      "file": "orders/models.py",
+      "line": 12,
+      "name": "Customer",
+      "orm": "django"
+    },
+    {
+      "fields": [
+        {
+          "name": "sku",
+          "type": "CharField"
+        },
+        {
+          "name": "price",
+          "type": "DecimalField"
+        }
+      ],
+      "file": "orders/models.py",
+      "line": 17,
+      "name": "Product",
+      "orm": "django"
+    },
+    {
+      "fields": [
+        {
+          "name": "customer",
+          "relation": "Customer",
+          "type": "ForeignKey"
+        },
+        {
+          "name": "products",
+          "relation": "Product",
+          "type": "ManyToManyField"
+        },
+        {
+          "name": "status",
+          "type": "CharField"
+        },
+        {
+          "name": "parent",
+          "relation": "Order",
+          "type": "ForeignKey"
+        }
+      ],
+      "file": "orders/models.py",
+      "line": 22,
+      "name": "Order",
+      "orm": "django"
+    },
+    {
+      "fields": [
+        {
+          "name": "order",
+          "relation": "Order",
+          "type": "ForeignKey"
+        },
+        {
+          "name": "product",
+          "relation": "Product",
+          "type": "ForeignKey"
+        },
+        {
+          "name": "quantity",
+          "type": "PositiveIntegerField"
+        }
+      ],
+      "file": "orders/models.py",
+      "line": 32,
+      "name": "OrderItem",
+      "orm": "django"
+    }
+  ],
+  "entityUses": [
+    {
+      "entity": "Order",
+      "file": "orders/api.py",
+      "line": 7,
+      "op": "read"
+    },
+    {
+      "entity": "Product",
+      "file": "orders/api.py",
+      "line": 11,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "orders/views.py",
+      "line": 16,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "orders/views.py",
+      "line": 23,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "orders/views.py",
+      "line": 28,
+      "op": "write"
+    },
+    {
+      "entity": "Product",
+      "file": "orders/views.py",
+      "line": 33,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "orders/views.py",
+      "line": 35,
+      "op": "write"
+    }
+  ],
+  "externals": [
+    {
+      "file": "orders/views.py",
+      "id": "stripe",
+      "line": 4,
+      "via": "sdk"
+    },
+    {
+      "file": "orders/views.py",
+      "id": "slack.com",
+      "line": 40,
+      "via": "host"
+    },
+    {
+      "file": "shop/settings.py",
+      "id": "stripe",
+      "line": 4,
+      "via": "env"
+    }
+  ],
+  "infra": [],
+  "jobs": [],
+  "routes": [
+    {
+      "file": "orders/urls.py",
+      "framework": "django",
+      "handler": "views.order_list",
+      "line": 6,
+      "method": "ALL",
+      "path": "/shop"
+    },
+    {
+      "file": "orders/urls.py",
+      "framework": "django",
+      "handler": "views.OrderDetail",
+      "line": 7,
+      "method": "ALL",
+      "path": "/shop/:pk"
+    },
+    {
+      "file": "orders/urls.py",
+      "framework": "django",
+      "handler": "views.checkout_start",
+      "line": 12,
+      "method": "ALL",
+      "path": "/shop/checkout/start"
+    },
+    {
+      "file": "orders/urls.py",
+      "framework": "django",
+      "handler": "views.checkout_done",
+      "line": 13,
+      "method": "ALL",
+      "path": "/shop/checkout/done"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "OrderViewSet",
+      "line": 9,
+      "method": "DELETE",
+      "path": "/api/orders/:pk"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "OrderViewSet",
+      "line": 9,
+      "method": "GET",
+      "path": "/api/orders"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "OrderViewSet",
+      "line": 9,
+      "method": "GET",
+      "path": "/api/orders/:pk"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "OrderViewSet",
+      "line": 9,
+      "method": "PATCH",
+      "path": "/api/orders/:pk"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "OrderViewSet",
+      "line": 9,
+      "method": "POST",
+      "path": "/api/orders"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "OrderViewSet",
+      "line": 9,
+      "method": "PUT",
+      "path": "/api/orders/:pk"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "ProductViewSet",
+      "line": 10,
+      "method": "GET",
+      "path": "/api/products"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "ProductViewSet",
+      "line": 10,
+      "method": "GET",
+      "path": "/api/products/:pk"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "admin.site.urls",
+      "line": 13,
+      "method": "ALL",
+      "path": "/admin"
+    },
+    {
+      "file": "shop/urls.py",
+      "framework": "django",
+      "handler": "legacy_product",
+      "line": 16,
+      "method": "ALL",
+      "path": "/legacy/:slug"
+    }
+  ],
+  "schema": 1,
+  "screens": []
+}

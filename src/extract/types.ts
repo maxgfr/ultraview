@@ -111,7 +111,7 @@ export interface ExtractInput {
 export interface RepoContext {
   /** Every indexed file, repo-relative, sorted. */
   files: string[];
-  /** Workspace dir ("" = root) → declared dependency names from package.json / pyproject / requirements. */
+  /** Workspace dir ("" = root) → declared dependency names from package.json / pyproject / requirements / Pipfile / setup.cfg. */
   deps: Map<string, Set<string>>;
   /** Declared dependencies of the workspace nearest to `rel`. */
   depsFor(rel: string): Set<string>;
@@ -119,9 +119,10 @@ export interface RepoContext {
 
 /**
  * A cross-file relation an extractor saw but cannot resolve alone, handed to
- * the linkers and never persisted. Only kind so far: an Express router mounted
- * under a path prefix from another file (`app.use("/api", ordersRouter)` with
- * `ordersRouter` imported from `./routes/orders`).
+ * the linkers and never persisted. A mount: a router served under a path
+ * prefix from another file (`app.use("/api", ordersRouter)` with
+ * `ordersRouter` imported from `./routes/orders`; FastAPI `include_router`,
+ * Flask `register_blueprint`, Django `include`).
  */
 export interface MountHint {
   kind: "mount";
@@ -131,11 +132,50 @@ export interface MountHint {
   line: number;
   /** The path prefix, as written (`/api`). */
   prefix: string;
-  /** The mounted module's import specifier, resolved against `file`'s directory, without extension (`src/routes/orders`). */
+  /**
+   * The mounted module, without extension. JS: the import specifier resolved
+   * against `file`'s directory (`src/routes/orders`). Python: a module path
+   * (`app/routers/orders`) looked up from the repo root, then from each of
+   * `file`'s ancestor directories; `|` separates alternatives, the first that
+   * names an indexed file wins.
+   */
   target: string;
 }
 
-export type LinkHint = MountHint;
+/** The SQL table an ORM class maps to (`__tablename__ = "orders"` on `Order`), for FK and SQL-literal resolution. */
+export interface TableHint {
+  kind: "table";
+  orm: string;
+  /** The declared entity's name (`Order`). */
+  entity: string;
+  /** The table it maps to (`orders`). */
+  table: string;
+  file: string;
+  line: number;
+}
+
+/** A SQL statement literal naming a table (`"SELECT … FROM orders"`), kept only when the table is declared. */
+export interface SqlUseHint {
+  kind: "sql-use";
+  table: string;
+  op: "read" | "write";
+  file: string;
+  line: number;
+}
+
+/** The actions a Django REST framework viewset serves, from its bases and methods, for the routes a router registers it under. */
+export interface ViewsetHint {
+  kind: "viewset";
+  /** The viewset class name (`OrderViewSet`). */
+  name: string;
+  /** Methods of the list route (`/orders`) and of the detail route (`/orders/:pk`). */
+  list: string[];
+  detail: string[];
+  file: string;
+  line: number;
+}
+
+export type LinkHint = MountHint | TableHint | SqlUseHint | ViewsetHint;
 
 /**
  * What an extractor returns: partial facts, plus optional hints for the

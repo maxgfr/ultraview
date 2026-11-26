@@ -1,0 +1,354 @@
+{
+  "calls": [
+    {
+      "file": "app/services/payments.py",
+      "line": 11,
+      "method": "POST",
+      "url": "/payments"
+    },
+    {
+      "file": "app/services/payments.py",
+      "line": 12,
+      "method": "GET",
+      "url": "/payments/:p"
+    },
+    {
+      "file": "app/services/payments.py",
+      "line": 14,
+      "method": "POST",
+      "url": "https://api.stripe.com/v1/charges"
+    }
+  ],
+  "entities": [
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "int"
+        },
+        {
+          "name": "email",
+          "type": "str"
+        },
+        {
+          "name": "orders",
+          "relation": "Order",
+          "type": "Order[]"
+        }
+      ],
+      "file": "app/models.py",
+      "line": 15,
+      "name": "User",
+      "orm": "sqlalchemy"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "int"
+        },
+        {
+          "name": "user_id",
+          "relation": "User",
+          "type": "int"
+        },
+        {
+          "name": "status",
+          "type": "str"
+        },
+        {
+          "name": "total",
+          "type": "Numeric"
+        },
+        {
+          "name": "user",
+          "relation": "User",
+          "type": "User"
+        },
+        {
+          "name": "items",
+          "relation": "OrderItem",
+          "type": "OrderItem[]"
+        }
+      ],
+      "file": "app/models.py",
+      "line": 23,
+      "name": "Order",
+      "orm": "sqlalchemy"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "Integer"
+        },
+        {
+          "name": "order_id",
+          "relation": "Order",
+          "type": "Integer"
+        },
+        {
+          "name": "sku",
+          "type": "str?"
+        }
+      ],
+      "file": "app/models.py",
+      "line": 34,
+      "name": "OrderItem",
+      "orm": "sqlalchemy"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "SERIAL"
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)"
+        }
+      ],
+      "file": "migrations/001_init.sql",
+      "line": 3,
+      "name": "users",
+      "orm": "sql"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "SERIAL"
+        },
+        {
+          "name": "user_id",
+          "relation": "users",
+          "type": "INTEGER"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(16)"
+        },
+        {
+          "name": "total",
+          "type": "NUMERIC(10, 2)"
+        }
+      ],
+      "file": "migrations/001_init.sql",
+      "line": 8,
+      "name": "orders",
+      "orm": "sql"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "BIGSERIAL"
+        },
+        {
+          "name": "order_id",
+          "relation": "orders",
+          "type": "INTEGER"
+        },
+        {
+          "name": "action",
+          "type": "TEXT"
+        },
+        {
+          "name": "at",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        }
+      ],
+      "file": "migrations/002_audit.sql",
+      "line": 1,
+      "name": "audit_log",
+      "orm": "sql"
+    }
+  ],
+  "entityUses": [
+    {
+      "entity": "orders",
+      "file": "app/db.py",
+      "line": 19,
+      "op": "read"
+    },
+    {
+      "entity": "audit_log",
+      "file": "app/db.py",
+      "line": 23,
+      "op": "write"
+    },
+    {
+      "entity": "Order",
+      "file": "app/routers/orders.py",
+      "line": 17,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "app/routers/orders.py",
+      "line": 22,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "app/routers/orders.py",
+      "line": 27,
+      "op": "write"
+    },
+    {
+      "entity": "Order",
+      "file": "app/routers/orders.py",
+      "line": 36,
+      "op": "write"
+    },
+    {
+      "entity": "User",
+      "file": "app/routers/users.py",
+      "line": 11,
+      "op": "read"
+    }
+  ],
+  "externals": [
+    {
+      "file": "app/services/payments.py",
+      "id": "stripe",
+      "line": 6,
+      "via": "env"
+    },
+    {
+      "file": "app/services/payments.py",
+      "id": "stripe.com",
+      "line": 14,
+      "via": "host"
+    }
+  ],
+  "infra": [
+    {
+      "file": "Dockerfile",
+      "id": "root",
+      "kind": "dockerfile",
+      "line": 2
+    },
+    {
+      "file": "docker-compose.yml",
+      "id": "api",
+      "kind": "compose-service",
+      "line": 2
+    },
+    {
+      "file": "docker-compose.yml",
+      "id": "db",
+      "kind": "compose-service",
+      "line": 11
+    },
+    {
+      "file": "docker-compose.yml",
+      "id": "redis",
+      "kind": "compose-service",
+      "line": 13
+    }
+  ],
+  "jobs": [
+    {
+      "file": ".github/workflows/nightly.yml",
+      "id": "cron:.github/workflows/nightly.yml",
+      "kind": "cron",
+      "line": 4,
+      "schedule": "0 3 * * *"
+    },
+    {
+      "file": "app/worker.py",
+      "id": "send_receipt",
+      "kind": "worker",
+      "line": 7
+    },
+    {
+      "file": "app/worker.py",
+      "id": "nightly_report",
+      "kind": "worker",
+      "line": 12
+    },
+    {
+      "file": "app/worker.py",
+      "id": "cron:nightly-report",
+      "kind": "cron",
+      "line": 19,
+      "schedule": "0 3 * * *"
+    },
+    {
+      "file": "app/worker.py",
+      "id": "cron:flush-receipts",
+      "kind": "cron",
+      "line": 23,
+      "schedule": "every 300s"
+    }
+  ],
+  "routes": [
+    {
+      "file": "app/main.py",
+      "framework": "fastapi",
+      "handler": "root",
+      "line": 14,
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "file": "app/routers/health.py",
+      "framework": "fastapi",
+      "handler": "health",
+      "line": 6,
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "file": "app/routers/orders.py",
+      "framework": "fastapi",
+      "handler": "list_orders",
+      "line": 15,
+      "method": "GET",
+      "path": "/api/orders"
+    },
+    {
+      "file": "app/routers/orders.py",
+      "framework": "fastapi",
+      "handler": "get_order",
+      "line": 20,
+      "method": "GET",
+      "path": "/api/orders/:order_id"
+    },
+    {
+      "file": "app/routers/orders.py",
+      "framework": "fastapi",
+      "handler": "create_order",
+      "line": 25,
+      "method": "POST",
+      "path": "/api/orders"
+    },
+    {
+      "file": "app/routers/orders.py",
+      "framework": "fastapi",
+      "handler": "cancel_order",
+      "line": 34,
+      "method": "POST",
+      "path": "/api/orders/:order_id/cancel"
+    },
+    {
+      "file": "app/routers/orders.py",
+      "framework": "fastapi",
+      "handler": "cancel_order",
+      "line": 34,
+      "method": "PUT",
+      "path": "/api/orders/:order_id/cancel"
+    },
+    {
+      "file": "app/routers/users.py",
+      "framework": "fastapi",
+      "handler": "get_user",
+      "line": 9,
+      "method": "GET",
+      "path": "/api/users/:user_id"
+    }
+  ],
+  "schema": 1,
+  "screens": []
+}

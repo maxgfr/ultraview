@@ -1,0 +1,11 @@
+name: nightly
+on:
+  schedule:
+    - cron: "0 3 * * *"
+    # - cron: "0 4 * * *"
+  workflow_dispatch: {}
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "cron: not a schedule"

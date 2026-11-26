@@ -70,4 +70,17 @@ describe("maskComments", () => {
     expect(commentSyntaxFor("docs/a.md")).toBeUndefined();
     expect(maskComments("// x", undefined)).toBe("// x");
   });
+
+  it("blanks SQL -- and /* */ comments; single-quoted text is the only string", () => {
+    const src = "-- CREATE TABLE a (id int);\nCREATE TABLE \"b\" (x text DEFAULT '-- not a comment', y text); /* gone */\n";
+    const out = maskComments(src, "sql");
+    keepsShape(src, out);
+    expect(out).not.toContain("TABLE a");
+    expect(out).not.toContain("gone");
+    expect(out).toContain("'-- not a comment'");
+    const sk = maskComments(src, "sql", { strings: true });
+    expect(sk).toContain('CREATE TABLE "b"');
+    expect(sk).not.toContain("not a comment");
+    expect(commentSyntaxFor("db/migrations/001_init.sql")).toBe("sql");
+  });
 });

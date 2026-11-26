@@ -13,6 +13,42 @@ import { expressExtractor, expressMountLinker } from "./express.js";
 import { extOf } from "./mask.js";
 import { entityUseLinker, prismaClientExtractor, prismaLinker, prismaSchemaExtractor } from "./prisma.js";
 import { type ExtractOutput, type Extractor, FACT_KINDS, FACTS_SCHEMA, type FactKind, type Facts, type LinkHint, type Linker } from "./types.js";
+// --- issue #2: python, sql, jobs, externals, infra ---
+import { externalsExtractor } from "./externals.js";
+import { composeExtractor, dockerfileExtractor, k8sExtractor } from "./infra.js";
+import { bullmqExtractor, celeryExtractor, githubScheduleExtractor, nodeCronExtractor, vercelCronExtractor } from "./jobs.js";
+import { pythonHttpExtractor } from "./python-http.js";
+import { djangoModelsExtractor, djangoOrmExtractor, ormRelationLinker, sqlalchemyModelsExtractor, sqlalchemyOrmExtractor } from "./python-orm.js";
+import { djangoUrlsExtractor, drfViewsetExtractor, drfViewsetLinker, fastapiExtractor, flaskExtractor, pythonMountLinker } from "./python-routes.js";
+import { sqlLiteralExtractor, sqlSchemaExtractor, sqlUseLinker } from "./sql.js";
+
+/** Python routes, HTTP calls and ORMs; SQL schemas and literals; jobs; externals; infra. */
+const PY_OPS_EXTRACTORS: readonly Extractor[] = [
+  fastapiExtractor,
+  flaskExtractor,
+  djangoUrlsExtractor,
+  drfViewsetExtractor,
+  pythonHttpExtractor,
+  sqlalchemyModelsExtractor,
+  sqlalchemyOrmExtractor,
+  djangoModelsExtractor,
+  djangoOrmExtractor,
+  sqlSchemaExtractor,
+  sqlLiteralExtractor,
+  bullmqExtractor,
+  nodeCronExtractor,
+  celeryExtractor,
+  vercelCronExtractor,
+  githubScheduleExtractor,
+  externalsExtractor,
+  composeExtractor,
+  dockerfileExtractor,
+  k8sExtractor,
+];
+
+/** Python mount prefixes and DRF actions, then ORM / SQL relation and table resolution (before `entity-uses`). */
+const PY_OPS_LINKERS: readonly Linker[] = [pythonMountLinker, drfViewsetLinker, ormRelationLinker, sqlUseLinker];
+// --- end issue #2 ---
 
 export type * from "./types.js";
 export { FACT_KINDS, FACTS_SCHEMA } from "./types.js";
@@ -20,10 +56,10 @@ export { createRepoContext } from "./context.js";
 export { commentSyntaxFor, maskComments, maskSource } from "./mask.js";
 
 /** Every extractor, in a fixed order. Planned ones are listed in src/extract/README.md. */
-export const EXTRACTORS: readonly Extractor[] = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor];
+export const EXTRACTORS: readonly Extractor[] = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...PY_OPS_EXTRACTORS];
 
 /** Repo-level passes, in order: structure first (mounts), then name resolution. */
-export const LINKERS: readonly Linker[] = [expressMountLinker, prismaLinker, entityUseLinker];
+export const LINKERS: readonly Linker[] = [expressMountLinker, prismaLinker, ...PY_OPS_LINKERS, entityUseLinker];
 
 export function emptyFacts(): Facts {
   return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [] };

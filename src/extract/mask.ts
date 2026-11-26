@@ -19,7 +19,7 @@
 // The vendored codeindex engine lexes comments internally but exports no
 // masking helper, so this lives here; it is pure and can move upstream as is.
 
-export type CommentSyntax = "js" | "c" | "python" | "hash";
+export type CommentSyntax = "js" | "c" | "python" | "hash" | "sql";
 
 export interface MaskOptions {
   /** Also blank the contents of string literals (delimiters kept). Template substitutions stay code. */
@@ -49,6 +49,7 @@ const C_EXT = new Set([
 ]);
 const PY_EXT = new Set([".py", ".pyi"]);
 const HASH_EXT = new Set([".yml", ".yaml", ".toml", ".sh", ".bash", ".zsh", ".rb", ".tf", ".cfg", ".ini", ".conf", ".env"]);
+const SQL_EXT = new Set([".sql"]);
 
 /** Lower-cased extension of a path, with the dot (`.ts`); "" when none. */
 export function extOf(rel: string): string {
@@ -64,6 +65,7 @@ export function commentSyntaxFor(rel: string): CommentSyntax | undefined {
   if (C_EXT.has(ext)) return "c";
   if (PY_EXT.has(ext)) return "python";
   if (HASH_EXT.has(ext)) return "hash";
+  if (SQL_EXT.has(ext)) return "sql";
   const base = rel.slice(rel.lastIndexOf("/") + 1);
   if (/^(?:Dockerfile|Containerfile)(?:\..+)?$/.test(base) || ext === ".dockerfile") return "hash";
   return undefined;
@@ -81,6 +83,8 @@ export function maskComments(text: string, syntax: CommentSyntax | undefined, op
       return maskPython(text, strings);
     case "hash":
       return maskHash(text, strings);
+    case "sql":
+      return maskSql(text, strings);
     default:
       return text;
   }
@@ -313,6 +317,45 @@ function maskHash(text: string, strings: boolean): string {
     if (ch === '"' || ch === "'") {
       let j = i + 1;
       while (j < n && text[j] !== ch && text[j] !== "\n") j += text[j] === "\\" && ch === '"' ? 2 : 1;
+      if (strings) blank(out, i + 1, Math.min(j, n));
+      i = j + 1;
+      continue;
+    }
+    i++;
+  }
+  return out.join("");
+}
+
+// SQL: `--` line comments and `/* … */` block comments. Only single-quoted
+// text is a string; `"name"` is a quoted identifier and stays (a table name
+// is code). `''` inside a string is an escaped quote.
+function maskSql(text: string, strings: boolean): string {
+  const out = text.split("");
+  const n = text.length;
+  let i = 0;
+  while (i < n) {
+    const ch = text[i];
+    if (ch === "-" && text[i + 1] === "-") {
+      let j = i;
+      while (j < n && text[j] !== "\n") j++;
+      blank(out, i, j);
+      i = j;
+      continue;
+    }
+    if (ch === "/" && text[i + 1] === "*") {
+      const close = text.indexOf("*/", i + 2);
+      const j = close === -1 ? n : close + 2;
+      blank(out, i, j);
+      i = j;
+      continue;
+    }
+    if (ch === "'") {
+      let j = i + 1;
+      while (j < n) {
+        if (text[j] === "'" && text[j + 1] === "'") j += 2;
+        else if (text[j] === "'") break;
+        else j++;
+      }
       if (strings) blank(out, i + 1, Math.min(j, n));
       i = j + 1;
       continue;

@@ -6293,14 +6293,14 @@ function parseAnyPredicate(steps, index, operator, textPredicates) {
   } else {
     const captureName = steps[1].name;
     const stringValue = steps[2].value;
-    const matches = /* @__PURE__ */ __name((n) => n.text === stringValue, "matches");
+    const matches2 = /* @__PURE__ */ __name((n) => n.text === stringValue, "matches");
     const doesNotMatch = /* @__PURE__ */ __name((n) => n.text !== stringValue, "doesNotMatch");
     textPredicates[index].push((captures) => {
       const nodes = [];
       for (const c2 of captures) {
         if (c2.name === captureName) nodes.push(c2.node);
       }
-      const test = isPositive ? matches : doesNotMatch;
+      const test = isPositive ? matches2 : doesNotMatch;
       return matchAll ? nodes.every(test) : nodes.some(test);
     });
   }
@@ -8952,16 +8952,16 @@ function receiverOf(start2, typeCalls) {
   return UNNAMED_RECEIVER;
 }
 function calledReceiver(call2, typeCalls) {
-  const callee = call2.childForFieldName("function") ?? call2.childForFieldName("method") ?? call2.childForFieldName("name") ?? call2.childForFieldName("callee") ?? call2.namedChildren[0] ?? null;
-  if (callee?.text === "super") return "super";
-  let bare = callee;
+  const callee2 = call2.childForFieldName("function") ?? call2.childForFieldName("method") ?? call2.childForFieldName("name") ?? call2.childForFieldName("callee") ?? call2.namedChildren[0] ?? null;
+  if (callee2?.text === "super") return "super";
+  let bare = callee2;
   while (bare && bare.type === "expression" && bare.namedChildren.length === 1) bare = bare.namedChildren[0];
   if (bare?.type === "template_function" && /^(?:static|dynamic|reinterpret|const)_cast$/.test(bare.childForFieldName("name")?.text ?? "")) {
     return castReceiver(bare.childForFieldName("arguments")?.namedChildren[0] ?? null);
   }
   const name2 = readName(bare);
   if (name2 === "new") {
-    const owner = readReceiver(callee) ?? readReceiver(call2, true);
+    const owner = readReceiver(callee2) ?? readReceiver(call2, true);
     return owner !== void 0 && TYPE_LIKE.test(owner) ? owner : UNNAMED_RECEIVER;
   }
   if (typeCalls === void 0 || typeCalls === "plain" && bare.namedChildren.length > 0) return UNNAMED_RECEIVER;
@@ -9169,7 +9169,7 @@ function underMainGuard(node) {
 }
 function pythonAll(root) {
   const names = /* @__PURE__ */ new Set();
-  let declared = false;
+  let declared2 = false;
   const literal2 = (n) => {
     if (n?.type !== "string" || n.namedChildren.some((c2) => c2.type === "interpolation")) return void 0;
     const parts2 = n.namedChildren.filter((c2) => c2.type === "string_content");
@@ -9190,7 +9190,7 @@ function pythonAll(root) {
     const e = stmt.namedChildren[0];
     if (!e) return [];
     if ((e.type === "assignment" || e.type === "augmented_assignment") && isAll(e.childForFieldName("left"))) {
-      if (e.type === "assignment") declared = true;
+      if (e.type === "assignment") declared2 = true;
       else if (e.childForFieldName("operator")?.text !== "+=") return void 0;
       return literals(e.childForFieldName("right"));
     }
@@ -9215,7 +9215,7 @@ function pythonAll(root) {
     }
     return true;
   };
-  return visit(root) && declared ? names : void 0;
+  return visit(root) && declared2 ? names : void 0;
 }
 function typedefTag(node) {
   if (node.type !== "type_definition") return [];
@@ -10820,9 +10820,9 @@ function collectAll(root, spec, defNames, maxCalls) {
     if (wantCalls && !(spec.kindFrom?.[type] && spec.kindFrom[type](node)) && !spec.skipCall?.(node)) {
       const how = spec.calls[type];
       if (how === "function") {
-        const callee = node.childForFieldName("function") ?? node.childForFieldName("callee") ?? node.childForFieldName("method") ?? node.childForFieldName("name") ?? node.childForFieldName("target") ?? kids[0] ?? null;
-        const inner = callee && spec.calls[callee.type] === "function" ? callee.childForFieldName("function") : null;
-        addCall(readName(callee), node, readReceiver(inner ?? callee, false, spec.typeCalls) ?? readReceiver(node, true, spec.typeCalls));
+        const callee2 = node.childForFieldName("function") ?? node.childForFieldName("callee") ?? node.childForFieldName("method") ?? node.childForFieldName("name") ?? node.childForFieldName("target") ?? kids[0] ?? null;
+        const inner = callee2 && spec.calls[callee2.type] === "function" ? callee2.childForFieldName("function") : null;
+        addCall(readName(callee2), node, readReceiver(inner ?? callee2, false, spec.typeCalls) ?? readReceiver(node, true, spec.typeCalls));
       } else if (how === "member") {
         addCall(readName(node.childForFieldName("name")), node, readReceiver(node, false, spec.typeCalls));
       } else if (how === "constructor") {
@@ -11858,9 +11858,9 @@ function extractConfigLiterals(content) {
     }
     const bare = UNQUOTED_SCALAR.exec(line2);
     const v = bare?.[1].trim();
-    const scalar = v && !/^[[{|>&*-]/.test(v) && !HAS_QUOTE.test(v) ? v : void 0;
-    if (scalar !== void 0 && !NUMBER.test(scalar)) {
-      literals.add("string", scalar, lineNo);
+    const scalar2 = v && !/^[[{|>&*-]/.test(v) && !HAS_QUOTE.test(v) ? v : void 0;
+    if (scalar2 !== void 0 && !NUMBER.test(scalar2)) {
+      literals.add("string", scalar2, lineNo);
       continue;
     }
     for (const m of line2.replace(QUOTED, " ").matchAll(BARE_NUMBER)) {
@@ -11971,12 +11971,12 @@ function scanPathFilter(root, opts) {
   return ({ rel: rel2, directory }) => directory ? (!scopeDirs || scopeDirs(rel2)) && (!includeDirs || includeDirs(rel2)) && !excludeDirs?.(rel2) : (!inScope || inScope(rel2)) && (!include2 || include2(rel2)) && !exclude2?.(rel2);
 }
 function explainPathFilter(root, opts, rel2) {
-  const matches = (globs) => compileGlobs(globs.map((g) => normalizeGlob(root, g)))?.(rel2) ?? true;
+  const matches2 = (globs) => compileGlobs(globs.map((g) => normalizeGlob(root, g)))?.(rel2) ?? true;
   const scope = opts.scope === void 0 ? "" : normalizeScope(root, opts.scope);
   const out2 = {};
-  if (scope && !matches([scope, `${scope}/**`])) out2.scope = opts.scope;
-  if (opts.include?.length && !matches(opts.include)) out2.include = opts.include;
-  const exclude2 = opts.exclude?.find((g) => matches([g]));
+  if (scope && !matches2([scope, `${scope}/**`])) out2.scope = opts.scope;
+  if (opts.include?.length && !matches2(opts.include)) out2.include = opts.include;
+  const exclude2 = opts.exclude?.find((g) => matches2([g]));
   if (exclude2 !== void 0) out2.exclude = exclude2;
   return out2.scope !== void 0 || out2.include || out2.exclude !== void 0 ? out2 : void 0;
 }
@@ -14081,15 +14081,15 @@ function buildModules(scan2) {
     list.push(f);
   }
   const dirs = [...byDir.keys()].sort(byStr);
-  const baseOf2 = /* @__PURE__ */ new Map();
+  const baseOf4 = /* @__PURE__ */ new Map();
   const baseCount = /* @__PURE__ */ new Map();
   for (const dir of dirs) {
     const b = dir === ROOT_PATH ? "root" : slugify(dir);
-    baseOf2.set(dir, b);
+    baseOf4.set(dir, b);
     baseCount.set(b, (baseCount.get(b) ?? 0) + 1);
   }
   const slugForDir = (dir) => {
-    const b = baseOf2.get(dir);
+    const b = baseOf4.get(dir);
     return b && baseCount.get(b) === 1 ? b : `${b || "module"}-${sha1(dir).slice(0, 8)}`;
   };
   const modules = [];
@@ -15474,13 +15474,13 @@ function stopwordRescue(scan2, query) {
   const named = dropped.filter((t) => /[A-Z]/.test(t));
   if (!named.length) return void 0;
   const docs = bm25DocsFor(scan2);
-  const declared = new Set(
+  const declared2 = new Set(
     named.filter((t) => {
       const lower = t.toLowerCase();
       return docs.some((d) => d.exactNames.has(lower) && d.symbols.includes(t));
     })
   );
-  return declared.size ? (raw) => declared.has(raw) : void 0;
+  return declared2.size ? (raw) => declared2.has(raw) : void 0;
 }
 function runSearch(scan2, query, opts = {}) {
   const keep = stopwordRescue(scan2, query);
@@ -16410,7 +16410,7 @@ function createBindScope(scan2, pairs, ctxIn) {
     return reached2;
   };
   let pkgFiles;
-  const packageOf = (family, dir) => {
+  const packageOf2 = (family, dir) => {
     if (!pkgFiles) {
       pkgFiles = /* @__PURE__ */ new Map();
       for (const f of scan2.files) {
@@ -16524,7 +16524,7 @@ function createBindScope(scan2, pairs, ctxIn) {
     const stem22 = rel2.slice(rel2.lastIndexOf("/") + 1).replace(/\.[^.]+$/, "");
     return t.symbols.some((s) => s.name === stem22 && !s.parent) ? stem22 : void 0;
   };
-  const goPackageName = (dir) => packageOf("go", dir).find((m) => !isGoTest(m.rel))?.symbols.find((s) => s.kind === "package")?.name;
+  const goPackageName = (dir) => packageOf2("go", dir).find((m) => !isGoTest(m.rel))?.symbols.find((s) => s.kind === "package")?.name;
   const aliases = (f) => {
     const goFile = f.lang === "go";
     if (!f.importAliases?.length && !(goFile && f.refs.length)) return NO_ALIASES;
@@ -16550,7 +16550,7 @@ function createBindScope(scan2, pairs, ctxIn) {
         const t = resolved(ref2.spec);
         const dir = t === null ? void 0 : dirOf(t);
         const local = explicit.get(ref2.spec) ?? (dir !== void 0 ? goPackageName(dir) : void 0) ?? goExternalName(ref2.spec);
-        addModule(local, dir !== void 0 ? packageOf("go", dir).filter((m) => !isGoTest(m.rel)).map((m) => m.rel) : null);
+        addModule(local, dir !== void 0 ? packageOf2("go", dir).filter((m) => !isGoTest(m.rel)).map((m) => m.rel) : null);
       }
     } else {
       for (const al of f.importAliases ?? []) {
@@ -16773,13 +16773,13 @@ function createCallBinder(scan2, pairs, opts = {}) {
       for (const m of inlineMods ?? []) if (line2 > m.line && line2 <= m.endLine && m.line > best) best = m.line;
       return best;
     };
-    const baseOf2 = (cls) => f.relations?.find((r) => r.kind === "extends" && r.from === cls)?.to;
+    const baseOf4 = (cls) => f.relations?.find((r) => r.kind === "extends" && r.from === cls)?.to;
     const classAround = (e) => {
       if (e === void 0) return void 0;
-      if (e.parent !== void 0 && baseOf2(e.parent) !== void 0) return e.parent;
+      if (e.parent !== void 0 && baseOf4(e.parent) !== void 0) return e.parent;
       let best;
       for (const s of f.symbols) {
-        if (s.endLine === void 0 || s.line > e.line || e.line > s.endLine || baseOf2(s.name) === void 0) continue;
+        if (s.endLine === void 0 || s.line > e.line || e.line > s.endLine || baseOf4(s.name) === void 0) continue;
         if (!best || s.line > best.line) best = s;
       }
       return best?.name ?? e.parent;
@@ -16905,7 +16905,7 @@ function createCallBinder(scan2, pairs, opts = {}) {
       if (SELF_NAMES.has(receiver)) return self(typeAround(e));
       if (receiver === "super") {
         const cls = classAround(e);
-        const base = cls !== void 0 ? baseOf2(cls) : void 0;
+        const base = cls !== void 0 ? baseOf4(cls) : void 0;
         return base !== void 0 && ownTypes.has(base) ? self(base) : reading("foreign", receiver, void 0, base);
       }
       if (family === "go" && goReceiverVar(e) === receiver) return self(e.parent);
@@ -16937,7 +16937,7 @@ function createCallBinder(scan2, pairs, opts = {}) {
         local = selfType !== void 0 ? memberOf(selfType, name2) : void 0;
         if (receiver === "super") {
           for (let t = selfType, hops = 0; !local && t !== void 0 && hops < MAX_BASE_HOPS; hops++) {
-            t = baseOf2(t);
+            t = baseOf4(t);
             if (t !== void 0 && ownTypes.has(t)) local = memberOf(t, name2);
             else break;
           }
@@ -16949,22 +16949,22 @@ function createCallBinder(scan2, pairs, opts = {}) {
       }
       if (local) return only && !only.has(local.name) ? null : { hit: { def: local, corroborated: true }, local: true };
       let restrict;
-      let callee = name2;
+      let callee2 = name2;
       if (shape === "bare") {
         const renamed = aliases.names.get(name2);
-        if (renamed) ({ name: callee, files: restrict } = renamed);
+        if (renamed) ({ name: callee2, files: restrict } = renamed);
       } else if (shape === "module") restrict = rustModules?.get(receiver) ?? aliases.modules.get(receiver);
       const viaPath = rustModules?.has(receiver) === true && shape === "module";
-      if (only && !only.has(callee)) return null;
+      if (only && !only.has(callee2)) return null;
       const pool = !shaped ? "any" : shape === "bare" || shape === "module" ? "free" : shape === "self" || family === "go" ? "member" : "member-first";
       const guessPool = pool === "member-first" ? "member" : pool;
       if (restrict !== void 0) {
         if (restrict === null) {
           if (!recall) return null;
         } else {
-          let hits = scope.within(exportedGroup(callee, family, pool), restrict, callee);
+          let hits = scope.within(exportedGroup(callee2, family, pool), restrict, callee2);
           if (hiddenReach === "import" || viaPath) {
-            for (const d of scope.within(hiddenGroup(callee, family, pool), restrict, callee)) if (!hits.includes(d)) hits.push(d);
+            for (const d of scope.within(hiddenGroup(callee2, family, pool), restrict, callee2)) if (!hits.includes(d)) hits.push(d);
           }
           if (family === "rust") hits = hits.filter(reachable);
           const chosen2 = pickCandidate(f.rel, hits);
@@ -16973,13 +16973,13 @@ function createCallBinder(scan2, pairs, opts = {}) {
           if (!recall && STRICT.has(family)) return null;
         }
       }
-      const reached = corroborated(callee, pool);
+      const reached = corroborated(callee2, pool);
       const stated = prefer(family === "rust" ? reached.filter(reachable) : reached);
       if (stated.length) {
         const chosen2 = pickCandidate(f.rel, stated);
         return chosen2 ? { hit: { def: chosen2, corroborated: true }, local: false } : null;
       }
-      const group = exportedGroup(callee, family, recall ? "any" : guessPool);
+      const group = exportedGroup(callee2, family, recall ? "any" : guessPool);
       if (!group) return null;
       const outside = defsOutside(group, f.rel);
       const cands = family === "rust" ? outside.filter(reachable) : outside;
@@ -17821,40 +17821,40 @@ var init_edit_spans = __esm({
   }
 });
 function resolveUniqueSymbol(scan2, namePath, file, line2) {
-  let matches = findSymbol(scan2, namePath, { maxResults: Infinity });
+  let matches2 = findSymbol(scan2, namePath, { maxResults: Infinity });
   const rel2 = file === void 0 ? void 0 : repoRelative(scan2.root, file);
-  if (file !== void 0) matches = matches.filter((m) => m.file === file || m.file === rel2);
+  if (file !== void 0) matches2 = matches2.filter((m) => m.file === file || m.file === rel2);
   const where = rel2 !== void 0 ? ` in ${rel2}` : "";
-  if (matches.length === 0) {
+  if (matches2.length === 0) {
     const near = findSymbol(scan2, namePath, { substring: true, maxResults: 5 }).map((m) => `${m.file}:${m.line} ${m.parent ? m.parent + "/" : ""}${m.name}`).join(", ");
     throw new Error(`no symbol matches "${namePath}"${where}${near ? ` \u2014 near matches: ${near}` : ""}`);
   }
   if (line2 !== void 0) {
-    const candidates = matches;
-    matches = candidates.filter((m) => m.line === line2);
-    if (!matches.length) {
+    const candidates = matches2;
+    matches2 = candidates.filter((m) => m.line === line2);
+    if (!matches2.length) {
       const size = (m) => (m.endLine ?? m.line) - m.line;
       const containing = candidates.filter((m) => m.line <= line2 && line2 <= (m.endLine ?? m.line));
       const least = Math.min(...containing.map(size));
-      matches = containing.filter((m) => size(m) === least);
+      matches2 = containing.filter((m) => size(m) === least);
     }
-    if (!matches.length) {
+    if (!matches2.length) {
       throw new Error(`no "${namePath}"${where} is declared at or spans line ${line2} \u2014 candidates: ${listed(candidates)}`);
     }
   }
-  if (matches.length === 1) return matches[0];
-  const files = new Set(matches.map((m) => m.file));
+  if (matches2.length === 1) return matches2[0];
+  const files = new Set(matches2.map((m) => m.file));
   if (files.size === 1) {
-    const lines = matches.map((m) => m.line).join(", ");
-    throw new Error(`"${namePath}" is ambiguous (${matches.length} declarations in ${matches[0].file}, lines ${lines}) \u2014 pass \`line\`: one of ${lines}`);
+    const lines = matches2.map((m) => m.line).join(", ");
+    throw new Error(`"${namePath}" is ambiguous (${matches2.length} declarations in ${matches2[0].file}, lines ${lines}) \u2014 pass \`line\`: one of ${lines}`);
   }
   throw new Error(
-    `"${namePath}" is ambiguous (${matches.length} matches: ${listed(matches)}) \u2014 qualify with \`file\` or a Parent/name path, and \`line\` for same-file homonyms`
+    `"${namePath}" is ambiguous (${matches2.length} matches: ${listed(matches2)}) \u2014 qualify with \`file\` or a Parent/name path, and \`line\` for same-file homonyms`
   );
 }
-function listed(matches) {
-  const shown = matches.slice(0, MAX_LISTED).map((m) => `${m.file}:${m.line}`).join(", ");
-  return matches.length > MAX_LISTED ? `${shown}, \u2026 ${matches.length - MAX_LISTED} more` : shown;
+function listed(matches2) {
+  const shown = matches2.slice(0, MAX_LISTED).map((m) => `${m.file}:${m.line}`).join(", ");
+  return matches2.length > MAX_LISTED ? `${shown}, \u2026 ${matches2.length - MAX_LISTED} more` : shown;
 }
 function repoRelative(root, file) {
   const rel2 = isAbsolute4(file) ? relative5(root, file) : file;
@@ -18846,7 +18846,7 @@ function detectWorkspaces(root) {
     if (edges.length) pkg.dependsOn = edges.sort(byStr);
   }
   const packageAt2 = new Map(packages.map((p) => [p.dir, p]));
-  const packageOf = (rel2) => {
+  const packageOf2 = (rel2) => {
     for (let dir = rel2; ; ) {
       const hit = packageAt2.get(dir);
       if (hit) return hit;
@@ -18860,7 +18860,7 @@ function detectWorkspaces(root) {
     cycle: findCycle(packages),
     topoOrder: topoOrder(packages),
     warnings: [...new Set(warnings)].sort(byStr),
-    packageOf
+    packageOf: packageOf2
   };
 }
 function ownPomVersion(pom) {
@@ -20403,10 +20403,10 @@ async function embedViaEndpoint(texts, opts = {}) {
       signal: controller.signal
     });
     if (!res.ok) throw new Error(`embedding endpoint ${url} returned HTTP ${res.status}`);
-    const declared = Number(res.headers.get("content-length"));
+    const declared2 = Number(res.headers.get("content-length"));
     const max = opts.maxResponseBytes ?? MAX_RESPONSE_BYTES;
-    if (Number.isFinite(declared) && declared > max) {
-      throw new Error(`embedding endpoint ${url} sent ${declared} bytes, past the ${max} accepted`);
+    if (Number.isFinite(declared2) && declared2 > max) {
+      throw new Error(`embedding endpoint ${url} sent ${declared2} bytes, past the ${max} accepted`);
     }
     const raw = await readCapped(res, opts.maxResponseBytes ?? MAX_RESPONSE_BYTES, url);
     const data = JSON.parse(raw);
@@ -22361,9 +22361,9 @@ function dispatchLiveness(scan2, relations, live) {
   const external = /* @__PURE__ */ new Set();
   for (const f of scan2.files) {
     if (familyOf(f.lang) === "go") continue;
-    const declared = /* @__PURE__ */ new Map();
-    for (const r of f.relations ?? []) declared.set(r.from, (declared.get(r.from) ?? 0) + 1);
-    for (const [from, n] of declared) if (n > (resolvedCount.get(`${from}${SEP4}${f.rel}`) ?? 0)) external.add(`${from}${SEP4}${f.rel}`);
+    const declared2 = /* @__PURE__ */ new Map();
+    for (const r of f.relations ?? []) declared2.set(r.from, (declared2.get(r.from) ?? 0) + 1);
+    for (const [from, n] of declared2) if (n > (resolvedCount.get(`${from}${SEP4}${f.rel}`) ?? 0)) external.add(`${from}${SEP4}${f.rel}`);
   }
   const memo = /* @__PURE__ */ new Map();
   const check = (s, seen) => {
@@ -22563,7 +22563,7 @@ function libraryApi(scan2, ctx) {
 function manifestEntries(scan2, ctx, byRel) {
   const out2 = /* @__PURE__ */ new Set();
   const scripts = /* @__PURE__ */ new Map();
-  const isCode2 = (rel2) => byRel.get(rel2)?.kind === "code";
+  const isCode22 = (rel2) => byRel.get(rel2)?.kind === "code";
   for (const f of scan2.files) {
     const base = f.rel.slice(f.rel.lastIndexOf("/") + 1);
     const dir = dirOf(f.rel);
@@ -22586,7 +22586,7 @@ function manifestEntries(scan2, ctx, byRel) {
         const stem22 = last.replace(/(\.d)?\.[cm]?[jt]sx?$/, "");
         for (const cand of [leaf, ...distToSrcCandidates(leaf), `src/${stem22}`]) {
           const r = resolveImport(from, ".ts", cand.startsWith(".") ? cand : `./${cand}`, ctx);
-          if (r.kind === "resolved" && isCode2(r.target)) out2.add(r.target);
+          if (r.kind === "resolved" && isCode22(r.target)) out2.add(r.target);
         }
       }
     } else if (base === "pyproject.toml") {
@@ -22595,7 +22595,7 @@ function manifestEntries(scan2, ctx, byRel) {
       for (const m of text2.matchAll(section)) {
         for (const e of m[1].matchAll(/^\s*[\w.-]+\s*=\s*["']([\w.]+):(\w+)[\w.]*["']/gm)) {
           const r = resolveImport(dir ? `${dir}/pyproject.py` : "pyproject.py", ".py", e[1], ctx);
-          if (r.kind !== "resolved" || !isCode2(r.target)) continue;
+          if (r.kind !== "resolved" || !isCode22(r.target)) continue;
           const fns = scripts.get(r.target) ?? /* @__PURE__ */ new Set();
           scripts.set(r.target, fns.add(e[2]));
         }
@@ -25202,13 +25202,13 @@ async function callTool(name2, args2, repo, progress, walkRepo = async (r) => ({
   if (name2 === "find_symbol") {
     const namePath = str(args2.namePath);
     if (!namePath) throw new Error("`namePath` is required");
-    const matches = findSymbol(readScan(), namePath, {
+    const matches2 = findSymbol(readScan(), namePath, {
       substring: args2.substring === true,
       includeBody: args2.includeBody === true,
       concise: args2.concise === true,
       maxResults: positiveNum(args2.maxResults)
     });
-    return JSON.stringify(matches, null, 2);
+    return JSON.stringify(matches2, null, 2);
   }
   if (name2 === "find_references") {
     const symName = str(args2.name);
@@ -25722,7 +25722,7 @@ async function runMcpServer(opts = {}) {
       const raw = await callTool(name2, args2, repo, progress, walkRepo, { pool: lspPool, trustRepoConfig });
       const narrowed = str(args2.scope) !== void 0 || strArray(args2.include) !== void 0 || strArray(args2.exclude) !== void 0 || str(args2.name) !== void 0 || args2.concise === true;
       const maxBytes = opts.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
-      const assemble = (text22) => {
+      const assemble2 = (text22) => {
         const capped = text22 !== raw;
         const link = capped && version >= RICH_TOOLS_SINCE ? resourceLinkFor(text22, name2) : void 0;
         const structured = version >= RICH_TOOLS_SINCE ? structuredContentFor(text22, capped, OUTPUT_SCHEMAS[name2] !== void 0) : void 0;
@@ -25739,10 +25739,10 @@ async function runMcpServer(opts = {}) {
         };
       };
       const text2 = capResponse(raw, name2, repo, maxBytes, !narrowed);
-      let result = assemble(text2);
+      let result = assemble2(text2);
       if (text2 === raw) {
         const onWire = Buffer.byteLength(JSON.stringify(result), "utf8") + WIRE_ENVELOPE_BYTES;
-        if (onWire > maxBytes) result = assemble(capResponse(raw, name2, repo, maxBytes, !narrowed, onWire));
+        if (onWire > maxBytes) result = assemble2(capResponse(raw, name2, repo, maxBytes, !narrowed, onWire));
       }
       return { result };
     } catch (e) {
@@ -27389,19 +27389,19 @@ function renderScip(scan2, opts = {}) {
   const projectRoot = opts.projectRoot ?? pathToFileURL2(scan2.root).href;
   const toolVersion = opts.toolVersion ?? ENGINE_VERSION;
   const packageAt2 = /* @__PURE__ */ new Map();
-  const packageOf = (dir, manifest) => {
+  const packageOf2 = (dir, manifest) => {
     const key = `${dir}\0${manifest}`;
     let hit = packageAt2.get(key);
     if (hit === void 0) {
       const c2 = manifestCoordinates(scan2.root, dir, manifest);
-      hit = c2 ? `${packageField(c2.manager)} ${packageField(c2.name)} ${packageField(c2.version)}` : dir ? packageOf(dirOf(dir), manifest) : NO_PACKAGE;
+      hit = c2 ? `${packageField(c2.manager)} ${packageField(c2.name)} ${packageField(c2.version)}` : dir ? packageOf2(dirOf(dir), manifest) : NO_PACKAGE;
       packageAt2.set(key, hit);
     }
     return hit;
   };
   const prefixOf = (f) => {
     const manifest = PACKAGE_MANIFEST.get(f.lang);
-    return `${SCHEME} ${manifest ? packageOf(dirOf(f.rel), manifest) : NO_PACKAGE} ${fileNamespace(f.rel)}`;
+    return `${SCHEME} ${manifest ? packageOf2(dirOf(f.rel), manifest) : NO_PACKAGE} ${fileNamespace(f.rel)}`;
   };
   const docs = scan2.files.filter((f) => f.kind === "code" && f.symbols.length > 0);
   const docDefs = /* @__PURE__ */ new Map();
@@ -30541,9 +30541,9 @@ var SOURCE = 0.5;
 function lookupSymbols(index, graph, query) {
   const moduleOf = new Map(graph.files.map((f) => [f.rel, f.module]));
   const names = Object.keys(index.defs);
-  let matches;
+  let matches2;
   if (index.defs[query]) {
-    matches = [query];
+    matches2 = [query];
   } else {
     let terms = keywords(query).map((t) => t.toLowerCase());
     if (terms.length === 0) terms = [foldText(query).toLowerCase()];
@@ -30585,9 +30585,9 @@ function lookupSymbols(index, graph, query) {
       score += tiered * (matched / terms.length) ** 2;
       if (score > 0) scored.push({ name: names[i2], score });
     }
-    matches = scored.sort((a, b) => b.score - a.score || a.name.length - b.name.length || byStr(a.name, b.name)).slice(0, MAX_HITS).map((x) => x.name);
+    matches2 = scored.sort((a, b) => b.score - a.score || a.name.length - b.name.length || byStr(a.name, b.name)).slice(0, MAX_HITS).map((x) => x.name);
   }
-  const hits = matches.map((name2) => ({
+  const hits = matches2.map((name2) => ({
     name: name2,
     defs: (index.defs[name2] ?? []).map((d) => ({ ...d, module: moduleOf.get(d.file) ?? "root" })),
     refs: index.refs[name2] ?? []
@@ -31594,15 +31594,77 @@ function pyprojectDeps(text2) {
   }
   return out2;
 }
+function pipfileDeps(text2) {
+  const out2 = [];
+  let section = "";
+  for (const raw of text2.split(/\r?\n/)) {
+    const line2 = raw.replace(/\s#.*$/, "").trim();
+    if (!line2 || line2.startsWith("#")) continue;
+    const header2 = /^\[([^\]]+)\]$/.exec(line2);
+    if (header2) {
+      section = header2[1].trim();
+      continue;
+    }
+    if (section !== "packages" && section !== "dev-packages") continue;
+    const key = /^(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9][A-Za-z0-9._-]*))\s*=/.exec(line2);
+    const name2 = key ? key[1] ?? key[2] ?? key[3] : void 0;
+    if (name2) out2.push(normalizePy(name2));
+  }
+  return out2;
+}
+function setupCfgDeps(text2) {
+  const out2 = [];
+  let section = "";
+  let collecting = false;
+  const take = (value) => {
+    for (const part of value.split(/[,;]/)) {
+      const v = part.trim();
+      if (!v || v.startsWith("-") || /^[a-z+]+:\/\//i.test(v)) continue;
+      const m = PY_NAME.exec(v);
+      if (m?.[1]) out2.push(normalizePy(m[1]));
+    }
+  };
+  for (const raw of text2.split(/\r?\n/)) {
+    if (/^\s*[#;]/.test(raw)) continue;
+    const header2 = /^\[([^\]]+)\]\s*$/.exec(raw.trim());
+    if (header2 && !/^\s/.test(raw)) {
+      section = header2[1].trim();
+      collecting = false;
+      continue;
+    }
+    if (/^\s+\S/.test(raw)) {
+      if (collecting) take(raw.replace(/\s#.*$/, ""));
+      continue;
+    }
+    collecting = false;
+    const kv = /^([\w.-]+)\s*[=:]\s*(.*)$/.exec(raw);
+    if (!kv) continue;
+    const key = kv[1];
+    const wanted = section === "options" && (key === "install_requires" || key === "setup_requires" || key === "tests_require") || section === "options.extras_require";
+    if (!wanted) continue;
+    collecting = true;
+    take(kv[2].replace(/\s#.*$/, ""));
+  }
+  return out2;
+}
 function manifestWorkspace(rel2) {
   const dir = dirOf3(rel2);
   if (baseOf(dir) === "requirements") return dirOf3(dir);
   return dir;
 }
+var READERS = {
+  npm: packageJsonDeps,
+  pyproject: pyprojectDeps,
+  requirements: requirementsDeps,
+  pipfile: pipfileDeps,
+  "setup-cfg": setupCfgDeps
+};
 function manifestKind(rel2) {
   const base = baseOf(rel2);
   if (base === "package.json") return "npm";
   if (base === "pyproject.toml") return "pyproject";
+  if (base === "Pipfile") return "pipfile";
+  if (base === "setup.cfg") return "setup-cfg";
   if (/^requirements[\w.-]*\.txt$/i.test(base)) return "requirements";
   if (baseOf(dirOf3(rel2)) === "requirements" && base.endsWith(".txt")) return "requirements";
   return void 0;
@@ -31615,7 +31677,7 @@ function createRepoContext(files, readText2) {
     if (!kind) continue;
     const text2 = readText2(rel2);
     if (text2 === void 0) continue;
-    const names = kind === "npm" ? packageJsonDeps(text2) : kind === "pyproject" ? pyprojectDeps(text2) : requirementsDeps(text2);
+    const names = READERS[kind](text2);
     const ws = manifestWorkspace(rel2);
     let set = deps.get(ws);
     if (!set) deps.set(ws, set = /* @__PURE__ */ new Set());
@@ -31667,6 +31729,7 @@ var C_EXT = /* @__PURE__ */ new Set([
 ]);
 var PY_EXT = /* @__PURE__ */ new Set([".py", ".pyi"]);
 var HASH_EXT = /* @__PURE__ */ new Set([".yml", ".yaml", ".toml", ".sh", ".bash", ".zsh", ".rb", ".tf", ".cfg", ".ini", ".conf", ".env"]);
+var SQL_EXT = /* @__PURE__ */ new Set([".sql"]);
 function extOf(rel2) {
   const base = rel2.slice(rel2.lastIndexOf("/") + 1);
   const dot = base.lastIndexOf(".");
@@ -31678,6 +31741,7 @@ function commentSyntaxFor(rel2) {
   if (C_EXT.has(ext)) return "c";
   if (PY_EXT.has(ext)) return "python";
   if (HASH_EXT.has(ext)) return "hash";
+  if (SQL_EXT.has(ext)) return "sql";
   const base = rel2.slice(rel2.lastIndexOf("/") + 1);
   if (/^(?:Dockerfile|Containerfile)(?:\..+)?$/.test(base) || ext === ".dockerfile") return "hash";
   return void 0;
@@ -31693,6 +31757,8 @@ function maskComments(text2, syntax, opts = {}) {
       return maskPython2(text2, strings2);
     case "hash":
       return maskHash(text2, strings2);
+    case "sql":
+      return maskSql(text2, strings2);
     default:
       return text2;
   }
@@ -31909,6 +31975,78 @@ function maskHash(text2, strings2) {
   }
   return out2.join("");
 }
+function maskSql(text2, strings2) {
+  const out2 = text2.split("");
+  const n = text2.length;
+  let i2 = 0;
+  while (i2 < n) {
+    const ch = text2[i2];
+    if (ch === "-" && text2[i2 + 1] === "-") {
+      let j = i2;
+      while (j < n && text2[j] !== "\n") j++;
+      blank2(out2, i2, j);
+      i2 = j;
+      continue;
+    }
+    if (ch === "/" && text2[i2 + 1] === "*") {
+      const close = text2.indexOf("*/", i2 + 2);
+      const j = close === -1 ? n : close + 2;
+      blank2(out2, i2, j);
+      i2 = j;
+      continue;
+    }
+    if (ch === "'") {
+      let j = i2 + 1;
+      while (j < n) {
+        if (text2[j] === "'" && text2[j + 1] === "'") j += 2;
+        else if (text2[j] === "'") break;
+        else j++;
+      }
+      if (strings2) blank2(out2, i2 + 1, Math.min(j, n));
+      i2 = j + 1;
+      continue;
+    }
+    i2++;
+  }
+  return out2.join("");
+}
+
+// src/extract/mounts.ts
+function joinRoutePath(prefix, path) {
+  if (!prefix || prefix === "/") return path || "/";
+  const p = path === "/" || path === "" ? "" : path.startsWith("/") ? path : `/${path}`;
+  const joined = `${prefix.replace(/\/+$/, "")}${p}`.replace(/\/{2,}/g, "/");
+  return joined || "/";
+}
+function applyMounts(facts, hints, framework, resolve21) {
+  const parents = /* @__PURE__ */ new Map();
+  for (const h of hints) {
+    if (h.kind !== "mount" || h.framework !== framework) continue;
+    const child2 = resolve21(h);
+    if (!child2 || child2 === h.file) continue;
+    const list = parents.get(child2) ?? [];
+    list.push({ file: h.file, prefix: h.prefix });
+    parents.set(child2, list);
+  }
+  if (!parents.size) return facts;
+  const prefixesOf = (file, seen) => {
+    const list = parents.get(file);
+    if (!list || seen.has(file)) return [""];
+    const next = new Set(seen).add(file);
+    const out2 = /* @__PURE__ */ new Set();
+    for (const p of list) for (const outer of prefixesOf(p.file, next)) out2.add(joinRoutePath(outer, p.prefix));
+    return [...out2];
+  };
+  const routes = [];
+  for (const r of facts.routes) {
+    if (r.framework !== framework || !parents.has(r.file)) {
+      routes.push(r);
+      continue;
+    }
+    for (const prefix of prefixesOf(r.file, /* @__PURE__ */ new Set())) routes.push({ ...r, path: joinRoutePath(prefix, r.path) });
+  }
+  return { ...facts, routes };
+}
 
 // src/extract/js.ts
 var JS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
@@ -32043,20 +32181,14 @@ function relativeImports(text2) {
   return out2;
 }
 function importsModule(text2, name2) {
-  const esc = name2.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-  return new RegExp(`(?:\\bfrom\\s*|\\brequire\\s*\\(\\s*|\\bimport\\s*\\(\\s*|\\bimport\\s+)["']${esc}(?:/[^"']*)?["']`).test(text2);
+  const esc4 = name2.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  return new RegExp(`(?:\\bfrom\\s*|\\brequire\\s*\\(\\s*|\\bimport\\s*\\(\\s*|\\bimport\\s+)["']${esc4}(?:/[^"']*)?["']`).test(text2);
 }
 
 // src/extract/express.ts
 var FRAMEWORK = "express";
 var VERBS = ["get", "post", "put", "patch", "delete", "all", "options", "head"];
 var VERB_SET = new Set(VERBS);
-function joinRoutePath(prefix, path) {
-  if (!prefix || prefix === "/") return path || "/";
-  const p = path === "/" || path === "" ? "" : path.startsWith("/") ? path : `/${path}`;
-  const joined = `${prefix.replace(/\/+$/, "")}${p}`.replace(/\/{2,}/g, "/");
-  return joined || "/";
-}
 function receiversOf(skeleton, code) {
   const out2 = /* @__PURE__ */ new Set();
   const ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[\w$.<>]+\s*)?=\s*(?:express\s*\(\s*\)|express\s*\.\s*Router\s*\(|Router\s*\()/g;
@@ -32173,33 +32305,7 @@ var expressMountLinker = {
   id: "express-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const parents = /* @__PURE__ */ new Map();
-    for (const h of ctx.hints) {
-      if (h.kind !== "mount" || h.framework !== FRAMEWORK) continue;
-      const child2 = moduleFile(h.target, files);
-      if (!child2 || child2 === h.file) continue;
-      const list = parents.get(child2) ?? [];
-      list.push({ file: h.file, prefix: h.prefix });
-      parents.set(child2, list);
-    }
-    if (!parents.size) return facts;
-    const prefixesOf = (file, seen) => {
-      const list = parents.get(file);
-      if (!list || seen.has(file)) return [""];
-      const next = new Set(seen).add(file);
-      const out2 = /* @__PURE__ */ new Set();
-      for (const p of list) for (const outer of prefixesOf(p.file, next)) out2.add(joinRoutePath(outer, p.prefix));
-      return [...out2];
-    };
-    const routes = [];
-    for (const r of facts.routes) {
-      if (r.framework !== FRAMEWORK || !parents.has(r.file)) {
-        routes.push(r);
-        continue;
-      }
-      for (const prefix of prefixesOf(r.file, /* @__PURE__ */ new Set())) routes.push({ ...r, path: joinRoutePath(prefix, r.path) });
-    }
-    return { ...facts, routes };
+    return applyMounts(facts, ctx.hints, FRAMEWORK, (h) => moduleFile(h.target, files));
   }
 };
 
@@ -32311,9 +32417,1752 @@ var entityUseLinker = {
 var FACTS_SCHEMA = 1;
 var FACT_KINDS = ["routes", "calls", "screens", "entities", "entityUses", "jobs", "externals", "infra"];
 
+// src/extract/py.ts
+function isPython(rel2) {
+  return rel2.toLowerCase().endsWith(".py");
+}
+function pyString(raw) {
+  const m = /^([rRbBuUfF]{0,2})("""|'''|"|')([\s\S]*)\2$/.exec(raw);
+  if (!m) return void 0;
+  const quote = m[2];
+  const body2 = m[3];
+  if (quote.length === 1 && body2.includes(quote) && !body2.includes("\\")) return void 0;
+  return { value: body2, f: /f/i.test(m[1]) };
+}
+function pyLiteral(raw) {
+  if (raw === void 0) return void 0;
+  const s = pyString(raw);
+  return s && !s.f ? s.value : void 0;
+}
+var KWARG = /^([A-Za-z_]\w*)\s*=(?!=)\s*([\s\S]*)$/;
+function kwarg(args2, name2) {
+  for (const a of args2) {
+    const m = KWARG.exec(a.raw);
+    if (m && m[1] === name2) {
+      const value = m[2];
+      return { raw: value.trim(), start: a.start + a.raw.length - value.length };
+    }
+  }
+  return void 0;
+}
+function positional(args2) {
+  return args2.filter((a) => !KWARG.test(a.raw) && !a.raw.startsWith("*"));
+}
+function pyDotted(raw) {
+  return /^[A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*$/.test(raw) ? raw.replace(/\s+/g, "") : void 0;
+}
+function pyStringList(raw) {
+  const m = /^[[({]([\s\S]*)[\])}]$/.exec(raw.trim());
+  if (!m) return void 0;
+  const out2 = [];
+  for (const part of m[1].split(",")) {
+    const p = part.trim();
+    if (!p) continue;
+    const v = pyLiteral(p);
+    if (v === void 0) return void 0;
+    out2.push(v);
+  }
+  return out2;
+}
+function pyImports(text2) {
+  const out2 = /* @__PURE__ */ new Map();
+  const IMPORT = /^[ \t]*import[ \t]+([^\n]+)/gm;
+  for (const m of text2.matchAll(IMPORT)) {
+    for (const part of m[1].split(",")) {
+      const p = /^\s*([\w.]+)(?:\s+as\s+(\w+))?\s*$/.exec(part);
+      if (!p) continue;
+      const module2 = p[1];
+      out2.set(p[2] ?? module2.split(".")[0], { module: p[2] ? module2 : module2.split(".")[0] });
+    }
+  }
+  const FROM = /^[ \t]*from[ \t]+(\.*[\w.]*)[ \t]+import[ \t]+(\([^)]*\)|[^\n]+)/gm;
+  for (const m of text2.matchAll(FROM)) {
+    const module2 = m[1];
+    if (!module2) continue;
+    for (const part of m[2].replace(/[()]/g, "").split(",")) {
+      const p = /^\s*(\w+)(?:\s+as\s+(\w+))?\s*$/.exec(part.replace(/\\\s*$/, ""));
+      if (!p || p[1] === "*") continue;
+      out2.set(p[2] ?? p[1], { module: module2, name: p[1] });
+    }
+  }
+  return out2;
+}
+function importsPyModule(text2, name2) {
+  const esc4 = name2.replace(/[.]/g, "\\.");
+  return new RegExp(`^[ \\t]*(?:import[ \\t]+(?:[\\w.]+[ \\t]*,[ \\t]*)*${esc4}(?:\\.[\\w.]+)?\\b|from[ \\t]+${esc4}(?:\\.[\\w.]+)?[ \\t]+import\\b)`, "m").test(
+    text2
+  );
+}
+function dirOf4(rel2) {
+  const i2 = rel2.lastIndexOf("/");
+  return i2 === -1 ? "" : rel2.slice(0, i2);
+}
+function pyModulePath(fromRel, module2) {
+  const dots = /^\.*/.exec(module2)?.[0].length ?? 0;
+  const rest = module2.slice(dots).split(".").filter(Boolean);
+  if (!dots) return rest.join("/");
+  let dir = dirOf4(fromRel);
+  for (let i2 = 1; i2 < dots; i2++) dir = dirOf4(dir);
+  return [dir, ...rest].filter(Boolean).join("/");
+}
+function pyImportTarget(fromRel, raw, imports) {
+  const dotted = pyDotted(raw);
+  if (!dotted) return void 0;
+  const parts2 = dotted.split(".");
+  const imp = imports.get(parts2[0]);
+  if (!imp) return void 0;
+  const base = pyModulePath(fromRel, imp.module);
+  if (imp.name !== void 0) {
+    const sub = [base, imp.name].filter(Boolean).join("/");
+    return base ? `${sub}|${base}` : sub;
+  }
+  const inner = parts2.slice(1, -1);
+  return [base, ...inner].filter(Boolean).join("/");
+}
+function pyModuleFile(target, fromRel, files) {
+  const roots = [""];
+  const segs = dirOf4(fromRel).split("/").filter(Boolean);
+  for (let i2 = 1; i2 <= segs.length; i2++) roots.push(segs.slice(0, i2).join("/"));
+  for (const alt of target.split("|")) {
+    if (!alt) continue;
+    for (const root of roots) {
+      const base = root ? `${root}/${alt}` : alt;
+      if (files.has(`${base}.py`)) return `${base}.py`;
+      if (files.has(`${base}/__init__.py`)) return `${base}/__init__.py`;
+    }
+  }
+  return void 0;
+}
+function decoratedName(skeleton, from) {
+  const re = /\s*(?:@[\w.]+[ \t]*(\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\))?[^\n]*\n|(?:async[ \t]+)?def[ \t]+([A-Za-z_]\w*))/y;
+  let at = skeleton.indexOf("\n", from);
+  if (at === -1) return void 0;
+  for (let guard = 0; guard < 20; guard++) {
+    re.lastIndex = at;
+    const m = re.exec(skeleton);
+    if (!m) return void 0;
+    if (m[2]) return { name: m[2], offset: m.index + m[0].length - m[2].length };
+    at = re.lastIndex;
+  }
+  return void 0;
+}
+function indentAt(text2, lineStart) {
+  let i2 = lineStart;
+  while (text2[i2] === " " || text2[i2] === "	") i2++;
+  return i2 - lineStart;
+}
+function pyClasses(skeleton, readBases) {
+  const out2 = [];
+  const CLASS2 = /^([ \t]*)class[ \t]+([A-Za-z_]\w*)[ \t]*(\(|:)/gm;
+  for (const m of skeleton.matchAll(CLASS2)) {
+    const indent = m[1].length;
+    const offset = m.index + indent;
+    let headerEnd = m.index + m[0].length;
+    let bases = [];
+    if (m[3] === "(") {
+      const open = headerEnd - 1;
+      bases = readBases(open) ?? [];
+      let depth = 0;
+      for (let i2 = open; i2 < skeleton.length; i2++) {
+        if (skeleton[i2] === "(") depth++;
+        else if (skeleton[i2] === ")" && --depth === 0) {
+          headerEnd = i2 + 1;
+          break;
+        }
+      }
+    }
+    const nl = skeleton.indexOf("\n", headerEnd);
+    const statements = [];
+    if (nl !== -1) {
+      let bodyIndent = -1;
+      let at = nl + 1;
+      while (at < skeleton.length) {
+        const end = skeleton.indexOf("\n", at);
+        const lineEnd = end === -1 ? skeleton.length : end;
+        const line2 = skeleton.slice(at, lineEnd);
+        if (line2.trim()) {
+          const ind = indentAt(skeleton, at);
+          if (ind <= indent) break;
+          if (bodyIndent === -1) bodyIndent = ind;
+          if (ind === bodyIndent) statements.push(at + ind);
+        }
+        if (end === -1) break;
+        at = end + 1;
+      }
+    }
+    out2.push({ name: m[2], offset, bases, statements });
+  }
+  return out2;
+}
+function pyRouteParams(path) {
+  return path.replace(/\{([A-Za-z_]\w*)(?::[^}]*)?\}/g, ":$1").replace(/<(?:[A-Za-z_]\w*:)?([A-Za-z_]\w*)>/g, ":$1");
+}
+
+// src/extract/sdk-map.ts
+var SDK_MAP = [
+  { id: "algolia", npm: ["algoliasearch", "@algolia/*"], py: ["algoliasearch"], dist: ["algoliasearch"], env: ["ALGOLIA"] },
+  { id: "anthropic", npm: ["@anthropic-ai/sdk"], py: ["anthropic"], dist: ["anthropic"], env: ["ANTHROPIC"] },
+  { id: "aws", npm: ["@aws-sdk/*", "aws-sdk"], py: ["boto3", "botocore", "aioboto3"], dist: ["boto3", "botocore", "aioboto3"], env: ["AWS"] },
+  { id: "elasticsearch", npm: ["@elastic/elasticsearch"], py: ["elasticsearch"], dist: ["elasticsearch"], env: ["ELASTICSEARCH", "ELASTIC"] },
+  {
+    id: "firebase",
+    npm: ["firebase", "firebase-admin", "firebase-functions", "@firebase/*"],
+    py: ["firebase_admin"],
+    dist: ["firebase-admin"],
+    env: ["FIREBASE"]
+  },
+  { id: "github", npm: ["@octokit/*", "octokit"], py: ["github"], dist: ["pygithub"], env: ["GITHUB"] },
+  { id: "google-cloud", npm: ["@google-cloud/*"], py: ["google.cloud"], dist: ["google-cloud-*"], env: ["GOOGLE_CLOUD", "GCP", "GCLOUD"] },
+  { id: "mailgun", npm: ["mailgun.js", "mailgun-js"], py: ["mailgun"], dist: ["mailgun", "mailgun2"], env: ["MAILGUN"] },
+  { id: "mixpanel", npm: ["mixpanel", "mixpanel-browser"], py: ["mixpanel"], dist: ["mixpanel"], env: ["MIXPANEL"] },
+  { id: "mongodb", npm: ["mongodb"], py: ["pymongo", "motor"], dist: ["pymongo", "motor"], env: ["MONGODB", "MONGO"] },
+  { id: "openai", npm: ["openai"], py: ["openai"], dist: ["openai"], env: ["OPENAI"] },
+  {
+    id: "postgres",
+    npm: ["pg", "postgres", "@neondatabase/serverless"],
+    py: ["psycopg", "psycopg2", "asyncpg"],
+    dist: ["psycopg", "psycopg2", "psycopg2-binary", "psycopg-binary", "asyncpg"],
+    env: ["POSTGRES", "PG"]
+  },
+  { id: "posthog", npm: ["posthog-js", "posthog-node"], py: ["posthog"], dist: ["posthog"], env: ["POSTHOG"] },
+  { id: "pusher", npm: ["pusher", "pusher-js"], py: ["pusher"], dist: ["pusher"], env: ["PUSHER"] },
+  { id: "redis", npm: ["redis", "ioredis", "@upstash/redis"], py: ["redis"], dist: ["redis"], env: ["REDIS"] },
+  { id: "resend", npm: ["resend"], py: ["resend"], dist: ["resend"], env: ["RESEND"] },
+  { id: "segment", npm: ["@segment/*", "analytics-node"], py: ["segment"], dist: ["segment-analytics-python", "analytics-python"], env: ["SEGMENT"] },
+  { id: "sendgrid", npm: ["@sendgrid/*"], py: ["sendgrid"], dist: ["sendgrid"], env: ["SENDGRID"] },
+  { id: "sentry", npm: ["@sentry/*"], py: ["sentry_sdk"], dist: ["sentry-sdk"], env: ["SENTRY"] },
+  { id: "slack", npm: ["@slack/*"], py: ["slack_sdk", "slack_bolt"], dist: ["slack-sdk", "slack-bolt"], env: ["SLACK"] },
+  { id: "stripe", npm: ["stripe", "@stripe/*"], py: ["stripe"], dist: ["stripe"], env: ["STRIPE"] },
+  { id: "supabase", npm: ["@supabase/*"], py: ["supabase"], dist: ["supabase"], env: ["SUPABASE"] },
+  { id: "twilio", npm: ["twilio"], py: ["twilio"], dist: ["twilio"], env: ["TWILIO"] }
+];
+var ENV_PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "NUXT_PUBLIC_", "VITE_", "REACT_APP_", "EXPO_PUBLIC_", "PUBLIC_", "GATSBY_"];
+var IGNORED_HOSTS = [
+  "localhost",
+  "example.com",
+  "example.org",
+  "example.net",
+  "w3.org",
+  "www.w3.org",
+  "json-schema.org",
+  "schema.org",
+  "schemas.xmlsoap.org",
+  "schemas.openxmlformats.org",
+  "schemas.microsoft.com",
+  "xmlns.com",
+  "purl.org",
+  "ns.adobe.com",
+  "relaxng.org"
+];
+var IGNORED_TLDS = ["localhost", "local", "internal", "test", "example", "invalid", "lan", "home", "corp"];
+var MULTI_LABEL_SUFFIXES = [
+  "co.uk",
+  "org.uk",
+  "ac.uk",
+  "gov.uk",
+  "com.au",
+  "net.au",
+  "org.au",
+  "co.nz",
+  "co.jp",
+  "ne.jp",
+  "or.jp",
+  "com.br",
+  "com.cn",
+  "com.hk",
+  "com.sg",
+  "com.tr",
+  "com.mx",
+  "co.in",
+  "co.za",
+  "co.kr"
+];
+
+// src/extract/externals.ts
+function matches(pattern, name2) {
+  return pattern.endsWith("*") ? name2.startsWith(pattern.slice(0, -1)) : name2 === pattern;
+}
+function packageOf(spec) {
+  const parts2 = spec.split("/");
+  return spec.startsWith("@") ? parts2.slice(0, 2).join("/") : parts2[0];
+}
+function sdkForNpm(pkg) {
+  return SDK_MAP.find((e) => e.npm.some((p) => matches(p, pkg)));
+}
+function sdkForPyModule(module2) {
+  return SDK_MAP.find((e) => e.py.some((m) => module2 === m || module2.startsWith(`${m}.`)));
+}
+function sdkForEnv(name2) {
+  let n = name2;
+  for (const p of ENV_PUBLIC_PREFIXES) if (n.startsWith(p)) n = n.slice(p.length);
+  let best;
+  let bestLen = 0;
+  for (const e of SDK_MAP) {
+    for (const p of e.env) {
+      if ((n === p || n.startsWith(`${p}_`)) && p.length > bestLen) {
+        best = e;
+        bestLen = p.length;
+      }
+    }
+  }
+  return best;
+}
+function registrableDomain(host) {
+  const h = host.toLowerCase().replace(/\.$/, "");
+  if (!h.includes(".")) return void 0;
+  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(h)) return void 0;
+  const labels = h.split(".");
+  if (labels.some((l) => !l)) return void 0;
+  const tld = labels[labels.length - 1];
+  if (IGNORED_TLDS.includes(tld) || !/^[a-z]{2,}$/.test(tld)) return void 0;
+  const two = labels.slice(-2).join(".");
+  const take = MULTI_LABEL_SUFFIXES.includes(two) ? 3 : 2;
+  if (labels.length < take) return void 0;
+  const domain = labels.slice(-take).join(".");
+  if (IGNORED_HOSTS.includes(domain) || IGNORED_HOSTS.includes(h)) return void 0;
+  return domain;
+}
+function jsImports(text2) {
+  const out2 = [];
+  const RE = /(?:\bfrom\s*|\brequire\s*\(\s*|\bimport\s*\(\s*|\bimport\s+)(["'])([^"'.][^"']*)\1/g;
+  for (const m of text2.matchAll(RE)) out2.push({ spec: m[2], offset: m.index });
+  return out2;
+}
+function pyImportModules(text2) {
+  const out2 = [];
+  for (const m of text2.matchAll(/^[ \t]*import[ \t]+([^\n]+)/gm)) {
+    for (const part of m[1].split(",")) {
+      const mod = /^\s*([\w.]+)/.exec(part)?.[1];
+      if (mod) out2.push({ module: mod, offset: m.index });
+    }
+  }
+  for (const m of text2.matchAll(/^[ \t]*from[ \t]+([\w][\w.]*)[ \t]+import[ \t]+([^\n]+)/gm)) {
+    const base = m[1];
+    out2.push({ module: base, offset: m.index });
+    for (const part of m[2].replace(/[()]/g, "").split(",")) {
+      const name2 = /^\s*(\w+)/.exec(part)?.[1];
+      if (name2) out2.push({ module: `${base}.${name2}`, offset: m.index });
+    }
+  }
+  return out2;
+}
+function declared(entry2, deps, python2) {
+  const names = python2 ? entry2.dist : entry2.npm;
+  for (const d of deps) if (names.some((p) => matches(p, d))) return true;
+  return false;
+}
+function extractExternals(input, ctx) {
+  const python2 = isPython(input.rel);
+  const text2 = maskSource(input.rel, input.text);
+  const skeleton = maskSource(input.rel, input.text, { strings: true });
+  const inString = (i2) => skeleton[i2] === " " && text2[i2] !== " ";
+  const lineOf = lineIndex(text2);
+  const deps = ctx.depsFor(input.rel);
+  const out2 = [];
+  const push = (id, via, offset) => out2.push({ id, via, file: input.rel, line: lineOf(offset) });
+  if (python2) {
+    for (const imp of pyImportModules(text2)) {
+      const sdk = sdkForPyModule(imp.module);
+      if (sdk && declared(sdk, deps, true)) push(sdk.id, "sdk", imp.offset);
+    }
+  } else {
+    for (const imp of jsImports(text2)) {
+      const sdk = sdkForNpm(packageOf(imp.spec));
+      if (sdk && declared(sdk, deps, false)) push(sdk.id, "sdk", imp.offset);
+    }
+  }
+  for (const m of text2.matchAll(/\bhttps?:\/\/([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+)/g)) {
+    if (!inString(m.index)) continue;
+    const domain = registrableDomain(m[1]);
+    if (domain) push(domain, "host", m.index);
+  }
+  const ENV = python2 ? /(?<![\w.])(?:os\s*\.\s*)?(?:environ\s*\[\s*|environ\s*\.\s*get\s*\(\s*|getenv\s*\(\s*)(["'])([A-Z][A-Z0-9_]*)\1/g : /\b(?:process\s*\.\s*env|import\s*\.\s*meta\s*\.\s*env)\s*(?:\.\s*([A-Z][A-Z0-9_]*)|\[\s*(["'`])([A-Z][A-Z0-9_]*)\2\s*\])/g;
+  const osBound = !python2 || /^[ \t]*(?:import[ \t]+os\b|from[ \t]+os[ \t]+import\b)/m.test(text2);
+  if (osBound) {
+    for (const m of text2.matchAll(ENV)) {
+      if (inString(m.index)) continue;
+      const name2 = python2 ? m[2] : m[1] ?? m[3];
+      const sdk = sdkForEnv(name2);
+      if (sdk) push(sdk.id, "env", m.index);
+    }
+  }
+  return out2.length ? { externals: out2 } : {};
+}
+var externalsExtractor = {
+  id: "externals",
+  applies: (input) => isJsLike(input.rel) || isPython(input.rel),
+  extract: extractExternals
+};
+
+// src/extract/yaml.ts
+function unquote3(raw) {
+  const v = raw.trim();
+  const m = /^(["'])([\s\S]*)\1$/.exec(v);
+  return m ? m[2] : v;
+}
+var KEY = /^("(?:[^"\\]|\\.)*"|'[^']*'|[^\s"'#\-?:,[\]{}][^:]*?|-[^\s:][^:]*?)\s*:(?:\s+(.*))?$/;
+function yamlDocuments(text2) {
+  const masked = maskComments(text2, "hash");
+  const lines = masked.split("\n");
+  const docs = [];
+  let roots = [];
+  let stack = [];
+  let blockIndent = -1;
+  const attach = (node) => {
+    while (stack.length && stack[stack.length - 1].indent >= node.indent) stack.pop();
+    const parent = stack[stack.length - 1];
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+    stack.push(node);
+  };
+  const keyValue = (content, indent, line2) => {
+    const m = KEY.exec(content);
+    if (!m) return void 0;
+    const node = { key: unquote3(m[1]), line: line2, indent, item: false, children: [] };
+    const rest = (m[2] ?? "").trim();
+    if (/^[|>][-+0-9]*$/.test(rest)) blockIndent = indent;
+    else if (rest && !/^[&*!]\S*$/.test(rest)) node.value = unquote3(rest.replace(/^[&!]\S+\s+/, ""));
+    return node;
+  };
+  lines.forEach((raw, i2) => {
+    const line2 = i2 + 1;
+    const text3 = raw.replace(/\r$/, "");
+    if (/^(?:---|\.\.\.)(?:\s|$)/.test(text3)) {
+      if (roots.length) docs.push(roots);
+      roots = [];
+      stack = [];
+      blockIndent = -1;
+      return;
+    }
+    if (!text3.trim()) return;
+    const indent = text3.length - text3.trimStart().length;
+    if (blockIndent !== -1) {
+      if (indent > blockIndent) return;
+      blockIndent = -1;
+    }
+    let content = text3.trim();
+    let at = indent;
+    while (content === "-" || content.startsWith("- ")) {
+      const item = { line: line2, indent: at, item: true, children: [] };
+      attach(item);
+      const rest = content.slice(1);
+      const lead = rest.length - rest.trimStart().length;
+      content = rest.trim();
+      at += 1 + lead;
+      if (!content) return;
+      if (!KEY.test(content) && !content.startsWith("- ")) {
+        item.value = unquote3(content);
+        return;
+      }
+    }
+    const node = keyValue(content, at, line2);
+    if (node) attach(node);
+  });
+  if (roots.length) docs.push(roots);
+  return docs;
+}
+function yamlChild(nodes, key) {
+  return nodes?.find((n) => n.key === key);
+}
+
+// src/extract/infra.ts
+function baseOf2(rel2) {
+  return rel2.slice(rel2.lastIndexOf("/") + 1);
+}
+var COMPOSE = /^(?:docker-)?compose(?:[.-][\w.-]+)?\.ya?ml$/i;
+function isYaml(rel2) {
+  return /\.ya?ml$/i.test(rel2);
+}
+function extractCompose(input) {
+  const infra = [];
+  for (const doc of yamlDocuments(input.text)) {
+    for (const svc of yamlChild(doc, "services")?.children ?? []) {
+      if (svc.key && !svc.item) infra.push({ id: svc.key, kind: "compose-service", file: input.rel, line: svc.line });
+    }
+  }
+  return infra.length ? { infra } : {};
+}
+var composeExtractor = {
+  id: "docker-compose",
+  applies: (input) => COMPOSE.test(baseOf2(input.rel)),
+  extract: extractCompose
+};
+var NOT_A_VARIANT = /^(?:md|markdown|txt|rst|json|ya?ml|toml|[cm]?[jt]sx?|py|sh|lock|bak|orig|swp|tmpl|j2|dockerignore)$/i;
+function dockerfileId(rel2) {
+  const base = baseOf2(rel2);
+  const named = /^([\w.-]+)\.Dockerfile$/i.exec(base);
+  if (named) return named[1];
+  const plain2 = /^(?:Dockerfile|Containerfile|dockerfile)$/.test(base);
+  const variant = /^(?:Dockerfile|Containerfile)\.([\w-]+)$/.exec(base);
+  if (!plain2 && !(variant && !NOT_A_VARIANT.test(variant[1]))) return void 0;
+  const dir = rel2.includes("/") ? rel2.slice(0, rel2.lastIndexOf("/")) : "";
+  return dir ? baseOf2(dir) : "root";
+}
+function extractDockerfile(input) {
+  const id = dockerfileId(input.rel);
+  if (!id) return {};
+  const text2 = maskSource(input.rel, input.text);
+  const from = /^[ \t]*FROM[ \t]+\S/im.exec(text2);
+  if (!from) return {};
+  return { infra: [{ id, kind: "dockerfile", file: input.rel, line: lineIndex(text2)(from.index) }] };
+}
+var dockerfileExtractor = {
+  id: "dockerfile",
+  applies: (input) => dockerfileId(input.rel) !== void 0,
+  extract: extractDockerfile
+};
+var K8S_KINDS = /* @__PURE__ */ new Set(["Deployment", "StatefulSet", "DaemonSet", "Service", "CronJob"]);
+function extractK8s(input) {
+  const infra = [];
+  for (const doc of yamlDocuments(input.text)) {
+    const kind = yamlChild(doc, "kind");
+    if (!kind?.value || !K8S_KINDS.has(kind.value) || !yamlChild(doc, "apiVersion")?.value) continue;
+    const name2 = yamlChild(yamlChild(doc, "metadata")?.children, "name")?.value;
+    if (!name2 || name2.includes("{{")) continue;
+    infra.push({ id: name2, kind: "k8s", file: input.rel, line: kind.line });
+  }
+  return infra.length ? { infra } : {};
+}
+var k8sExtractor = {
+  id: "k8s",
+  applies: (input) => isYaml(input.rel) && !COMPOSE.test(baseOf2(input.rel)) && !input.rel.startsWith(".github/") && /^kind:/m.test(input.text) && /^apiVersion:/m.test(input.text),
+  extract: extractK8s
+};
+
+// src/extract/jobs.ts
+var esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function extractBullmq(input) {
+  const text2 = maskSource(input.rel, input.text);
+  if (!importsModule(text2, "bullmq")) return {};
+  const skeleton = maskSource(input.rel, input.text, { strings: true });
+  const lineOf = lineIndex(text2);
+  const jobs = [];
+  for (const m of skeleton.matchAll(/\bnew\s+(Queue|Worker)\s*(?:<[^>()]*>)?\s*\(/g)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    const name2 = call2?.args[0] ? stringLiteral(call2.args[0].raw) : void 0;
+    if (!name2) continue;
+    jobs.push({ id: name2, kind: m[1] === "Queue" ? "queue" : "worker", file: input.rel, line: lineOf(m.index) });
+  }
+  return jobs.length ? { jobs } : {};
+}
+var bullmqExtractor = {
+  id: "bullmq",
+  applies: (input, ctx) => isJsLike(input.rel) && ctx.depsFor(input.rel).has("bullmq"),
+  extract: extractBullmq
+};
+function extractNodeCron(input) {
+  const text2 = maskSource(input.rel, input.text);
+  const skeleton = maskSource(input.rel, input.text, { strings: true });
+  const lineOf = lineIndex(text2);
+  const receivers = /* @__PURE__ */ new Set();
+  for (const m of text2.matchAll(/\bimport\s+(?:\*\s+as\s+)?([A-Za-z_$][\w$]*)\s+from\s+["']node-cron["']/g)) receivers.add(`${m[1]}.schedule`);
+  for (const m of text2.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']node-cron["']\s*\)/g)) receivers.add(`${m[1]}.schedule`);
+  for (const m of text2.matchAll(/\bimport\s*\{([^}]*)\}\s*from\s+["']node-cron["']/g)) {
+    for (const part of m[1].split(",")) {
+      const [name2, local] = part.trim().split(/\s+as\s+/);
+      if (name2 === "schedule") receivers.add(local ?? name2);
+    }
+  }
+  if (!receivers.size) return {};
+  const alts = [...receivers].map((r) => esc(r).replace(/\\\./g, "\\s*\\.\\s*")).join("|");
+  const jobs = [];
+  let inline = 0;
+  for (const m of skeleton.matchAll(new RegExp(`(?<![\\w$.])(?:${alts})\\s*\\(`, "g"))) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    const schedule = call2?.args[0] ? stringLiteral(call2.args[0].raw) : void 0;
+    if (!call2 || !schedule || call2.args.length < 2) continue;
+    const handler = identifierPath(call2.args[1].raw);
+    const id = handler ? `cron:${handler}` : `cron:${input.rel}${inline++ ? `#${inline}` : ""}`;
+    jobs.push({ id, kind: "cron", schedule, file: input.rel, line: lineOf(m.index) });
+  }
+  return jobs.length ? { jobs } : {};
+}
+var nodeCronExtractor = {
+  id: "node-cron",
+  applies: (input, ctx) => isJsLike(input.rel) && ctx.depsFor(input.rel).has("node-cron"),
+  extract: extractNodeCron
+};
+function scalar(raw) {
+  if (raw === void 0) return void 0;
+  if (/^\d+(?:\.\d+)?$/.test(raw.trim())) return raw.trim();
+  return pyLiteral(raw);
+}
+function celerySchedule(raw) {
+  const v = raw.trim();
+  const n = /^(\d+(?:\.\d+)?)$/.exec(v);
+  if (n) return `every ${Number(n[1])}s`;
+  const call2 = /^(?:[\w.]+\.)?(crontab|timedelta)\s*\(/.exec(v);
+  if (!call2) return void 0;
+  const args2 = readArgs(v, call2[0].length - 1)?.args;
+  if (!args2) return void 0;
+  if (call2[1] === "timedelta") {
+    const UNITS = { seconds: "s", minutes: "m", hours: "h", days: "d", weeks: "w" };
+    if (args2.length !== 1) return void 0;
+    const kv = /^(\w+)\s*=\s*(\d+(?:\.\d+)?)$/.exec(args2[0].raw);
+    const unit = kv ? UNITS[kv[1]] : void 0;
+    return kv && unit ? `every ${Number(kv[2])}${unit}` : void 0;
+  }
+  const ORDER = ["minute", "hour", "day_of_week", "day_of_month", "month_of_year"];
+  const fields = {};
+  const pos = positional(args2);
+  for (let i2 = 0; i2 < pos.length; i2++) {
+    const s = scalar(pos[i2].raw);
+    if (s === void 0 || i2 >= ORDER.length) return void 0;
+    fields[ORDER[i2]] = s;
+  }
+  for (const key of ORDER) {
+    const a = kwarg(args2, key);
+    if (!a) continue;
+    const s = scalar(a.raw);
+    if (s === void 0) return void 0;
+    fields[key] = s;
+  }
+  if (args2.length > pos.length + ORDER.filter((k) => kwarg(args2, k)).length) return void 0;
+  const f = (k) => fields[k] ?? "*";
+  return `${f("minute")} ${f("hour")} ${f("day_of_month")} ${f("month_of_year")} ${f("day_of_week")}`;
+}
+function extractCelery(input) {
+  const text2 = maskSource(input.rel, input.text);
+  const skeleton = maskSource(input.rel, input.text, { strings: true });
+  const lineOf = lineIndex(text2);
+  const imports = pyImports(text2);
+  const jobs = [];
+  const apps = /* @__PURE__ */ new Set();
+  for (const m of skeleton.matchAll(/^([A-Za-z_]\w*)\s*=\s*(?:celery\s*\.\s*)?Celery\s*\(/gm)) apps.add(m[1]);
+  for (const [local, imp] of imports) {
+    if (imp.name !== void 0 && /(?:^|\.)(?:celery|celery_app|worker|tasks)$/.test(imp.module.replace(/^\.+/, "")) && /^(?:app|celery|celery_app)$/.test(imp.name))
+      apps.add(local);
+  }
+  const celeryImported = importsPyModule(text2, "celery");
+  if (!apps.size && celeryImported) {
+    apps.add("app");
+    apps.add("celery");
+  }
+  const shared = [...imports.entries()].filter(([, imp]) => imp.module === "celery" && imp.name === "shared_task").map(([local]) => local);
+  if (celeryImported) shared.push("celery.shared_task");
+  const decorators = [...[...apps].map((a) => `${esc(a)}\\s*\\.\\s*task`), ...shared.map((s) => esc(s).replace(/\\\./g, "\\s*\\.\\s*"))];
+  if (decorators.length) {
+    const DECO = new RegExp(`^[ \\t]*@[ \\t]*(?:${decorators.join("|")})\\b(\\s*\\()?`, "gm");
+    for (const m of skeleton.matchAll(DECO)) {
+      let end = m.index + m[0].length;
+      if (m[1]) end = readArgs(text2, end - 1)?.end ?? end;
+      const fn = decoratedName(skeleton, end);
+      if (fn) jobs.push({ id: fn.name, kind: "worker", file: input.rel, line: lineOf(skeleton.indexOf("@", m.index)) });
+    }
+  }
+  for (const m of text2.matchAll(/\b(?:beat_schedule|CELERY_BEAT_SCHEDULE)["']?\s*[=:]\s*\{/g)) {
+    const dict = readArgs(text2, m.index + m[0].length - 1);
+    if (!dict) continue;
+    for (const entry2 of dict.args) {
+      const kv = /^((["'])[^"']+\2)\s*:\s*([\s\S]+)$/.exec(entry2.raw);
+      const name2 = kv ? pyLiteral(kv[1]) : void 0;
+      if (!kv || !name2) continue;
+      const job = { id: `cron:${name2}`, kind: "cron", file: input.rel, line: lineOf(entry2.start) };
+      const body2 = kv[3].trim();
+      if (body2.startsWith("{")) {
+        const inner = readArgs(body2, 0);
+        for (const item of inner?.args ?? []) {
+          const sk = /^(["'])schedule\1\s*:\s*([\s\S]+)$/.exec(item.raw);
+          const schedule = sk ? celerySchedule(sk[2]) : void 0;
+          if (schedule) job.schedule = schedule;
+        }
+      }
+      jobs.push(job);
+    }
+  }
+  return jobs.length ? { jobs } : {};
+}
+var celeryExtractor = {
+  id: "celery",
+  applies: (input, ctx) => isPython(input.rel) && ctx.depsFor(input.rel).has("celery"),
+  extract: extractCelery
+};
+function extractVercel(input) {
+  let config;
+  try {
+    config = JSON.parse(input.text);
+  } catch {
+    return {};
+  }
+  const crons = config?.crons;
+  if (!Array.isArray(crons)) return {};
+  const lineOf = lineIndex(input.text);
+  const jobs = [];
+  for (const c2 of crons) {
+    const path = c2?.path;
+    const schedule = c2?.schedule;
+    if (typeof path !== "string") continue;
+    const at = new RegExp(`"path"\\s*:\\s*${esc(JSON.stringify(path))}`).exec(input.text)?.index ?? 0;
+    const job = { id: `cron:${path}`, kind: "cron", file: input.rel, line: lineOf(at) };
+    if (typeof schedule === "string") job.schedule = schedule;
+    jobs.push(job);
+  }
+  return jobs.length ? { jobs } : {};
+}
+var vercelCronExtractor = {
+  id: "vercel-crons",
+  applies: (input) => input.rel === "vercel.json" || input.rel.endsWith("/vercel.json"),
+  extract: extractVercel
+};
+function extractWorkflow(input) {
+  const jobs = [];
+  for (const doc of yamlDocuments(input.text)) {
+    const on = yamlChild(doc, "on") ?? yamlChild(doc, "true");
+    for (const item of yamlChild(on?.children, "schedule")?.children ?? []) {
+      const cron = item.item ? yamlChild(item.children, "cron") : void 0;
+      if (cron?.value) jobs.push({ id: `cron:${input.rel}`, kind: "cron", schedule: cron.value, file: input.rel, line: cron.line });
+    }
+  }
+  return jobs.length ? { jobs } : {};
+}
+var githubScheduleExtractor = {
+  id: "github-actions-schedule",
+  applies: (input) => /^\.github\/workflows\/[^/]+\.ya?ml$/.test(input.rel),
+  extract: extractWorkflow
+};
+
+// src/extract/python-http.ts
+var VERBS2 = ["get", "post", "put", "patch", "delete", "head", "options"];
+var esc2 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var HOLE = "\uE000";
+function concatParts(raw) {
+  const parts2 = [];
+  let depth = 0;
+  let quote = "";
+  let start2 = 0;
+  for (let i2 = 0; i2 < raw.length; i2++) {
+    const ch = raw[i2];
+    if (quote) {
+      if (ch === "\\") i2++;
+      else if (ch === quote) quote = "";
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if ("([{".includes(ch)) depth++;
+    else if (")]}".includes(ch)) depth--;
+    else if (ch === "+" && depth === 0) {
+      parts2.push(raw.slice(start2, i2).trim());
+      start2 = i2 + 1;
+    }
+  }
+  parts2.push(raw.slice(start2).trim());
+  return parts2;
+}
+function fillHoles(body2) {
+  let out2 = "";
+  for (let i2 = 0; i2 < body2.length; i2++) {
+    const ch = body2[i2];
+    if (ch === "{" && body2[i2 + 1] === "{") {
+      out2 += "{";
+      i2++;
+    } else if (ch === "}" && body2[i2 + 1] === "}") {
+      out2 += "}";
+      i2++;
+    } else if (ch === "{") {
+      let depth = 1;
+      let j = i2 + 1;
+      while (j < body2.length && depth) {
+        if (body2[j] === "{") depth++;
+        else if (body2[j] === "}") depth--;
+        j++;
+      }
+      out2 += HOLE;
+      i2 = j - 1;
+    } else out2 += ch;
+  }
+  return out2;
+}
+function urlTemplate(raw) {
+  let out2 = "";
+  let literal2 = false;
+  for (const part of concatParts(raw)) {
+    const s = pyString(part);
+    if (!s) {
+      out2 += HOLE;
+      continue;
+    }
+    literal2 = true;
+    out2 += s.f ? fillHoles(s.value) : s.value;
+  }
+  return literal2 ? out2 : void 0;
+}
+function normalizePyUrl(template, base) {
+  let url = template.replace(/[?#][\s\S]*$/, "");
+  if (url.startsWith(HOLE)) url = url.replace(/^\uE000+/, "");
+  if (!/^https?:\/\//i.test(url)) {
+    const path = url && !url.startsWith("/") && base !== void 0 ? `/${url}` : url;
+    if (base) url = `${base.replace(/\/+$/, "")}${path}`;
+    else if (path.startsWith("/")) url = path;
+    else return void 0;
+  }
+  url = url.replace(/\uE000+/g, ":p");
+  return url || void 0;
+}
+function baseOf3(args2) {
+  const b = kwarg(args2, "base_url");
+  if (!b) return void 0;
+  const s = pyString(b.raw);
+  if (!s || s.f) return "";
+  return s.value.replace(/[?#][\s\S]*$/, "");
+}
+function extractPyHttp(input, ctx) {
+  const deps = ctx.depsFor(input.rel);
+  const text2 = maskSource(input.rel, input.text);
+  const skeleton = maskSource(input.rel, input.text, { strings: true });
+  const lineOf = lineIndex(text2);
+  const imports = pyImports(text2);
+  const modules = /* @__PURE__ */ new Map();
+  for (const lib of ["requests", "httpx"]) {
+    if (!deps.has(lib) || !importsPyModule(text2, lib)) continue;
+    for (const [local, imp] of imports) if (imp.name === void 0 && imp.module === lib) modules.set(local, lib);
+  }
+  if (!modules.size) return {};
+  const receivers = /* @__PURE__ */ new Map();
+  for (const [local] of modules) receivers.set(local, {});
+  const mods = [...modules.keys()].map(esc2).join("|");
+  const CTOR2 = `(${mods})\\s*\\.\\s*(Session|session|Client|AsyncClient)\\s*\\(`;
+  const ASSIGN = new RegExp(`^[ \\t]*((?:self\\.)?[A-Za-z_]\\w*)[ \\t]*(?::[^=\\n]+)?=[ \\t]*(?:await\\s+)?${CTOR2}`, "gm");
+  const WITH = new RegExp(`\\bwith\\s+${CTOR2}`, "g");
+  for (const m of skeleton.matchAll(ASSIGN)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    receivers.set(m[1], { base: call2 ? baseOf3(call2.args) : void 0 });
+  }
+  for (const m of skeleton.matchAll(WITH)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2) continue;
+    const as = /^\s*as\s+([A-Za-z_]\w*)/.exec(skeleton.slice(call2.end, call2.end + 100));
+    if (as) receivers.set(as[1], { base: baseOf3(call2.args) });
+  }
+  const names = [...receivers.keys()].map(esc2).join("|");
+  const CALL = new RegExp(`(?<![\\w.])(${names})\\s*\\.\\s*(${VERBS2.join("|")}|request|stream)\\s*\\(`, "g");
+  const calls = [];
+  for (const m of skeleton.matchAll(CALL)) {
+    const recv = receivers.get(m[1]);
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2) continue;
+    const pos = positional(call2.args);
+    let method;
+    let urlArg;
+    const fn = m[2];
+    if (fn === "request" || fn === "stream") {
+      const verb = pos[0] ?? kwarg(call2.args, "method");
+      const lit = verb ? pyString(verb.raw) : void 0;
+      if (!lit || lit.f) continue;
+      method = lit.value.toUpperCase();
+      urlArg = pos[1] ?? kwarg(call2.args, "url");
+    } else {
+      method = fn.toUpperCase();
+      urlArg = pos[0] ?? kwarg(call2.args, "url");
+    }
+    if (!urlArg || !/^[A-Z]+$/.test(method)) continue;
+    const template = urlTemplate(urlArg.raw);
+    if (template === void 0) continue;
+    const url = normalizePyUrl(template, recv.base);
+    if (!url) continue;
+    calls.push({ method, url, file: input.rel, line: lineOf(m.index) });
+  }
+  return calls.length ? { calls } : {};
+}
+var pythonHttpExtractor = {
+  id: "python-http",
+  applies(input, ctx) {
+    if (!isPython(input.rel)) return false;
+    const deps = ctx.depsFor(input.rel);
+    return deps.has("requests") || deps.has("httpx");
+  },
+  extract: extractPyHttp
+};
+
+// src/extract/python-orm.ts
+var TABLE_REF = "@table:";
+var SQLALCHEMY_DEPS = ["sqlalchemy", "flask-sqlalchemy"];
+function lastName(dotted) {
+  return dotted.slice(dotted.lastIndexOf(".") + 1);
+}
+function snake(name2) {
+  return name2.replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/([A-Z])([A-Z][a-z])/g, "$1_$2").toLowerCase();
+}
+function callee(raw) {
+  const m = /^([A-Za-z_][\w.]*)\s*\(/.exec(raw);
+  return m ? { name: m[1].replace(/\s+/g, ""), open: m[0].length - 1 } : void 0;
+}
+function mappedType(annotation) {
+  const m = /^(?:[\w.]*\.)?Mapped\s*\[([\s\S]*)\]$/.exec(annotation.trim());
+  if (!m) return void 0;
+  let inner = m[1].replace(/["']/g, "").replace(/\s+/g, "");
+  let suffix = "";
+  const opt = /^(?:typing\.)?Optional\[(.*)\]$/.exec(inner) ?? /^(.*)\|None$/.exec(inner);
+  if (opt) {
+    inner = opt[1];
+    suffix = "?";
+  }
+  const list = /^(?:typing\.)?(?:List|list|Set|set)\[(.*)\]$/.exec(inner);
+  if (list) {
+    inner = list[1];
+    suffix = "[]";
+  }
+  const target = lastName(inner);
+  return { type: `${target}${suffix}`, target };
+}
+function statement(text2, at) {
+  const m = /^([A-Za-z_]\w*)[ \t]*(?::[ \t]*([^=\n]+?))?[ \t]*(?:=(?!=)[ \t]*|$)/m.exec(text2.slice(at, at + 400));
+  if (!m) return void 0;
+  const valueAt = at + m[0].length;
+  const hasValue = /=\s*$/.test(m[0]);
+  if (!hasValue && m[2] === void 0) return void 0;
+  let value;
+  if (hasValue) {
+    const c2 = callee(text2.slice(valueAt, valueAt + 200));
+    if (c2) {
+      const call2 = readArgs(text2, valueAt + c2.open);
+      value = call2 ? text2.slice(valueAt, call2.end) : void 0;
+    } else value = /^[^\n]*/.exec(text2.slice(valueAt))?.[0].trim();
+  }
+  return { name: m[1], annotation: m[2]?.trim(), value, valueAt };
+}
+function callArgs(text2, stmt) {
+  if (!stmt.value) return void 0;
+  const c2 = callee(stmt.value);
+  if (!c2) return void 0;
+  const call2 = readArgs(text2, stmt.valueAt + c2.open);
+  return call2 ? { name: c2.name, args: call2.args } : void 0;
+}
+function pyViews(input) {
+  const text2 = maskSource(input.rel, input.text);
+  return { text: text2, skeleton: maskSource(input.rel, input.text, { strings: true }), lineOf: lineIndex(text2) };
+}
+var COLUMN_FNS = /* @__PURE__ */ new Set(["Column", "mapped_column"]);
+var RELATIONSHIP_FNS = /* @__PURE__ */ new Set(["relationship", "relation"]);
+function extractSqlalchemy(input) {
+  const { text: text2, skeleton, lineOf } = pyViews(input);
+  const classes = pyClasses(skeleton, (open) => readArgs(text2, open)?.args);
+  if (!classes.length) return {};
+  const bases = /* @__PURE__ */ new Set(["Base", "db.Model", "Model"]);
+  for (const m of skeleton.matchAll(/^([A-Za-z_]\w*)\s*=\s*(?:[\w.]+\.)?(?:declarative_base|as_declarative)\s*\(/gm)) bases.add(m[1]);
+  const baseClasses = /* @__PURE__ */ new Set();
+  for (const c2 of classes) {
+    if (c2.bases.some((b) => /^(?:[\w.]+\.)?(?:DeclarativeBase|DeclarativeBaseNoMeta|DeclarativeMeta)$/.test(b.raw))) {
+      bases.add(c2.name);
+      baseClasses.add(c2.name);
+    }
+  }
+  const entities = [];
+  const hints = [];
+  for (const cls of classes) {
+    if (baseClasses.has(cls.name)) continue;
+    let table;
+    let abstract = false;
+    const fields = [];
+    for (const at of cls.statements) {
+      const st = statement(text2, at);
+      if (!st) continue;
+      if (st.name === "__tablename__") table = pyLiteral(st.value);
+      if (st.name === "__abstract__" && st.value === "True") abstract = true;
+      if (st.name.startsWith("__")) continue;
+      const mapped = st.annotation ? mappedType(st.annotation) : void 0;
+      const call2 = callArgs(text2, st);
+      const fn = call2 ? lastName(call2.name) : void 0;
+      if (fn && RELATIONSHIP_FNS.has(fn)) {
+        const first = positional(call2?.args ?? [])[0] ?? kwarg(call2?.args ?? [], "argument");
+        const named = first ? pyLiteral(first.raw) ?? pyDotted(first.raw) : void 0;
+        const target = named ? lastName(named) : mapped?.target;
+        if (!target) continue;
+        fields.push({ name: st.name, type: mapped?.type ?? target, relation: target });
+        continue;
+      }
+      if (fn && COLUMN_FNS.has(fn)) {
+        const args2 = call2?.args ?? [];
+        let type = mapped?.type;
+        let relation2;
+        for (const a of positional(args2)) {
+          const fk = /^(?:[\w.]+\.)?ForeignKey\s*\(\s*(["'])([^"']+)\1/.exec(a.raw);
+          if (fk) {
+            const ref2 = fk[2];
+            relation2 = `${TABLE_REF}${ref2.includes(".") ? ref2.slice(0, ref2.lastIndexOf(".")) : ref2}`;
+            continue;
+          }
+          const t = /^(?:[\w]+\.)*([A-Z]\w*)\b/.exec(a.raw);
+          if (t && !type && pyLiteral(a.raw) === void 0) type = t[1];
+        }
+        const field = { name: st.name, type: type ?? "unknown" };
+        if (relation2) field.relation = relation2;
+        fields.push(field);
+        continue;
+      }
+      if (mapped && st.value === void 0) fields.push({ name: st.name, type: mapped.type });
+    }
+    if (abstract) continue;
+    const declarative = cls.bases.some((b) => bases.has(b.raw.replace(/\s+/g, "")));
+    if (table === void 0 && !(declarative && fields.length)) continue;
+    const line2 = lineOf(cls.offset);
+    entities.push({ name: cls.name, orm: "sqlalchemy", file: input.rel, line: line2, fields });
+    hints.push({ kind: "table", orm: "sqlalchemy", entity: cls.name, table: table ?? snake(cls.name), file: input.rel, line: line2 });
+  }
+  const out2 = {};
+  if (entities.length) out2.entities = entities;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var sqlalchemyModelsExtractor = {
+  id: "sqlalchemy-models",
+  applies(input, ctx) {
+    if (!isPython(input.rel)) return false;
+    const deps = ctx.depsFor(input.rel);
+    return SQLALCHEMY_DEPS.some((d) => deps.has(d));
+  },
+  extract: extractSqlalchemy
+};
+var DJANGO_RELATIONS = /* @__PURE__ */ new Set(["ForeignKey", "OneToOneField", "ManyToManyField"]);
+function appLabel(rel2) {
+  const parts2 = rel2.split("/");
+  parts2.pop();
+  if (parts2[parts2.length - 1] === "models") parts2.pop();
+  return parts2[parts2.length - 1] ?? "";
+}
+function extractDjangoModels(input) {
+  const { text: text2, skeleton, lineOf } = pyViews(input);
+  const imports = pyImports(text2);
+  const modelsAlias = [...imports.entries()].find(([, imp]) => imp.module === "django.db" && imp.name === "models")?.[0];
+  if (!modelsAlias) return {};
+  const classes = pyClasses(skeleton, (open) => readArgs(text2, open)?.args);
+  const models = /* @__PURE__ */ new Set();
+  const entities = [];
+  const hints = [];
+  for (const cls of classes) {
+    const isModel = cls.bases.some((b) => {
+      const raw = b.raw.replace(/\s+/g, "");
+      return raw === `${modelsAlias}.Model` || models.has(raw);
+    });
+    if (!isModel) continue;
+    models.add(cls.name);
+    const fields = [];
+    let abstract = false;
+    let table;
+    for (const at of cls.statements) {
+      if (/^class[ \t]+Meta\b/.test(skeleton.slice(at, at + 20))) {
+        const meta = classes.find((c2) => c2.offset === at);
+        for (const mat of meta?.statements ?? []) {
+          const st2 = statement(text2, mat);
+          if (st2?.name === "abstract" && st2.value === "True") abstract = true;
+          if (st2?.name === "db_table") table = pyLiteral(st2.value);
+        }
+        continue;
+      }
+      const st = statement(text2, at);
+      const call2 = st && callArgs(text2, st);
+      if (!st || !call2) continue;
+      const m = new RegExp(`^${modelsAlias}\\.([A-Z]\\w*)$`).exec(call2.name);
+      if (!m) continue;
+      const type = m[1];
+      if (!type.endsWith("Field") && !DJANGO_RELATIONS.has(type)) continue;
+      const field = { name: st.name, type };
+      if (DJANGO_RELATIONS.has(type)) {
+        const to = positional(call2.args)[0] ?? kwarg(call2.args, "to");
+        const raw = to ? pyLiteral(to.raw) ?? pyDotted(to.raw) : void 0;
+        if (raw) {
+          const name2 = raw === "self" ? cls.name : /AUTH_USER_MODEL$/.test(raw) ? "User" : lastName(raw);
+          field.relation = name2;
+        }
+      }
+      fields.push(field);
+    }
+    if (abstract) continue;
+    const line2 = lineOf(cls.offset);
+    entities.push({ name: cls.name, orm: "django", file: input.rel, line: line2, fields });
+    const label = appLabel(input.rel);
+    hints.push({
+      kind: "table",
+      orm: "django",
+      entity: cls.name,
+      table: table ?? `${label ? `${label}_` : ""}${cls.name.toLowerCase()}`,
+      file: input.rel,
+      line: line2
+    });
+  }
+  const out2 = {};
+  if (entities.length) out2.entities = entities;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var djangoModelsExtractor = {
+  id: "django-models",
+  applies: (input, ctx) => isPython(input.rel) && ctx.depsFor(input.rel).has("django"),
+  extract: extractDjangoModels
+};
+var DJANGO_READ = [
+  "all",
+  "filter",
+  "exclude",
+  "get",
+  "first",
+  "last",
+  "count",
+  "exists",
+  "values",
+  "values_list",
+  "order_by",
+  "aggregate",
+  "annotate",
+  "select_related",
+  "prefetch_related",
+  "in_bulk",
+  "iterator",
+  "distinct",
+  "only",
+  "defer",
+  "raw",
+  "latest",
+  "earliest",
+  "aget",
+  "afirst",
+  "alast",
+  "acount",
+  "aexists"
+];
+var DJANGO_WRITE = ["create", "update", "delete", "bulk_create", "bulk_update", "get_or_create", "update_or_create", "acreate", "aupdate", "adelete"];
+var DJANGO_OP = new Map([...DJANGO_READ.map((o) => [o, "read"]), ...DJANGO_WRITE.map((o) => [o, "write"])]);
+function extractDjangoUses(input) {
+  const { skeleton, lineOf } = pyViews(input);
+  const uses = [];
+  const CALL = /(?<![\w.])([A-Z]\w*)\s*\.\s*objects\s*\.\s*([a-z_]+)\s*\(/g;
+  for (const m of skeleton.matchAll(CALL)) {
+    let op = DJANGO_OP.get(m[2]);
+    if (!op) continue;
+    let at = readArgs(skeleton, m.index + m[0].length - 1)?.end;
+    while (at !== void 0 && op === "read") {
+      const chain = /^\s*\.\s*([a-z_]+)\s*\(/.exec(skeleton.slice(at, at + 200));
+      if (!chain) break;
+      if (DJANGO_OP.get(chain[1]) === "write") op = "write";
+      at = readArgs(skeleton, at + chain[0].length - 1)?.end;
+    }
+    uses.push({ entity: m[1], file: input.rel, line: lineOf(m.index), op });
+  }
+  return uses.length ? { entityUses: uses } : {};
+}
+var djangoOrmExtractor = {
+  id: "django-orm",
+  applies: (input, ctx) => isPython(input.rel) && ctx.depsFor(input.rel).has("django"),
+  extract: extractDjangoUses
+};
+function extractSqlalchemyUses(input, ctx) {
+  const { text: text2, skeleton, lineOf } = pyViews(input);
+  const uses = [];
+  const push = (entity, offset, op) => uses.push({ entity, file: input.rel, line: lineOf(offset), op });
+  const SESSION = String.raw`(?<![\w.])(?:self\.|db\.)?(?:\w*session\w*|db)`;
+  for (const m of skeleton.matchAll(new RegExp(`${SESSION}\\s*\\.\\s*(query|get)\\s*\\(\\s*([A-Z]\\w*)\\b`, "gi"))) {
+    if (!/^[A-Z]/.test(m[2])) continue;
+    push(m[2], m.index, "read");
+  }
+  for (const m of skeleton.matchAll(new RegExp(`${SESSION}\\s*\\.\\s*(add|add_all|merge)\\s*\\(\\s*\\[?\\s*([A-Z]\\w*)\\s*\\(`, "gi"))) {
+    if (!/^[A-Z]/.test(m[2])) continue;
+    push(m[2], m.index, "write");
+  }
+  const imports = pyImports(text2);
+  const fromSa = (name2) => {
+    const imp = imports.get(name2);
+    return !!imp && imp.name === name2 && /^sqlalchemy(?:\.|$)/.test(imp.module);
+  };
+  const saModules = [...imports.entries()].filter(([, imp]) => imp.name === void 0 && imp.module === "sqlalchemy").map(([local]) => local);
+  const CORE = [
+    ["select", "read"],
+    ["insert", "write"],
+    ["update", "write"],
+    ["delete", "write"]
+  ];
+  for (const [fn, op] of CORE) {
+    const alts = [...fromSa(fn) ? [fn] : [], ...saModules.map((s) => `${s}\\s*\\.\\s*${fn}`)];
+    if (!alts.length) continue;
+    for (const m of skeleton.matchAll(new RegExp(`(?<![\\w.])(?:${alts.join("|")})\\s*\\(\\s*([A-Z]\\w*)\\b`, "g")))
+      push(m[1], m.index, op);
+  }
+  if (ctx.depsFor(input.rel).has("flask-sqlalchemy")) {
+    for (const m of skeleton.matchAll(/(?<![\w.])([A-Z]\w*)\s*\.\s*query\s*\.\s*[a-z_]+\s*\(/g)) push(m[1], m.index, "read");
+  }
+  return uses.length ? { entityUses: uses } : {};
+}
+var sqlalchemyOrmExtractor = {
+  id: "sqlalchemy-orm",
+  applies(input, ctx) {
+    if (!isPython(input.rel)) return false;
+    const deps = ctx.depsFor(input.rel);
+    return SQLALCHEMY_DEPS.some((d) => deps.has(d)) && (importsPyModule(input.text, "sqlalchemy") || /\bsession\b|\bdb\b/.test(input.text));
+  },
+  extract: extractSqlalchemyUses
+};
+var ormRelationLinker = {
+  id: "orm-relations",
+  link(facts, ctx) {
+    const ORMS = /* @__PURE__ */ new Set(["sqlalchemy", "django", "sql"]);
+    const names = /* @__PURE__ */ new Map();
+    const tables = /* @__PURE__ */ new Map();
+    const tableMap = (orm) => {
+      let m = tables.get(orm);
+      if (!m) tables.set(orm, m = /* @__PURE__ */ new Map());
+      return m;
+    };
+    for (const e of facts.entities) {
+      if (!ORMS.has(e.orm)) continue;
+      let set = names.get(e.orm);
+      if (!set) names.set(e.orm, set = /* @__PURE__ */ new Set());
+      set.add(e.name);
+      if (e.orm === "sql") tableMap("sql").set(e.name.toLowerCase(), e.name);
+    }
+    const sortedHints = ctx.hints.filter((h) => h.kind === "table").sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line);
+    for (const h of sortedHints) {
+      const m = tableMap(h.orm);
+      if (!m.has(h.table.toLowerCase())) m.set(h.table.toLowerCase(), h.entity);
+    }
+    const entities = facts.entities.map((e) => {
+      if (!ORMS.has(e.orm)) return e;
+      return {
+        ...e,
+        fields: e.fields.map((f) => {
+          const { relation: relation2, ...rest } = f;
+          if (!relation2) return f;
+          const resolved = relation2.startsWith(TABLE_REF) ? tables.get(e.orm)?.get(relation2.slice(TABLE_REF.length).replace(/^.*\./, "").toLowerCase()) : names.get(e.orm)?.has(relation2) ? relation2 : void 0;
+          return resolved ? { ...rest, relation: resolved } : rest;
+        })
+      };
+    });
+    return { ...facts, entities };
+  }
+};
+
+// src/extract/python-routes.ts
+var esc3 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function views(input) {
+  const text2 = maskSource(input.rel, input.text);
+  return { rel: input.rel, text: text2, skeleton: maskSource(input.rel, input.text, { strings: true }), lineOf: lineIndex(text2) };
+}
+function assemble(rel2, framework, ownPrefix, routes, mounts) {
+  const localParents = /* @__PURE__ */ new Map();
+  for (const mt of mounts) {
+    if (!mt.local) continue;
+    const list = localParents.get(mt.local) ?? [];
+    list.push(mt);
+    localParents.set(mt.local, list);
+  }
+  const prefixesOf = (recv, seen) => {
+    const own = ownPrefix.get(recv) ?? "";
+    const parents = localParents.get(recv);
+    if (!parents || seen.has(recv)) return [own];
+    const next = new Set(seen).add(recv);
+    return parents.flatMap((p) => {
+      const base = p.replaces ? p.prefix : joinRoutePath(p.prefix, own);
+      return prefixesOf(p.parent, next).map((outer) => joinRoutePath(outer, base));
+    });
+  };
+  const facts = [];
+  for (const r of routes) {
+    for (const prefix of prefixesOf(r.receiver, /* @__PURE__ */ new Set())) {
+      const fact = { method: r.method, path: joinRoutePath(prefix, r.path), file: rel2, line: r.line, framework };
+      if (r.handler) fact.handler = r.handler;
+      facts.push(fact);
+    }
+  }
+  const hints = [];
+  for (const mt of mounts) {
+    if (!mt.target) continue;
+    for (const outer of prefixesOf(mt.parent, /* @__PURE__ */ new Set())) {
+      const prefix = joinRoutePath(outer, mt.prefix);
+      if (prefix !== "/") hints.push({ kind: "mount", framework, file: rel2, line: mt.line, prefix, target: mt.target });
+    }
+  }
+  return { routes: facts, hints };
+}
+function output(r) {
+  const out2 = {};
+  if (r.routes.length) out2.routes = r.routes;
+  if (r.hints.length) out2.hints = r.hints;
+  return out2;
+}
+function pathArg(args2, ...names) {
+  const first = positional(args2)[0];
+  const lit = pyLiteral(first?.raw);
+  if (lit !== void 0) return lit;
+  for (const n of names) {
+    const v = pyLiteral(kwarg(args2, n)?.raw);
+    if (v !== void 0) return v;
+  }
+  return void 0;
+}
+function assigned(skeleton, ctors, modules) {
+  const mod = modules.length ? `(?:(?:${modules.map(esc3).join("|")})\\s*\\.\\s*)?` : "";
+  const re = new RegExp(`^[ \\t]*([A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)?)[ \\t]*(?::[^=\\n]+)?=[ \\t]*${mod}(${ctors.join("|")})[ \\t]*\\(`, "gm");
+  return [...skeleton.matchAll(re)].map((m) => ({ name: m[1], ctor: m[2], open: m.index + m[0].length - 1 }));
+}
+function mountTarget(v, raw, receivers, imports) {
+  const dotted = pyDotted(raw);
+  if (!dotted) return {};
+  if (receivers.has(dotted)) return { local: dotted };
+  const target = pyImportTarget(v.rel, dotted, imports);
+  return target ? { target } : {};
+}
+var FASTAPI_VERBS = ["get", "post", "put", "patch", "delete", "options", "head", "trace"];
+function extractFastapi(input) {
+  const v = views(input);
+  const ownPrefix = /* @__PURE__ */ new Map();
+  for (const a of assigned(v.skeleton, ["FastAPI", "APIRouter"], ["fastapi"])) {
+    const call2 = readArgs(v.text, a.open);
+    ownPrefix.set(a.name, a.ctor === "APIRouter" ? pyLiteral(call2 && kwarg(call2.args, "prefix")?.raw) ?? "" : "");
+  }
+  if (!ownPrefix.size && importsPyModule(v.text, "fastapi")) {
+    ownPrefix.set("app", "");
+    ownPrefix.set("router", "");
+  }
+  if (!ownPrefix.size) return {};
+  const receivers = new Set(ownPrefix.keys());
+  const names = [...receivers].map(esc3).join("|");
+  const routes = [];
+  const DECO = new RegExp(`^[ \\t]*@[ \\t]*(${names})\\s*\\.\\s*(${FASTAPI_VERBS.join("|")}|api_route)\\s*\\(`, "gm");
+  for (const m of v.skeleton.matchAll(DECO)) {
+    const open = m.index + m[0].length - 1;
+    const call2 = readArgs(v.text, open);
+    if (!call2) continue;
+    const path = pathArg(call2.args, "path");
+    if (path === void 0 || path !== "" && !path.startsWith("/")) continue;
+    const verb = m[2];
+    const methods = verb === "api_route" ? pyStringList(kwarg(call2.args, "methods")?.raw ?? '["GET"]') ?? ["GET"] : [verb];
+    const handler = decoratedName(v.skeleton, call2.end)?.name;
+    const line2 = v.lineOf(v.skeleton.indexOf("@", m.index));
+    for (const method of methods) routes.push({ receiver: m[1], method: method.toUpperCase(), path: pyRouteParams(path), line: line2, handler });
+  }
+  const imports = pyImports(v.text);
+  const mounts = [];
+  const INCLUDE = new RegExp(`(?<![\\w.])(${names})\\s*\\.\\s*include_router\\s*\\(`, "g");
+  for (const m of v.skeleton.matchAll(INCLUDE)) {
+    const call2 = readArgs(v.text, m.index + m[0].length - 1);
+    const first = call2 && (positional(call2.args)[0] ?? kwarg(call2.args, "router"));
+    if (!call2 || !first) continue;
+    const prefix = pyLiteral(kwarg(call2.args, "prefix")?.raw) ?? "";
+    if (prefix && !prefix.startsWith("/")) continue;
+    const to = mountTarget(v, first.raw, receivers, imports);
+    if (to.local || to.target) mounts.push({ parent: m[1], prefix: pyRouteParams(prefix), line: v.lineOf(m.index), ...to });
+  }
+  return output(assemble(input.rel, "fastapi", ownPrefix, routes, mounts));
+}
+var fastapiExtractor = {
+  id: "fastapi",
+  applies: (input, ctx) => isPython(input.rel) && ctx.depsFor(input.rel).has("fastapi"),
+  extract: extractFastapi
+};
+var FLASK_VERBS = ["get", "post", "put", "patch", "delete"];
+function extractFlask(input) {
+  const v = views(input);
+  const ownPrefix = /* @__PURE__ */ new Map();
+  for (const a of assigned(v.skeleton, ["Flask", "Blueprint"], ["flask"])) {
+    const call2 = readArgs(v.text, a.open);
+    ownPrefix.set(a.name, a.ctor === "Blueprint" ? pyLiteral(call2 && kwarg(call2.args, "url_prefix")?.raw) ?? "" : "");
+  }
+  if (!ownPrefix.size && importsPyModule(v.text, "flask")) {
+    ownPrefix.set("app", "");
+    ownPrefix.set("bp", "");
+  }
+  if (!ownPrefix.size) return {};
+  const receivers = new Set(ownPrefix.keys());
+  const names = [...receivers].map(esc3).join("|");
+  const routes = [];
+  const DECO = new RegExp(`^[ \\t]*@[ \\t]*(${names})\\s*\\.\\s*(route|${FLASK_VERBS.join("|")})\\s*\\(`, "gm");
+  for (const m of v.skeleton.matchAll(DECO)) {
+    const call2 = readArgs(v.text, m.index + m[0].length - 1);
+    if (!call2) continue;
+    const path = pathArg(call2.args, "rule");
+    if (path === void 0 || !path.startsWith("/")) continue;
+    const verb = m[2];
+    const methods = verb === "route" ? pyStringList(kwarg(call2.args, "methods")?.raw ?? '["GET"]') ?? ["GET"] : [verb];
+    const handler = decoratedName(v.skeleton, call2.end)?.name;
+    const line2 = v.lineOf(v.skeleton.indexOf("@", m.index));
+    for (const method of methods) routes.push({ receiver: m[1], method: method.toUpperCase(), path: pyRouteParams(path), line: line2, handler });
+  }
+  const RULE = new RegExp(`(?<![\\w.])(${names})\\s*\\.\\s*add_url_rule\\s*\\(`, "g");
+  for (const m of v.skeleton.matchAll(RULE)) {
+    const call2 = readArgs(v.text, m.index + m[0].length - 1);
+    if (!call2) continue;
+    const path = pathArg(call2.args, "rule");
+    if (path === void 0 || !path.startsWith("/")) continue;
+    const pos = positional(call2.args);
+    const view = kwarg(call2.args, "view_func")?.raw ?? pos[2]?.raw;
+    const handler = view ? pyDotted(view.replace(/\.as_view\s*\([\s\S]*\)$/, "")) : void 0;
+    const methods = pyStringList(kwarg(call2.args, "methods")?.raw ?? '["GET"]') ?? ["GET"];
+    for (const method of methods)
+      routes.push({ receiver: m[1], method: method.toUpperCase(), path: pyRouteParams(path), line: v.lineOf(m.index), handler });
+  }
+  const imports = pyImports(v.text);
+  const mounts = [];
+  const REGISTER = new RegExp(`(?<![\\w.])(${names})\\s*\\.\\s*register_blueprint\\s*\\(`, "g");
+  for (const m of v.skeleton.matchAll(REGISTER)) {
+    const call2 = readArgs(v.text, m.index + m[0].length - 1);
+    const first = call2 && (positional(call2.args)[0] ?? kwarg(call2.args, "blueprint"));
+    if (!call2 || !first) continue;
+    const given = kwarg(call2.args, "url_prefix");
+    const prefix = pyLiteral(given?.raw);
+    if (given && prefix === void 0) continue;
+    const to = mountTarget(v, first.raw, receivers, imports);
+    if (to.local)
+      mounts.push({
+        parent: m[1],
+        prefix: pyRouteParams(prefix ?? ""),
+        line: v.lineOf(m.index),
+        local: to.local,
+        replaces: prefix !== void 0
+      });
+    else if (to.target) mounts.push({ parent: m[1], prefix: pyRouteParams(prefix ?? ""), line: v.lineOf(m.index), target: to.target });
+  }
+  return output(assemble(input.rel, "flask", ownPrefix, routes, mounts));
+}
+var flaskExtractor = {
+  id: "flask",
+  applies: (input, ctx) => isPython(input.rel) && ctx.depsFor(input.rel).has("flask"),
+  extract: extractFlask
+};
+function djangoPath(route) {
+  const p = `/${pyRouteParams(route).replace(/^\/+/, "")}`.replace(/\/+$/, "");
+  return p || "/";
+}
+function djangoRegexPath(regex) {
+  const p = regex.replace(/^\^/, "").replace(/\$$/, "").replace(/\(\?P<([A-Za-z_]\w*)>(?:[^()]|\([^()]*\))*\)/g, ":$1").replace(/\((?!\?)(?:[^()]|\([^()]*\))*\)/g, ":p").replace(/\/\?$/, "/").replace(/\\([./-])/g, "$1");
+  if (/[\\^$*+?()[\]{}|]/.test(p)) return void 0;
+  return djangoPath(p);
+}
+function drfRoutes(prefix) {
+  const list = djangoPath(prefix);
+  const detail = joinRoutePath(list, "/:pk");
+  return [
+    { method: "GET", path: list },
+    { method: "POST", path: list },
+    { method: "GET", path: detail },
+    { method: "PUT", path: detail },
+    { method: "PATCH", path: detail },
+    { method: "DELETE", path: detail }
+  ];
+}
+var DETAIL_SUFFIX = "/:pk";
+var DRF_BASES = {
+  ModelViewSet: { list: ["GET", "POST"], detail: ["GET", "PUT", "PATCH", "DELETE"] },
+  ReadOnlyModelViewSet: { list: ["GET"], detail: ["GET"] },
+  ListModelMixin: { list: ["GET"], detail: [] },
+  CreateModelMixin: { list: ["POST"], detail: [] },
+  RetrieveModelMixin: { list: [], detail: ["GET"] },
+  UpdateModelMixin: { list: [], detail: ["PUT", "PATCH"] },
+  DestroyModelMixin: { list: [], detail: ["DELETE"] }
+};
+var DRF_METHODS = {
+  list: { scope: "list", method: "GET" },
+  create: { scope: "list", method: "POST" },
+  retrieve: { scope: "detail", method: "GET" },
+  update: { scope: "detail", method: "PUT" },
+  partial_update: { scope: "detail", method: "PATCH" },
+  destroy: { scope: "detail", method: "DELETE" }
+};
+function extractViewsets(input) {
+  const v = views(input);
+  if (!/ViewSet\b|ModelMixin\b/.test(v.skeleton)) return {};
+  const classes = pyClasses(v.skeleton, (open) => readArgs(v.text, open)?.args);
+  const known = /* @__PURE__ */ new Map();
+  const hints = [];
+  for (const cls of classes) {
+    const list = /* @__PURE__ */ new Set();
+    const detail = /* @__PURE__ */ new Set();
+    let viewset = false;
+    for (const b of cls.bases) {
+      const name2 = b.raw.replace(/\s+/g, "").replace(/^.*\./, "");
+      const base = DRF_BASES[name2] ?? known.get(name2);
+      if (base) {
+        for (const m of base.list) list.add(m);
+        for (const m of base.detail) detail.add(m);
+        viewset = true;
+      } else if (name2 === "ViewSet" || name2 === "GenericViewSet") viewset = true;
+    }
+    if (!viewset) continue;
+    for (const at of cls.statements) {
+      const def = /^(?:async[ \t]+)?def[ \t]+([A-Za-z_]\w*)/.exec(v.skeleton.slice(at, at + 200));
+      const action = def ? DRF_METHODS[def[1]] : void 0;
+      if (action) (action.scope === "list" ? list : detail).add(action.method);
+    }
+    known.set(cls.name, { list, detail });
+    hints.push({ kind: "viewset", name: cls.name, list: [...list].sort(), detail: [...detail].sort(), file: input.rel, line: v.lineOf(cls.offset) });
+  }
+  return hints.length ? { hints } : {};
+}
+var drfViewsetExtractor = {
+  id: "drf-viewsets",
+  applies: (input, ctx) => isPython(input.rel) && ctx.depsFor(input.rel).has("djangorestframework"),
+  extract: extractViewsets
+};
+var drfViewsetLinker = {
+  id: "drf-viewsets",
+  link(facts, ctx) {
+    const served = /* @__PURE__ */ new Map();
+    for (const h of ctx.hints) {
+      if (h.kind !== "viewset") continue;
+      const s = served.get(h.name) ?? { list: /* @__PURE__ */ new Set(), detail: /* @__PURE__ */ new Set() };
+      for (const m of h.list) s.list.add(m);
+      for (const m of h.detail) s.detail.add(m);
+      served.set(h.name, s);
+    }
+    if (!served.size) return facts;
+    const routes = facts.routes.filter((r) => {
+      const s = r.framework === "django" && r.method !== "ALL" && r.handler ? served.get(r.handler) : void 0;
+      if (!s) return true;
+      return (r.path.endsWith(DETAIL_SUFFIX) ? s.detail : s.list).has(r.method);
+    });
+    return { ...facts, routes };
+  }
+};
+function extractDjango(input, ctx) {
+  const v = views(input);
+  if (!/\burlpatterns\b/.test(v.skeleton)) return {};
+  const imports = pyImports(v.text);
+  const fromDjango = (name2) => {
+    const imp = imports.get(name2);
+    return !!imp && (imp.module === "django.urls" || imp.module === "django.conf.urls");
+  };
+  const routeFns = ["path", "re_path", "url"].filter(fromDjango);
+  const includeName = [...imports.entries()].find(
+    ([, imp]) => imp.name === "include" && (imp.module === "django.urls" || imp.module === "django.conf.urls")
+  )?.[0];
+  const drf = ctx.depsFor(input.rel).has("djangorestframework");
+  const routers = drf ? assigned(v.skeleton, ["DefaultRouter", "SimpleRouter"], ["routers"]).map((a) => a.name) : [];
+  if (!routeFns.length && !routers.length) return {};
+  const regions = [];
+  const plain2 = [];
+  const hints = [];
+  const pendingHints = [];
+  const routerPrefixes = /* @__PURE__ */ new Map();
+  if (routeFns.length) {
+    const CALL = new RegExp(`(?<![\\w.])(${routeFns.map(esc3).join("|")})\\s*\\(`, "g");
+    for (const m of v.skeleton.matchAll(CALL)) {
+      const call2 = readArgs(v.text, m.index + m[0].length - 1);
+      if (!call2) continue;
+      const pos = positional(call2.args);
+      const routeArg = pos[0] ?? kwarg(call2.args, "route");
+      const view = pos[1] ?? kwarg(call2.args, "view");
+      if (!routeArg || !view) continue;
+      const lit = pyLiteral(routeArg.raw);
+      if (lit === void 0) continue;
+      const path = m[1] === "path" ? djangoPath(lit) : djangoRegexPath(lit);
+      if (path === void 0) continue;
+      const inc = includeName ? new RegExp(`^${esc3(includeName)}\\s*\\(`).exec(view.raw) : null;
+      if (inc) {
+        const inner = readArgs(v.text, view.start + inc[0].length - 1);
+        let target = inner && positional(inner.args)[0];
+        if (!target) continue;
+        if (target.raw.startsWith("(")) {
+          const tuple = readArgs(v.text, target.start);
+          target = tuple?.args[0];
+          if (!target) continue;
+        }
+        const module2 = pyLiteral(target.raw);
+        if (module2 !== void 0) pendingHints.push({ offset: m.index, prefix: path, target: pyModulePath(input.rel, module2) });
+        else if (target.raw.startsWith("[")) regions.push({ start: target.start, end: target.start + target.raw.length, prefix: path });
+        else {
+          const dotted = pyDotted(target.raw);
+          const router = dotted?.endsWith(".urls") ? dotted.slice(0, -".urls".length) : void 0;
+          if (router && routers.includes(router)) {
+            const list = routerPrefixes.get(router) ?? [];
+            list.push({ offset: m.index, prefix: path });
+            routerPrefixes.set(router, list);
+          } else if (dotted) {
+            const t = pyImportTarget(input.rel, dotted, imports);
+            if (t) pendingHints.push({ offset: m.index, prefix: path, target: t });
+          }
+        }
+        continue;
+      }
+      const handler = pyDotted(view.raw.replace(/\.as_view\s*\([\s\S]*\)$/, ""));
+      plain2.push({ offset: m.index, path, handler });
+    }
+  }
+  const enclosing = (offset) => {
+    let prefix = "";
+    for (const r of [...regions].sort((a, b) => a.start - b.start)) if (offset > r.start && offset < r.end) prefix = joinRoutePath(prefix, r.prefix);
+    return prefix;
+  };
+  const routes = [];
+  for (const p of plain2) {
+    const fact = { method: "ALL", path: joinRoutePath(enclosing(p.offset), p.path), file: input.rel, line: v.lineOf(p.offset), framework: "django" };
+    if (p.handler) fact.handler = p.handler;
+    routes.push(fact);
+  }
+  for (const h of pendingHints) {
+    const prefix = joinRoutePath(enclosing(h.offset), h.prefix);
+    if (prefix !== "/") hints.push({ kind: "mount", framework: "django", file: input.rel, line: v.lineOf(h.offset), prefix, target: h.target });
+  }
+  if (routers.length) {
+    const REGISTER = new RegExp(`(?<![\\w.])(${routers.map(esc3).join("|")})\\s*\\.\\s*register\\s*\\(`, "g");
+    for (const m of v.skeleton.matchAll(REGISTER)) {
+      const call2 = readArgs(v.text, m.index + m[0].length - 1);
+      if (!call2) continue;
+      const pos = positional(call2.args);
+      const prefix = pyLiteral((pos[0] ?? kwarg(call2.args, "prefix"))?.raw);
+      const viewset = pyDotted((pos[1] ?? kwarg(call2.args, "viewset"))?.raw ?? "");
+      if (prefix === void 0 || !viewset) continue;
+      const mounted = routerPrefixes.get(m[1]) ?? [{ offset: -1, prefix: "" }];
+      for (const at of mounted) {
+        const outer = at.offset === -1 ? "" : joinRoutePath(enclosing(at.offset), at.prefix);
+        for (const r of drfRoutes(prefix)) {
+          routes.push({
+            method: r.method,
+            path: joinRoutePath(outer, r.path),
+            file: input.rel,
+            line: v.lineOf(m.index),
+            framework: "django",
+            handler: viewset
+          });
+        }
+      }
+    }
+  }
+  return output({ routes, hints });
+}
+var djangoUrlsExtractor = {
+  id: "django-urls",
+  applies: (input, ctx) => isPython(input.rel) && ctx.depsFor(input.rel).has("django"),
+  extract: extractDjango
+};
+var pythonMountLinker = {
+  id: "python-mounts",
+  link(facts, ctx) {
+    const files = new Set(ctx.files);
+    const resolve21 = (h) => pyModuleFile(h.target, h.file, files);
+    let out2 = facts;
+    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve21);
+    return out2;
+  }
+};
+
+// src/extract/sql.ts
+var IDENT = String.raw`(?:[\`"\[]?[A-Za-z_][\w$]*[\`"\]]?\.)?[\`"\[]?([A-Za-z_][\w$]*)[\`"\]]?`;
+var CONSTRAINT_START = /^(?:CONSTRAINT|PRIMARY|FOREIGN|UNIQUE|CHECK|INDEX|KEY|EXCLUDE|FULLTEXT|SPATIAL|LIKE|PERIOD)\b/i;
+var TYPE_END = /\s+(?:NOT|NULL|DEFAULT|PRIMARY|REFERENCES|UNIQUE|CHECK|CONSTRAINT|GENERATED|COLLATE|AUTO_INCREMENT|AUTOINCREMENT|IDENTITY|ON|COMMENT|AS|ENCODE|CHARACTER\s+SET)\b[\s\S]*$/i;
+function unquoteIdent(raw) {
+  return raw.trim().replace(/^[`"[]|[`"\]]$/g, "");
+}
+function extractSchema2(input) {
+  const text2 = maskSource(input.rel, input.text, { strings: true });
+  const lineOf = lineIndex(text2);
+  const entities = [];
+  const CREATE = new RegExp(
+    String.raw`\bCREATE\s+(?:OR\s+REPLACE\s+)?((?:GLOBAL\s+|LOCAL\s+)?TEMP(?:ORARY)?\s+|UNLOGGED\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?${IDENT}\s*\(`,
+    "gi"
+  );
+  for (const m of text2.matchAll(CREATE)) {
+    if (m[1] && /TEMP/i.test(m[1])) continue;
+    const name2 = m[2];
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2) continue;
+    const fields = [];
+    const fks = [];
+    for (const arg of call2.args) {
+      const def = arg.raw.replace(/\s+/g, " ").trim();
+      if (CONSTRAINT_START.test(def)) {
+        const fk = new RegExp(String.raw`FOREIGN KEY\s*\(([^)]*)\)\s*REFERENCES\s+${IDENT}`, "i").exec(def);
+        if (fk) fks.push({ cols: fk[1].split(",").map(unquoteIdent), table: fk[2] });
+        continue;
+      }
+      const col = /^([`"[]?[A-Za-z_][\w$]*[`"\]]?)\s+(.+)$/.exec(def);
+      if (!col) continue;
+      const type = col[2].replace(TYPE_END, "").trim();
+      const field = { name: unquoteIdent(col[1]), type: type || "unknown" };
+      const ref2 = new RegExp(String.raw`\bREFERENCES\s+${IDENT}`, "i").exec(def);
+      if (ref2) field.relation = `${TABLE_REF}${ref2[1]}`;
+      fields.push(field);
+    }
+    for (const fk of fks) {
+      for (const f of fields) if (fk.cols.includes(f.name)) f.relation = `${TABLE_REF}${fk.table}`;
+    }
+    entities.push({ name: name2, orm: "sql", file: input.rel, line: lineOf(m.index), fields });
+  }
+  return entities.length ? { entities } : {};
+}
+var sqlSchemaExtractor = {
+  id: "sql-schema",
+  applies: (input) => input.rel.toLowerCase().endsWith(".sql"),
+  extract: extractSchema2
+};
+var STATEMENTS = [
+  { re: new RegExp(String.raw`\b(INSERT\s+(?:IGNORE\s+)?INTO)\s+${IDENT}`, "gi"), op: "write" },
+  { re: new RegExp(String.raw`\b(UPDATE)\s+${IDENT}\s+SET\b`, "gi"), op: "write" },
+  { re: new RegExp(String.raw`\b(DELETE\s+FROM)\s+${IDENT}`, "gi"), op: "write" },
+  { re: new RegExp(String.raw`\b(SELECT)\b[^'"\x60;]{0,400}?\bFROM\s+${IDENT}`, "gi"), op: "read" },
+  { re: new RegExp(String.raw`\b(JOIN)\s+${IDENT}`, "gi"), op: "read" }
+];
+function isCode2(rel2) {
+  const syntax = commentSyntaxFor(rel2);
+  return syntax === "js" || syntax === "python" || syntax === "c" && !/\.(?:prisma|proto|graphql|gql)$/i.test(rel2);
+}
+function extractLiterals(input) {
+  const text2 = maskSource(input.rel, input.text);
+  const skeleton = maskSource(input.rel, input.text, { strings: true });
+  const inString = (i2) => skeleton[i2] === " " && text2[i2] !== " " && text2[i2] !== void 0;
+  const lineOf = lineIndex(text2);
+  const hints = [];
+  for (const { re, op } of STATEMENTS) {
+    for (const m of text2.matchAll(re)) {
+      const at = m.index;
+      const tableAt = at + m[0].lastIndexOf(m[2]);
+      if (!inString(at) || !inString(tableAt)) continue;
+      const keyword = m[1];
+      if (keyword !== keyword.toUpperCase()) {
+        let k = at - 1;
+        while (k >= 0 && /\s/.test(text2[k])) k--;
+        if (k >= 0 && inString(k)) continue;
+      }
+      if (op === "read" && keyword.toUpperCase() === "JOIN" && !/\bSELECT\b/i.test(text2.slice(Math.max(0, at - 400), at))) continue;
+      hints.push({ kind: "sql-use", table: m[2], op, file: input.rel, line: lineOf(at) });
+    }
+  }
+  return hints.length ? { hints } : {};
+}
+var sqlLiteralExtractor = {
+  id: "sql-literals",
+  applies: (input) => isCode2(input.rel) && /\b(?:INSERT|UPDATE|DELETE|SELECT|insert|update|delete|select)\b/.test(input.text),
+  extract: extractLiterals
+};
+var sqlUseLinker = {
+  id: "sql-uses",
+  link(facts, ctx) {
+    const uses = ctx.hints.filter((h) => h.kind === "sql-use");
+    if (!uses.length) return facts;
+    const byTable = /* @__PURE__ */ new Map();
+    for (const e of facts.entities) if (e.orm === "sql" && !byTable.has(e.name.toLowerCase())) byTable.set(e.name.toLowerCase(), e.name);
+    const tableHints = ctx.hints.filter((h) => h.kind === "table").sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line);
+    for (const h of tableHints) if (!byTable.has(h.table.toLowerCase())) byTable.set(h.table.toLowerCase(), h.entity);
+    const added = [];
+    for (const u of uses) {
+      const entity = byTable.get(u.table.toLowerCase());
+      if (entity) added.push({ entity, file: u.file, line: u.line, op: u.op });
+    }
+    return added.length ? { ...facts, entityUses: [...facts.entityUses, ...added] } : facts;
+  }
+};
+
 // src/extract/index.ts
-var EXTRACTORS2 = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor];
-var LINKERS = [expressMountLinker, prismaLinker, entityUseLinker];
+var PY_OPS_EXTRACTORS = [
+  fastapiExtractor,
+  flaskExtractor,
+  djangoUrlsExtractor,
+  drfViewsetExtractor,
+  pythonHttpExtractor,
+  sqlalchemyModelsExtractor,
+  sqlalchemyOrmExtractor,
+  djangoModelsExtractor,
+  djangoOrmExtractor,
+  sqlSchemaExtractor,
+  sqlLiteralExtractor,
+  bullmqExtractor,
+  nodeCronExtractor,
+  celeryExtractor,
+  vercelCronExtractor,
+  githubScheduleExtractor,
+  externalsExtractor,
+  composeExtractor,
+  dockerfileExtractor,
+  k8sExtractor
+];
+var PY_OPS_LINKERS = [pythonMountLinker, drfViewsetLinker, ormRelationLinker, sqlUseLinker];
+var EXTRACTORS2 = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...PY_OPS_EXTRACTORS];
+var LINKERS = [expressMountLinker, prismaLinker, ...PY_OPS_LINKERS, entityUseLinker];
 function emptyFacts() {
   return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [] };
 }
@@ -33706,8 +35555,8 @@ function header(n, task) {
   return lines.join("\n");
 }
 function topFiles(files) {
-  const isCode2 = (f) => f.tags.includes("code") ? 0 : 1;
-  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode2(a) - isCode2(b) || b.metrics.pagerank - a.metrics.pagerank || cmp4(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
+  const isCode3 = (f) => f.tags.includes("code") ? 0 : 1;
+  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode3(a) - isCode3(b) || b.metrics.pagerank - a.metrics.pagerank || cmp4(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
 }
 function groupDossier(live, repo, n, budget) {
   const nodes = live.view.nodes;

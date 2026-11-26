@@ -14,20 +14,15 @@
 // workspace that depends on express are never read.
 
 import { lineIndex, maskSource } from "./mask.js";
+import { applyMounts, joinRoutePath } from "./mounts.js";
 import { identifierPath, importsModule, isJsLike, moduleFile, readArgs, relativeImports, resolveRelative, stringLiteral } from "./js.js";
 import type { ExtractInput, ExtractOutput, Extractor, Facts, Linker, MountHint, RepoContext, RouteFact } from "./types.js";
+
+export { joinRoutePath } from "./mounts.js";
 
 const FRAMEWORK = "express";
 const VERBS = ["get", "post", "put", "patch", "delete", "all", "options", "head"] as const;
 const VERB_SET = new Set<string>(VERBS);
-
-/** Join a mount prefix and a route path the way Express composes them. */
-export function joinRoutePath(prefix: string, path: string): string {
-  if (!prefix || prefix === "/") return path || "/";
-  const p = path === "/" || path === "" ? "" : path.startsWith("/") ? path : `/${path}`;
-  const joined = `${prefix.replace(/\/+$/, "")}${p}`.replace(/\/{2,}/g, "/");
-  return joined || "/";
-}
 
 function receiversOf(skeleton: string, code: string): Set<string> {
   const out = new Set<string>();
@@ -186,32 +181,6 @@ export const expressMountLinker: Linker = {
   id: "express-mounts",
   link(facts: Facts, ctx) {
     const files = new Set(ctx.files);
-    const parents = new Map<string, { file: string; prefix: string }[]>();
-    for (const h of ctx.hints) {
-      if (h.kind !== "mount" || h.framework !== FRAMEWORK) continue;
-      const child = moduleFile(h.target, files);
-      if (!child || child === h.file) continue;
-      const list = parents.get(child) ?? [];
-      list.push({ file: h.file, prefix: h.prefix });
-      parents.set(child, list);
-    }
-    if (!parents.size) return facts;
-    const prefixesOf = (file: string, seen: Set<string>): string[] => {
-      const list = parents.get(file);
-      if (!list || seen.has(file)) return [""];
-      const next = new Set(seen).add(file);
-      const out = new Set<string>();
-      for (const p of list) for (const outer of prefixesOf(p.file, next)) out.add(joinRoutePath(outer, p.prefix));
-      return [...out];
-    };
-    const routes: RouteFact[] = [];
-    for (const r of facts.routes) {
-      if (r.framework !== FRAMEWORK || !parents.has(r.file)) {
-        routes.push(r);
-        continue;
-      }
-      for (const prefix of prefixesOf(r.file, new Set())) routes.push({ ...r, path: joinRoutePath(prefix, r.path) });
-    }
-    return { ...facts, routes };
+    return applyMounts(facts, ctx.hints, FRAMEWORK, (h) => moduleFile(h.target, files));
   },
 };
