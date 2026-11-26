@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.5.0](https://github.com/maxgfr/ultraview/compare/v1.4.0...v1.5.0) (2026-11-26)
+
+
+### Features
+
+* **viewer:** offline map with semantic zoom, data, flows, lenses and tour ([6ee8e5e](https://github.com/maxgfr/ultraview/commit/6ee8e5e04fc55f2271cf9e0510e7d0b5d4b8b8d8)), closes [#5](https://github.com/maxgfr/ultraview/issues/5)
+
 # [1.4.0](https://github.com/maxgfr/ultraview/compare/v1.3.1...v1.4.0) (2026-11-26)
 
 
