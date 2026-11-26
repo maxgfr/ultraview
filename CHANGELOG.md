@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.7](https://github.com/maxgfr/ultraview/compare/v1.13.6...v1.13.7) (2026-11-26)
+
+
+### Bug Fixes
+
+* **explain:** say what a system or module is made of ([0bfacf9](https://github.com/maxgfr/ultraview/commit/0bfacf94d16d0462e3f72b153d6698c710f2cbf7)), closes [#28](https://github.com/maxgfr/ultraview/issues/28)
+
 ## [1.13.6](https://github.com/maxgfr/ultraview/compare/v1.13.5...v1.13.6) (2026-11-26)
 
 
