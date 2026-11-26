@@ -1,0 +1,199 @@
+{
+  "calls": [],
+  "entities": [
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "Int"
+        },
+        {
+          "name": "email",
+          "type": "String"
+        },
+        {
+          "name": "name",
+          "type": "String?"
+        },
+        {
+          "name": "orders",
+          "relation": "Order",
+          "type": "Order[]"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime"
+        }
+      ],
+      "file": "prisma/schema.prisma",
+      "line": 19,
+      "name": "User",
+      "orm": "prisma"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "Int"
+        },
+        {
+          "name": "sku",
+          "type": "String"
+        },
+        {
+          "name": "title",
+          "type": "String"
+        },
+        {
+          "name": "priceCents",
+          "type": "Int"
+        },
+        {
+          "name": "items",
+          "relation": "OrderItem",
+          "type": "OrderItem[]"
+        }
+      ],
+      "file": "prisma/schema.prisma",
+      "line": 27,
+      "name": "Product",
+      "orm": "prisma"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "Int"
+        },
+        {
+          "name": "user",
+          "relation": "User",
+          "type": "User"
+        },
+        {
+          "name": "userId",
+          "type": "Int"
+        },
+        {
+          "name": "status",
+          "type": "OrderStatus"
+        },
+        {
+          "name": "items",
+          "relation": "OrderItem",
+          "type": "OrderItem[]"
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime"
+        }
+      ],
+      "file": "prisma/schema.prisma",
+      "line": 36,
+      "name": "Order",
+      "orm": "prisma"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "Int"
+        },
+        {
+          "name": "order",
+          "relation": "Order",
+          "type": "Order"
+        },
+        {
+          "name": "orderId",
+          "type": "Int"
+        },
+        {
+          "name": "product",
+          "relation": "Product",
+          "type": "Product"
+        },
+        {
+          "name": "productId",
+          "type": "Int"
+        },
+        {
+          "name": "quantity",
+          "type": "Int"
+        }
+      ],
+      "file": "prisma/schema.prisma",
+      "line": 47,
+      "name": "OrderItem",
+      "orm": "prisma"
+    }
+  ],
+  "entityUses": [
+    {
+      "entity": "Order",
+      "file": "src/services/orders.ts",
+      "line": 9,
+      "op": "read"
+    },
+    {
+      "entity": "Product",
+      "file": "src/services/orders.ts",
+      "line": 14,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "src/services/orders.ts",
+      "line": 16,
+      "op": "write"
+    },
+    {
+      "entity": "Order",
+      "file": "src/services/orders.ts",
+      "line": 26,
+      "op": "write"
+    }
+  ],
+  "externals": [],
+  "infra": [],
+  "jobs": [],
+  "routes": [
+    {
+      "file": "src/routes/orders.ts",
+      "framework": "express",
+      "line": 6,
+      "method": "GET",
+      "path": "/api/orders"
+    },
+    {
+      "file": "src/routes/orders.ts",
+      "framework": "express",
+      "line": 10,
+      "method": "POST",
+      "path": "/api/orders"
+    },
+    {
+      "file": "src/routes/orders.ts",
+      "framework": "express",
+      "line": 16,
+      "method": "GET",
+      "path": "/api/orders/:id"
+    },
+    {
+      "file": "src/routes/orders.ts",
+      "framework": "express",
+      "line": 19,
+      "method": "DELETE",
+      "path": "/api/orders/:id"
+    },
+    {
+      "file": "src/server.ts",
+      "framework": "express",
+      "line": 9,
+      "method": "GET",
+      "path": "/health"
+    }
+  ],
+  "schema": 1,
+  "screens": []
+}

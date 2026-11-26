@@ -1,0 +1,10 @@
+{
+  "tag": "v7.14.0",
+  "engineVersion": "7.14.0",
+  "sha256": {
+    "ultraindex-engine.mjs": "698eedd3272f45e0bcf92b6a3886d7287d1de7e33ac58e58dfaab56f1ecb964e",
+    "ultraindex-engine.d.mts": "a91b78da33da47673e995375922214c1c600e30fe56d115dabb1255cf91562ce"
+  },
+  "syncedAt": "2026-11-26T13:12:10.470Z",
+  "commit": "83d3f3ee716deb96d4e5d66d95ea9d17f7c09045"
+}

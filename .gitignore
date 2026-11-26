@@ -1,0 +1,17 @@
+node_modules/
+coverage/
+*.tsbuildinfo
+*.tgz
+.DS_Store
+.impeccable/
+
+# ultraindex / ultraview outputs when a fixture is built in place (tests build
+# temp copies; these catch a manual run)
+.ultraindex/
+tests/fixtures/**/.ultraview/
+
+# agent skill installs (produced by `npx skills add .`, never committed)
+.agents/skills/
+.claude/skills/
+.claude/worktrees/
+skills-lock.json

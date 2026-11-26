@@ -1,0 +1,72 @@
+{
+  "name": "ultraview",
+  "version": "0.0.0",
+  "description": "See your app instead of reading its code: an interactive, cited map of a repository for the business and for developers — capabilities, systems, data, flows, saved questions and every change your agent makes. The visual layer over ultraindex. A skills.sh agent skill.",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "bin": {
+    "ultraview": "scripts/ultraview.mjs"
+  },
+  "files": [
+    "skills",
+    "scripts",
+    "src"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup && webindex skill copy",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome ci .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check:build": "tsup && webindex skill copy && git diff --exit-code -- scripts/ultraview.mjs skills/ultraview/scripts/ultraview.mjs && webindex skill check && webindex skill bundle && webindex skill vendor --check",
+    "release": "semantic-release",
+    "verify:bundle": "webindex skill bundle",
+    "verify:engine": "webindex skill check && webindex skill vendor --check",
+    "engine:prepare": "pnpm run build",
+    "engine:gate": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run check:build"
+  },
+  "keywords": [
+    "skills",
+    "agent-skill",
+    "skills.sh",
+    "architecture",
+    "visualization",
+    "codebase-map",
+    "ultraindex",
+    "codeindex",
+    "ai-agent"
+  ],
+  "license": "MIT",
+  "author": "maxgfr",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maxgfr/ultraview"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.4",
+    "@maxgfr/webindex": "https://codeload.github.com/maxgfr/webindex/tar.gz/fad60342d7f55b9e15a3bd5d07d01bf331ceae10",
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^11.0.1",
+    "@types/node": "^20.19.43",
+    "@vitest/coverage-v8": "^4.1.11",
+    "semantic-release": "^25.0.9",
+    "tsup": "^8.5.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ],
+    "overrides": {
+      "esbuild": "0.28.1"
+    }
+  }
+}
