@@ -121,8 +121,9 @@ export interface RepoContext {
  * A cross-file relation an extractor saw but cannot resolve alone, handed to
  * the linkers and never persisted. A mount: a router served under a path
  * prefix from another file (`app.use("/api", ordersRouter)` with
- * `ordersRouter` imported from `./routes/orders`; FastAPI `include_router`,
- * Flask `register_blueprint`, Django `include`).
+ * `ordersRouter` imported from `./routes/orders`; Hono `route()`, Fastify
+ * `register()` with a prefix; FastAPI `include_router`, Flask
+ * `register_blueprint`, Django `include`).
  */
 export interface MountHint {
   kind: "mount";
@@ -175,7 +176,53 @@ export interface ViewsetHint {
   line: number;
 }
 
-export type LinkHint = MountHint | TableHint | SqlUseHint | ViewsetHint;
+/**
+ * Fields a file adds to an entity it does not declare: Drizzle `relations()`
+ * helpers and Sequelize associations, often written in another file than the
+ * table or model. The `orm-fields` linker merges them into the declared entity.
+ */
+export interface FieldsHint {
+  kind: "fields";
+  orm: string;
+  entity: string;
+  file: string;
+  line: number;
+  fields: EntityField[];
+}
+
+/**
+ * An HTTP client instance a module exports (`export const api = axios.create({ baseURL: "/api" })`):
+ * calls made through it elsewhere are calls to `base` + path.
+ */
+export interface HttpClientHint {
+  kind: "http-client";
+  /** The module declaring the client. */
+  file: string;
+  /** The exported name (`api`, or `default`). */
+  name: string;
+  /** The normalized base URL: undefined when none, "" when not a literal (dropped). */
+  base?: string;
+}
+
+/**
+ * A call through an imported object that may be an HTTP client
+ * (`api.get("/users")` with `api` imported from `./lib/api`). Becomes a call
+ * fact only when the module exports a client by that name.
+ */
+export interface ClientCallHint {
+  kind: "client-call";
+  file: string;
+  line: number;
+  method: string;
+  /** The normalized URL as written (absolute path, relative path, or full URL). */
+  url: string;
+  /** The resolved file of the imported module. */
+  module: string;
+  /** The imported name (`api`, or `default`). */
+  name: string;
+}
+
+export type LinkHint = MountHint | TableHint | SqlUseHint | ViewsetHint | FieldsHint | HttpClientHint | ClientCallHint;
 
 /**
  * What an extractor returns: partial facts, plus optional hints for the

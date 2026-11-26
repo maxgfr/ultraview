@@ -1,0 +1,289 @@
+{
+  "calls": [
+    {
+      "file": "src/components/AddToCart.tsx",
+      "line": 9,
+      "method": "POST",
+      "route": "route:POST /api/orders",
+      "url": "/api/orders"
+    },
+    {
+      "file": "src/components/AddToCart.tsx",
+      "line": 13,
+      "method": "GET",
+      "route": "route:GET /api/products/:id",
+      "url": "/api/products/:p"
+    },
+    {
+      "file": "src/components/CartView.tsx",
+      "line": 8,
+      "method": "GET",
+      "route": "route:GET /api/products",
+      "url": "/api/products"
+    },
+    {
+      "file": "src/components/CartView.tsx",
+      "line": 13,
+      "method": "PATCH",
+      "route": "route:PATCH /api/products/:id",
+      "url": "/api/products/:p"
+    },
+    {
+      "file": "src/components/CartView.tsx",
+      "line": 16,
+      "method": "DELETE",
+      "route": "route:DELETE /api/products/:id",
+      "url": "/api/products/:p"
+    },
+    {
+      "file": "src/components/CartView.tsx",
+      "line": 17,
+      "method": "POST",
+      "url": "https://api.stripe.com/v1/refunds"
+    }
+  ],
+  "entities": [
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "serial"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "orders",
+          "relation": "orders",
+          "type": "orders[]"
+        }
+      ],
+      "file": "src/db/schema.ts",
+      "line": 3,
+      "name": "users",
+      "orm": "drizzle"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "serial"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "priceCents",
+          "type": "integer"
+        }
+      ],
+      "file": "src/db/schema.ts",
+      "line": 9,
+      "name": "products",
+      "orm": "drizzle"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "serial"
+        },
+        {
+          "name": "userId",
+          "relation": "users",
+          "type": "integer"
+        },
+        {
+          "name": "productId",
+          "relation": "products",
+          "type": "integer"
+        },
+        {
+          "name": "createdAt",
+          "type": "timestamp"
+        },
+        {
+          "name": "user",
+          "relation": "users",
+          "type": "users"
+        },
+        {
+          "name": "product",
+          "relation": "products",
+          "type": "products"
+        }
+      ],
+      "file": "src/db/schema.ts",
+      "line": 15,
+      "name": "orders",
+      "orm": "drizzle"
+    }
+  ],
+  "entityUses": [
+    {
+      "entity": "products",
+      "file": "src/db/queries.ts",
+      "line": 6,
+      "op": "read"
+    },
+    {
+      "entity": "products",
+      "file": "src/db/queries.ts",
+      "line": 10,
+      "op": "read"
+    },
+    {
+      "entity": "products",
+      "file": "src/db/queries.ts",
+      "line": 15,
+      "op": "write"
+    },
+    {
+      "entity": "products",
+      "file": "src/db/queries.ts",
+      "line": 19,
+      "op": "write"
+    },
+    {
+      "entity": "orders",
+      "file": "src/db/queries.ts",
+      "line": 23,
+      "op": "write"
+    },
+    {
+      "entity": "users",
+      "file": "src/db/queries.ts",
+      "line": 27,
+      "op": "read"
+    }
+  ],
+  "externals": [
+    {
+      "file": "src/components/CartView.tsx",
+      "id": "stripe.com",
+      "line": 17,
+      "via": "host"
+    }
+  ],
+  "infra": [],
+  "jobs": [],
+  "routes": [
+    {
+      "file": "src/app/api/auth/[...nextauth]/route.ts",
+      "framework": "next-app",
+      "handler": "handler",
+      "line": 3,
+      "method": "GET",
+      "path": "/api/auth/*nextauth"
+    },
+    {
+      "file": "src/app/api/auth/[...nextauth]/route.ts",
+      "framework": "next-app",
+      "handler": "handler",
+      "line": 3,
+      "method": "POST",
+      "path": "/api/auth/*nextauth"
+    },
+    {
+      "file": "src/app/api/orders/route.ts",
+      "framework": "next-app",
+      "handler": "POST",
+      "line": 4,
+      "method": "POST",
+      "path": "/api/orders"
+    },
+    {
+      "file": "src/app/api/products/[id]/route.ts",
+      "framework": "next-app",
+      "handler": "GET",
+      "line": 6,
+      "method": "GET",
+      "path": "/api/products/:id"
+    },
+    {
+      "file": "src/app/api/products/[id]/route.ts",
+      "framework": "next-app",
+      "handler": "PATCH",
+      "line": 11,
+      "method": "PATCH",
+      "path": "/api/products/:id"
+    },
+    {
+      "file": "src/app/api/products/[id]/route.ts",
+      "framework": "next-app",
+      "handler": "DELETE",
+      "line": 18,
+      "method": "DELETE",
+      "path": "/api/products/:id"
+    },
+    {
+      "file": "src/app/api/products/route.ts",
+      "framework": "next-app",
+      "handler": "GET",
+      "line": 4,
+      "method": "GET",
+      "path": "/api/products"
+    },
+    {
+      "file": "src/app/api/products/route.ts",
+      "framework": "next-app",
+      "handler": "POST",
+      "line": 8,
+      "method": "POST",
+      "path": "/api/products"
+    },
+    {
+      "file": "src/pages/api/webhook.ts",
+      "framework": "next-pages",
+      "handler": "handler",
+      "line": 3,
+      "method": "POST",
+      "path": "/api/webhook"
+    }
+  ],
+  "schema": 1,
+  "screens": [
+    {
+      "file": "src/app/(shop)/cart/page.tsx",
+      "framework": "next-app",
+      "line": 3,
+      "path": "/cart"
+    },
+    {
+      "file": "src/app/(shop)/page.tsx",
+      "framework": "next-app",
+      "line": 3,
+      "path": "/"
+    },
+    {
+      "file": "src/app/(shop)/products/[id]/page.tsx",
+      "framework": "next-app",
+      "line": 4,
+      "path": "/products/:id"
+    },
+    {
+      "file": "src/app/dashboard/@stats/page.tsx",
+      "framework": "next-app",
+      "line": 1,
+      "path": "/dashboard"
+    },
+    {
+      "file": "src/app/dashboard/page.tsx",
+      "framework": "next-app",
+      "line": 1,
+      "path": "/dashboard"
+    },
+    {
+      "file": "src/app/docs/[[...slug]]/page.tsx",
+      "framework": "next-app",
+      "line": 1,
+      "path": "/docs/*slug"
+    }
+  ]
+}

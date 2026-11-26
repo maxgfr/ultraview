@@ -2,7 +2,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { buildMap } from "../src/build.js";
-import { createRepoContext } from "../src/extract/index.js";
+import { createRepoContext, runExtractors } from "../src/extract/index.js";
 import type { RepoContext } from "../src/extract/types.js";
 import { saveFlow, saveLens } from "../src/save.js";
 
@@ -75,4 +75,9 @@ export async function builtShop(cleanups: (() => void)[], opts: ShopOptions = {}
     if (!lens.ok || !flow.ok) throw new Error(`fixture views not saved: ${JSON.stringify([lens.errors, flow.errors])}`);
   }
   return dir;
+}
+
+/** Run every extractor and linker over an in-memory repo (keys are repo-relative paths). */
+export function factsOfFiles(files: Record<string, string>) {
+  return runExtractors("/repo", Object.keys(files), (abs) => files[abs.slice("/repo/".length)]);
 }

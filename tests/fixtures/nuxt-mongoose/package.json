@@ -1,0 +1,16 @@
+{
+  "name": "nuxt-catalog",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev"
+  },
+  "dependencies": {
+    "mongoose": "^8.8.0",
+    "nuxt": "^3.14.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@nuxt/test-utils": "^3.15.0"
+  }
+}

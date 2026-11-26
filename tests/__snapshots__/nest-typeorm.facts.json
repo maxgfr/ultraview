@@ -1,0 +1,148 @@
+{
+  "calls": [],
+  "entities": [
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "totalCents",
+          "type": "number"
+        },
+        {
+          "name": "user",
+          "relation": "User",
+          "type": "User"
+        }
+      ],
+      "file": "src/orders/order.entity.ts",
+      "line": 4,
+      "name": "Order",
+      "orm": "typeorm"
+    },
+    {
+      "fields": [
+        {
+          "name": "id",
+          "type": "number"
+        },
+        {
+          "name": "email",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "orders",
+          "relation": "Order",
+          "type": "Order[]"
+        },
+        {
+          "name": "createdAt",
+          "type": "Date"
+        }
+      ],
+      "file": "src/users/user.entity.ts",
+      "line": 4,
+      "name": "User",
+      "orm": "typeorm"
+    }
+  ],
+  "entityUses": [
+    {
+      "entity": "Order",
+      "file": "src/orders/orders.service.ts",
+      "line": 12,
+      "op": "read"
+    },
+    {
+      "entity": "Order",
+      "file": "src/orders/orders.service.ts",
+      "line": 16,
+      "op": "write"
+    },
+    {
+      "entity": "User",
+      "file": "src/users/users.service.ts",
+      "line": 14,
+      "op": "read"
+    },
+    {
+      "entity": "User",
+      "file": "src/users/users.service.ts",
+      "line": 18,
+      "op": "read"
+    },
+    {
+      "entity": "User",
+      "file": "src/users/users.service.ts",
+      "line": 23,
+      "op": "write"
+    },
+    {
+      "entity": "User",
+      "file": "src/users/users.service.ts",
+      "line": 28,
+      "op": "write"
+    }
+  ],
+  "externals": [],
+  "infra": [],
+  "jobs": [],
+  "routes": [
+    {
+      "file": "src/orders/orders.controller.ts",
+      "framework": "nestjs",
+      "handler": "list",
+      "line": 8,
+      "method": "GET",
+      "path": "/api/orders"
+    },
+    {
+      "file": "src/orders/orders.controller.ts",
+      "framework": "nestjs",
+      "handler": "checkout",
+      "line": 13,
+      "method": "POST",
+      "path": "/api/orders/checkout"
+    },
+    {
+      "file": "src/users/users.controller.ts",
+      "framework": "nestjs",
+      "handler": "findAll",
+      "line": 8,
+      "method": "GET",
+      "path": "/users"
+    },
+    {
+      "file": "src/users/users.controller.ts",
+      "framework": "nestjs",
+      "handler": "findOne",
+      "line": 13,
+      "method": "GET",
+      "path": "/users/:id"
+    },
+    {
+      "file": "src/users/users.controller.ts",
+      "framework": "nestjs",
+      "handler": "create",
+      "line": 18,
+      "method": "POST",
+      "path": "/users"
+    },
+    {
+      "file": "src/users/users.controller.ts",
+      "framework": "nestjs",
+      "handler": "remove",
+      "line": 27,
+      "method": "DELETE",
+      "path": "/users/:id"
+    }
+  ],
+  "schema": 1,
+  "screens": []
+}

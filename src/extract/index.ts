@@ -50,16 +50,55 @@ const PY_OPS_EXTRACTORS: readonly Extractor[] = [
 const PY_OPS_LINKERS: readonly Linker[] = [pythonMountLinker, drfViewsetLinker, ormRelationLinker, sqlUseLinker];
 // --- end issue #2 ---
 
+// --- issue #1: JS/TS web ---
+import { drizzleExtractor } from "./drizzle.js";
+import { nextAppExtractor, nextPagesExtractor, nuxtPagesExtractor, nuxtServerExtractor, remixExtractor, svelteKitExtractor } from "./fs-routes.js";
+import { httpCallLinker, httpCallsExtractor } from "./http-calls.js";
+import { mongooseExtractor } from "./mongoose.js";
+import { nestjsExtractor } from "./nestjs.js";
+import { ormFieldsLinker } from "./orm.js";
+import { reactRouterExtractor, vueRouterExtractor } from "./route-tables.js";
+import { sequelizeExtractor } from "./sequelize.js";
+import { fastifyExtractor, honoExtractor, jsMountLinker } from "./servers.js";
+import { typeormExtractor } from "./typeorm.js";
+
+/** JS/TS web extractors: file-system routers, server frameworks, HTTP calls, route tables, ORMs. */
+const JS_WEB_EXTRACTORS: readonly Extractor[] = [
+  nextAppExtractor,
+  nextPagesExtractor,
+  nuxtServerExtractor,
+  nuxtPagesExtractor,
+  svelteKitExtractor,
+  remixExtractor,
+  honoExtractor,
+  fastifyExtractor,
+  nestjsExtractor,
+  httpCallsExtractor,
+  reactRouterExtractor,
+  vueRouterExtractor,
+  drizzleExtractor,
+  typeormExtractor,
+  mongooseExtractor,
+  sequelizeExtractor,
+];
+
+/** Structure first (cross-file prefixes, entity fields), before any name resolution. */
+const JS_WEB_LINKERS: readonly Linker[] = [jsMountLinker, ormFieldsLinker];
+
+/** Calls → routes: after every linker that moves or adds routes. */
+const JS_WEB_CALL_LINKERS: readonly Linker[] = [httpCallLinker];
+// --- end issue #1 ---
+
 export type * from "./types.js";
 export { FACT_KINDS, FACTS_SCHEMA } from "./types.js";
 export { createRepoContext } from "./context.js";
 export { commentSyntaxFor, maskComments, maskSource } from "./mask.js";
 
 /** Every extractor, in a fixed order. Planned ones are listed in src/extract/README.md. */
-export const EXTRACTORS: readonly Extractor[] = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...PY_OPS_EXTRACTORS];
+export const EXTRACTORS: readonly Extractor[] = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...JS_WEB_EXTRACTORS, ...PY_OPS_EXTRACTORS];
 
 /** Repo-level passes, in order: structure first (mounts), then name resolution. */
-export const LINKERS: readonly Linker[] = [expressMountLinker, prismaLinker, ...PY_OPS_LINKERS, entityUseLinker];
+export const LINKERS: readonly Linker[] = [expressMountLinker, ...JS_WEB_LINKERS, prismaLinker, ...PY_OPS_LINKERS, ...JS_WEB_CALL_LINKERS, entityUseLinker];
 
 export function emptyFacts(): Facts {
   return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [] };

@@ -2269,7 +2269,7 @@ function extractReexports(rel2, content, localSymbols) {
   const out2 = [];
   const seen = /* @__PURE__ */ new Set();
   let lineStarts;
-  const lineAt = (idx) => {
+  const lineAt2 = (idx) => {
     if (!lineStarts) {
       lineStarts = [0];
       for (let i2 = 0; i2 < content.length; i2++) if (content.charCodeAt(i2) === 10) lineStarts.push(i2 + 1);
@@ -2306,7 +2306,7 @@ function extractReexports(rel2, content, localSymbols) {
         name: name2,
         kind: decl?.kind ?? "reexport",
         file: rel2,
-        line: decl ? decl.line : lineAt(partAt),
+        line: decl ? decl.line : lineAt2(partAt),
         ...decl?.endLine !== void 0 ? { endLine: decl.endLine } : {},
         signature: from ? `export { ${name2} } from "${from}"` : `export { ${name2} }`,
         exported: true,
@@ -2325,7 +2325,7 @@ function extractReexports(rel2, content, localSymbols) {
       name: ns ?? `* (${from})`,
       kind: ns ? "reexport" : "reexport-all",
       file: rel2,
-      line: lineAt(m.index),
+      line: lineAt2(m.index),
       signature: `export * ${ns ? `as ${ns} ` : ""}from "${from}"`,
       exported: true,
       lang
@@ -4238,9 +4238,9 @@ function extractMarkdown(content) {
       heading(h[1].length, h[2]);
       continue;
     }
-    const under = SETEXT.exec(lines[i2 + 1] ?? "");
-    if (under && isParagraphLine(line2)) {
-      heading(under[1][0] === "=" ? 1 : 2, line2.trim());
+    const under2 = SETEXT.exec(lines[i2 + 1] ?? "");
+    if (under2 && isParagraphLine(line2)) {
+      heading(under2[1][0] === "=" ? 1 : 2, line2.trim());
       i2++;
       continue;
     }
@@ -4288,9 +4288,9 @@ var init_markdown = __esm({
     ALERT = /^>\s*\[!(?:note|tip|important|warning|caution)\]\s*$/i;
   }
 });
-function underlines(under, text2) {
-  if (!ADORNMENT.test(under)) return false;
-  const width = under.trimEnd().length;
+function underlines(under2, text2) {
+  if (!ADORNMENT.test(under2)) return false;
+  const width = under2.trimEnd().length;
   return width >= [...text2.trim()].length || width >= 4;
 }
 function cleanInline(text2) {
@@ -4342,9 +4342,9 @@ function extractRst(rel2, content) {
       }
     }
     if (line2.trim() && !/^\s/.test(line2) && !ADORNMENT.test(line2) && (i2 === 0 || blank22(i2 - 1))) {
-      const under = lines[i2 + 1];
-      if (under !== void 0 && underlines(under, line2)) {
-        heading(under[0], line2);
+      const under2 = lines[i2 + 1];
+      if (under2 !== void 0 && underlines(under2, line2)) {
+        heading(under2[0], line2);
         i2++;
         continue;
       }
@@ -10908,12 +10908,12 @@ function extractAst(rel2, ext, content, opts = {}) {
     const symbols = [];
     const root = tree.rootNode;
     const stem22 = (rel2.split("/").pop() ?? "").replace(/\.[^.]+$/, "");
-    const exportedNames = /* @__PURE__ */ new Map();
+    const exportedNames2 = /* @__PURE__ */ new Map();
     const scopeKey = (at) => at.parentPath ?? at.parent ?? "";
     const exportName = (name2, ctx) => {
       const key2 = scopeKey(ctx);
-      let names = exportedNames.get(key2);
-      if (!names) exportedNames.set(key2, names = /* @__PURE__ */ new Set());
+      let names = exportedNames2.get(key2);
+      if (!names) exportedNames2.set(key2, names = /* @__PURE__ */ new Set());
       names.add(name2);
     };
     const emit2 = (s) => {
@@ -11264,8 +11264,8 @@ function extractAst(rel2, ext, content, opts = {}) {
       funcDepth: 0,
       sectionPublic: true
     });
-    if (exportedNames.size) {
-      for (const s of symbols) if (!s.exported && exportedNames.get(scopeKey(s))?.has(s.name)) s.exported = true;
+    if (exportedNames2.size) {
+      for (const s of symbols) if (!s.exported && exportedNames2.get(scopeKey(s))?.has(s.name)) s.exported = true;
     }
     if (publicNames) {
       for (const s of symbols) if (s.parent === void 0) s.exported = publicNames.has(s.name);
@@ -22543,18 +22543,18 @@ function libraryApi(scan2, ctx) {
     const published = base === "pom.xml" ? /<distributionManagement>|maven-deploy-plugin|central-publishing-maven-plugin|nexus-staging-maven-plugin/.test(text2) : /\bjava-library\b|\bmaven-publish\b|com\.vanniktech\.maven\.publish/.test(text2);
     if (published) libraryDirs.push(dirOf(f.rel));
   }
-  const under = (rel2, dir) => !dir || rel2.startsWith(dir + "/");
+  const under2 = (rel2, dir) => !dir || rel2.startsWith(dir + "/");
   for (const f of scan2.files) {
     if (f.kind !== "code" || isTestPath(f.rel)) continue;
     if (f.lang === "go") {
       if (f.rel.endsWith("_test.go")) continue;
-      const mod = ctx.goModules.find((g) => under(f.rel, g.dir));
+      const mod = ctx.goModules.find((g) => under2(f.rel, g.dir));
       if (!mod) continue;
       const dir = dirOf(f.rel);
       const inModule = mod.dir ? dir.slice(mod.dir.length + 1) : dir;
       if (mainDirs.has(dir) || /(^|\/)internal(\/|$)/.test(inModule)) continue;
       for (const s of f.symbols) if (s.exported) keys.push(`${s.name}${SEP4}${s.file}`);
-    } else if (JVM_LANGS.has(f.lang) && libraryDirs.some((d) => under(f.rel, d)) && !/(^|\/)src\/test\//.test(f.rel)) {
+    } else if (JVM_LANGS.has(f.lang) && libraryDirs.some((d) => under2(f.rel, d)) && !/(^|\/)src\/test\//.test(f.rel)) {
       for (const s of f.symbols) if (s.exported && !s.parent) keys.push(`${s.name}${SEP4}${s.file}`);
     }
   }
@@ -22939,11 +22939,11 @@ function computeDelta(graph, symbols, diff, depth = DEFAULT_DELTA_DEPTH) {
       const more = targets.length > 1 ? ` (+${targets.length - 1} more removed file${targets.length > 2 ? "s" : ""})` : "";
       reasons.push(`${what} is still imported by ${importers2.length} file${importers2.length === 1 ? "" : "s"} (${shown})${more}`);
     }
-    const exportedNames = [...new Set(moduleChanges.flatMap((c2) => c2.symbols.filter((s) => s.exported).map((s) => s.name)))].sort(byStr);
-    if (exportedNames.length) {
+    const exportedNames2 = [...new Set(moduleChanges.flatMap((c2) => c2.symbols.filter((s) => s.exported).map((s) => s.name)))].sort(byStr);
+    if (exportedNames2.length) {
       score += RISK_WEIGHTS.exportedChange;
-      const shown = exportedNames.slice(0, 3).join(", ") + (exportedNames.length > 3 ? ", \u2026" : "");
-      reasons.push(exportedNames.length === 1 ? `exported symbol ${shown} changed` : `exported symbols ${shown} changed`);
+      const shown = exportedNames2.slice(0, 3).join(", ") + (exportedNames2.length > 3 ? ", \u2026" : "");
+      reasons.push(exportedNames2.length === 1 ? `exported symbol ${shown} changed` : `exported symbols ${shown} changed`);
     }
     const pct2 = m ? percentile(metricValues, metricOf(m)) : 0;
     if (pct2 >= 0.9) {
@@ -32029,12 +32029,12 @@ function applyMounts(facts, hints, framework, resolve21) {
     parents.set(child2, list);
   }
   if (!parents.size) return facts;
-  const prefixesOf = (file, seen) => {
+  const prefixesOf2 = (file, seen) => {
     const list = parents.get(file);
     if (!list || seen.has(file)) return [""];
     const next = new Set(seen).add(file);
     const out2 = /* @__PURE__ */ new Set();
-    for (const p of list) for (const outer of prefixesOf(p.file, next)) out2.add(joinRoutePath(outer, p.prefix));
+    for (const p of list) for (const outer of prefixesOf2(p.file, next)) out2.add(joinRoutePath(outer, p.prefix));
     return [...out2];
   };
   const routes = [];
@@ -32043,7 +32043,7 @@ function applyMounts(facts, hints, framework, resolve21) {
       routes.push(r);
       continue;
     }
-    for (const prefix of prefixesOf(r.file, /* @__PURE__ */ new Set())) routes.push({ ...r, path: joinRoutePath(prefix, r.path) });
+    for (const prefix of prefixesOf2(r.file, /* @__PURE__ */ new Set())) routes.push({ ...r, path: joinRoutePath(prefix, r.path) });
   }
   return { ...facts, routes };
 }
@@ -32268,15 +32268,15 @@ function extractExpress(input) {
     list.push(mt);
     localParents.set(mt.local, list);
   }
-  const prefixesOf = (recv, seen) => {
+  const prefixesOf2 = (recv, seen) => {
     const parents = localParents.get(recv);
     if (!parents || seen.has(recv)) return [""];
     const next = new Set(seen).add(recv);
-    return parents.flatMap((p) => prefixesOf(p.parent, next).map((outer) => joinRoutePath(outer, p.prefix)));
+    return parents.flatMap((p) => prefixesOf2(p.parent, next).map((outer) => joinRoutePath(outer, p.prefix)));
   };
   const facts = [];
   for (const r of routes) {
-    for (const prefix of prefixesOf(r.receiver, /* @__PURE__ */ new Set())) {
+    for (const prefix of prefixesOf2(r.receiver, /* @__PURE__ */ new Set())) {
       const fact = { method: r.method, path: joinRoutePath(prefix, r.path), file: input.rel, line: r.line, framework: FRAMEWORK };
       if (r.handler) fact.handler = r.handler;
       facts.push(fact);
@@ -32285,7 +32285,7 @@ function extractExpress(input) {
   const hints = [];
   for (const mt of mounts) {
     if (!mt.target) continue;
-    for (const outer of prefixesOf(mt.parent, /* @__PURE__ */ new Set())) {
+    for (const outer of prefixesOf2(mt.parent, /* @__PURE__ */ new Set())) {
       hints.push({ kind: "mount", framework: FRAMEWORK, file: input.rel, line: mt.line, prefix: joinRoutePath(outer, mt.prefix), target: mt.target });
     }
   }
@@ -33121,10 +33121,131 @@ var githubScheduleExtractor = {
   extract: extractWorkflow
 };
 
+// src/extract/routing.ts
+function cleanRoutePath(path) {
+  let p = path.trim();
+  if (!p.startsWith("/")) p = `/${p}`;
+  p = p.replace(/\/{2,}/g, "/");
+  if (p.length > 1) p = p.replace(/\/+$/, "");
+  return p || "/";
+}
+function pathFromSegments(segments) {
+  return cleanRoutePath(segments.filter((s) => s !== "").join("/"));
+}
+function bracketSegment(segment) {
+  if (/^\(.*\)$/.test(segment) || segment.startsWith("@")) return "";
+  const rest = /^\[\[?\.\.\.([^\]=]+)(?:=[^\]]*)?\]\]?$/.exec(segment);
+  if (rest) return `*${rest[1]}`;
+  return segment.replace(/\[\[?([^\]=]+)(?:=[^\]]*)?\]\]?/g, (_m, name2) => `:${name2}`);
+}
+function splitFlat(name2) {
+  const out2 = [];
+  let cur = "";
+  let escaped = false;
+  for (const ch of name2) {
+    if (ch === "[") escaped = true;
+    else if (ch === "]") escaped = false;
+    if (ch === "." && !escaped) {
+      out2.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  out2.push(cur);
+  return out2;
+}
+function flatRoutePath(name2) {
+  const segments = splitFlat(name2).map((raw) => {
+    if (raw === "_index" || raw === "index") return "";
+    if (raw.startsWith("_")) return "";
+    let seg = raw.endsWith("_") ? raw.slice(0, -1) : raw;
+    const optional = /^\((.*)\)$/.exec(seg);
+    if (optional) seg = optional[1];
+    if (seg === "$") return "*";
+    if (seg.startsWith("$")) return `:${seg.slice(1)}`;
+    return seg.replace(/\[([^\]]*)\]/g, "$1");
+  });
+  return pathFromSegments(segments);
+}
+function stripParamPatterns(path) {
+  return path.split("/").map((seg) => {
+    const catchAll = /^:([\w$]+)\(\.\*\)[*+]?$/.exec(seg);
+    if (catchAll) return `*${catchAll[1]}`;
+    return seg.replace(/^(:[\w$]+)(?:\{[^}]*\}|\([^)]*\))([?*+]?)$/, "$1$2");
+  }).join("/");
+}
+function segmentsOf(path) {
+  return path.split("/").filter((s) => s !== "");
+}
+function routeMatchKey(url, path) {
+  const u = segmentsOf(url);
+  const r = segmentsOf(path);
+  let params = 0;
+  for (let i2 = 0; i2 < r.length; i2++) {
+    const rs = r[i2];
+    if (rs.startsWith("*")) return [1, params];
+    const us = u[i2];
+    if (us === void 0) return void 0;
+    if (rs.startsWith(":")) {
+      params++;
+      continue;
+    }
+    if (us === ":p" || us !== rs) return void 0;
+  }
+  return u.length === r.length ? [0, params] : void 0;
+}
+
+// src/extract/urls.ts
+var URL_HOLE = "\uE000";
+var LOCAL_HOST = /^(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?$/i;
+var ABSOLUTE = /^[a-z][a-z0-9+.-]*:\/\//i;
+function isAbsoluteUrl(url) {
+  return ABSOLUTE.test(url);
+}
+function normalizeSegments(path) {
+  const leading = path.startsWith("/");
+  const segs = path.split("/").filter((s) => s !== "").map((s) => s.includes(URL_HOLE) ? ":p" : s);
+  const joined = segs.join("/");
+  return leading ? cleanRoutePath(joined) : joined;
+}
+function normalizeUrlTemplate(template) {
+  let s = template;
+  const cut = s.search(/[?#]/);
+  if (cut !== -1) s = s.slice(0, cut);
+  if (s.startsWith(URL_HOLE)) {
+    while (s.startsWith(URL_HOLE)) s = s.slice(URL_HOLE.length);
+    if (!s) return void 0;
+    s = s.replace(/^:?\/\/[^/]*/, "");
+    if (ABSOLUTE.test(s)) return void 0;
+    return normalizeSegments(`/${s}`);
+  }
+  const abs = /^((?:[a-z][a-z0-9+.-]*:)?\/\/)([^/]*)(.*)$/i.exec(s);
+  if (abs) {
+    const host = abs[2];
+    const rest = abs[3] || "/";
+    const path = normalizeSegments(rest.startsWith("/") ? rest : `/${rest}`);
+    if (!host || host.includes(URL_HOLE) || LOCAL_HOST.test(host)) return path;
+    return `${abs[1].toLowerCase()}${host.toLowerCase()}${path === "/" ? "" : path}`;
+  }
+  if (s.startsWith("/")) return normalizeSegments(s);
+  return normalizeSegments(s) || void 0;
+}
+function normalizeBaseUrl(template) {
+  if (template === void 0) return void 0;
+  const url = normalizeUrlTemplate(template);
+  return url === void 0 || url === "/" ? "" : url;
+}
+function joinBaseUrl(base, url) {
+  if (ABSOLUTE.test(url)) return url;
+  if (base === void 0) return url.startsWith("/") ? url : void 0;
+  const tail = url.replace(/^\/+/, "");
+  if (ABSOLUTE.test(base)) return tail ? `${base.replace(/\/+$/, "")}/${tail}` : base;
+  return cleanRoutePath(`${base}/${tail}`);
+}
+
 // src/extract/python-http.ts
 var VERBS2 = ["get", "post", "put", "patch", "delete", "head", "options"];
 var esc2 = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-var HOLE = "\uE000";
+var HOLE = URL_HOLE;
 function concatParts(raw) {
   const parts2 = [];
   let depth = 0;
@@ -33187,16 +33308,8 @@ function urlTemplate(raw) {
   return literal2 ? out2 : void 0;
 }
 function normalizePyUrl(template, base) {
-  let url = template.replace(/[?#][\s\S]*$/, "");
-  if (url.startsWith(HOLE)) url = url.replace(/^\uE000+/, "");
-  if (!/^https?:\/\//i.test(url)) {
-    const path = url && !url.startsWith("/") && base !== void 0 ? `/${url}` : url;
-    if (base) url = `${base.replace(/\/+$/, "")}${path}`;
-    else if (path.startsWith("/")) url = path;
-    else return void 0;
-  }
-  url = url.replace(/\uE000+/g, ":p");
-  return url || void 0;
+  const url = normalizeUrlTemplate(template);
+  return url === void 0 ? void 0 : joinBaseUrl(base === void 0 ? void 0 : normalizeBaseUrl(base), url);
 }
 function baseOf3(args2) {
   const b = kwarg(args2, "base_url");
@@ -33642,19 +33755,19 @@ function assemble(rel2, framework, ownPrefix, routes, mounts) {
     list.push(mt);
     localParents.set(mt.local, list);
   }
-  const prefixesOf = (recv, seen) => {
+  const prefixesOf2 = (recv, seen) => {
     const own = ownPrefix.get(recv) ?? "";
     const parents = localParents.get(recv);
     if (!parents || seen.has(recv)) return [own];
     const next = new Set(seen).add(recv);
     return parents.flatMap((p) => {
       const base = p.replaces ? p.prefix : joinRoutePath(p.prefix, own);
-      return prefixesOf(p.parent, next).map((outer) => joinRoutePath(outer, base));
+      return prefixesOf2(p.parent, next).map((outer) => joinRoutePath(outer, base));
     });
   };
   const facts = [];
   for (const r of routes) {
-    for (const prefix of prefixesOf(r.receiver, /* @__PURE__ */ new Set())) {
+    for (const prefix of prefixesOf2(r.receiver, /* @__PURE__ */ new Set())) {
       const fact = { method: r.method, path: joinRoutePath(prefix, r.path), file: rel2, line: r.line, framework };
       if (r.handler) fact.handler = r.handler;
       facts.push(fact);
@@ -33663,7 +33776,7 @@ function assemble(rel2, framework, ownPrefix, routes, mounts) {
   const hints = [];
   for (const mt of mounts) {
     if (!mt.target) continue;
-    for (const outer of prefixesOf(mt.parent, /* @__PURE__ */ new Set())) {
+    for (const outer of prefixesOf2(mt.parent, /* @__PURE__ */ new Set())) {
       const prefix = joinRoutePath(outer, mt.prefix);
       if (prefix !== "/") hints.push({ kind: "mount", framework, file: rel2, line: mt.line, prefix, target: mt.target });
     }
@@ -34137,6 +34250,1949 @@ var sqlUseLinker = {
   }
 };
 
+// src/extract/source.ts
+var SFC_EXTENSIONS = /* @__PURE__ */ new Set([".vue", ".svelte"]);
+function isScriptFile(rel2) {
+  return isJsLike(rel2) || SFC_EXTENSIONS.has(extOf(rel2));
+}
+function maskScript(rel2, text2, opts = {}) {
+  if (!SFC_EXTENSIONS.has(extOf(rel2))) return maskSource(rel2, text2, opts);
+  const out2 = text2.replace(/[^\n\r]/g, " ").split("");
+  for (const m of text2.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)) {
+    const start2 = m.index + m[0].indexOf(">") + 1;
+    const body2 = m[1];
+    for (let i2 = 0; i2 < body2.length; i2++) out2[start2 + i2] = body2[i2];
+  }
+  return maskComments(out2.join(""), "js", opts);
+}
+var VIEWS = /* @__PURE__ */ new WeakMap();
+function sourceViews(input) {
+  const hit = VIEWS.get(input);
+  if (hit && hit.source === input.text) return hit;
+  const text2 = maskScript(input.rel, input.text);
+  const views2 = { text: text2, skeleton: maskScript(input.rel, input.text, { strings: true }), lineOf: lineIndex(text2), source: input.text };
+  VIEWS.set(input, views2);
+  return views2;
+}
+function dirOf5(rel2) {
+  const i2 = rel2.lastIndexOf("/");
+  return i2 === -1 ? "" : rel2.slice(0, i2);
+}
+function workspaceDirOf(ctx, rel2) {
+  let dir = dirOf5(rel2);
+  for (; ; ) {
+    if (ctx.deps.has(dir)) return dir;
+    if (dir === "") return "";
+    dir = dirOf5(dir);
+  }
+}
+function workspaceRelative(ctx, rel2) {
+  const ws = workspaceDirOf(ctx, rel2);
+  return { ws, sub: ws ? rel2.slice(ws.length + 1) : rel2 };
+}
+function declares(ctx, rel2, names) {
+  const deps = ctx.depsFor(rel2);
+  for (const n of names) {
+    if (n.endsWith("/")) {
+      for (const d of deps) if (d.startsWith(n)) return true;
+    } else if (deps.has(n)) return true;
+  }
+  return false;
+}
+var FILE_SETS = /* @__PURE__ */ new WeakMap();
+function fileSetOf(ctx) {
+  let set = FILE_SETS.get(ctx.files);
+  if (!set) FILE_SETS.set(ctx.files, set = new Set(ctx.files));
+  return set;
+}
+function isLocalSpecifier(spec) {
+  return /^(?:\.{1,2}\/|@\/|~~?\/|#|\$lib(?:\/|$))/.test(spec);
+}
+var STRIP_EXT = /\.(?:[cm]?[jt]sx?)$/;
+function resolveLocalModule(ctx, fromRel, spec) {
+  const files = fileSetOf(ctx);
+  const tryTarget = (target) => {
+    if (files.has(target) && isScriptFile(target)) return target;
+    return moduleFile(target.replace(STRIP_EXT, ""), files);
+  };
+  const rel2 = resolveRelative(fromRel, spec);
+  if (rel2 !== void 0) return tryTarget(rel2);
+  if (!isLocalSpecifier(spec)) return void 0;
+  const ws = workspaceDirOf(ctx, fromRel);
+  const join46 = (dir, p) => dir ? `${dir}/${p}` : p;
+  let rest;
+  let roots;
+  if (spec.startsWith("$lib")) {
+    rest = spec.slice(4).replace(/^\//, "");
+    roots = [join46(ws, "src/lib")];
+  } else {
+    rest = spec.replace(/^(?:@\/|~~?\/|#\/?)/, "");
+    roots = [join46(ws, "src"), ws, join46(ws, "app")];
+  }
+  for (const root of roots) {
+    const hit = tryTarget(root ? rest ? `${root}/${rest}` : root : rest);
+    if (hit) return hit;
+  }
+  return void 0;
+}
+function moduleTarget(file) {
+  return file.replace(STRIP_EXT, "");
+}
+function importBindings(text2) {
+  const out2 = /* @__PURE__ */ new Map();
+  const IMPORT = /\bimport\s+(?:type\s+)?([\w$\s{},*]+?)\s+from\s*(["'])([^"'\n]+)\2/g;
+  for (const m of text2.matchAll(IMPORT)) {
+    const clause = m[1];
+    const spec = m[3];
+    const named = /\{([^}]*)\}/.exec(clause);
+    const head = clause.replace(/\{[^}]*\}/, "").trim();
+    for (const part of head.split(",")) {
+      const p = part.trim();
+      const star = /^\*\s+as\s+([\w$]+)$/.exec(p);
+      if (star) out2.set(star[1], { spec, imported: "*" });
+      else if (/^[\w$]+$/.test(p)) out2.set(p, { spec, imported: "default" });
+    }
+    if (named) {
+      for (const part of named[1].split(",")) {
+        const p = part.trim().replace(/^type\s+/, "");
+        if (!p) continue;
+        const [imported, local] = p.split(/\s+as\s+/).map((x) => x.trim());
+        const name2 = local ?? imported;
+        if (imported && name2 && /^[\w$]+$/.test(name2)) out2.set(name2, { spec, imported });
+      }
+    }
+  }
+  const REQUIRE = /\b(?:const|let|var)\s+(\{[^}]*\}|[\w$]+)\s*=\s*require\s*\(\s*(["'])([^"'\n]+)\2\s*\)/g;
+  for (const m of text2.matchAll(REQUIRE)) {
+    const binding = m[1];
+    const spec = m[3];
+    if (binding.startsWith("{")) {
+      for (const part of binding.slice(1, -1).split(",")) {
+        const [imported, local] = part.split(":").map((x) => x.trim());
+        const name2 = local ?? imported;
+        if (imported && name2 && /^[\w$]+$/.test(name2)) out2.set(name2, { spec, imported });
+      }
+    } else out2.set(binding, { spec, imported: "default" });
+  }
+  return out2;
+}
+function namesImportedFrom(bindings, pkg, imported = "default") {
+  const out2 = [];
+  for (const [local, b] of bindings) {
+    if ((b.spec === pkg || b.spec.startsWith(`${pkg}/`)) && b.imported === imported) out2.push(local);
+  }
+  return out2.sort();
+}
+function exportedNames(skeleton) {
+  const out2 = [];
+  for (const m of skeleton.matchAll(/\bexport\s+(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g)) {
+    out2.push({ name: m[1], local: m[1], offset: m.index });
+  }
+  for (const m of skeleton.matchAll(/\bexport\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) {
+    out2.push({ name: m[1], local: m[1], offset: m.index });
+  }
+  for (const m of skeleton.matchAll(/\bexport\s+(?:const|let|var)\s+\{([^}]*)\}\s*=/g)) {
+    for (const part of m[1].split(",")) {
+      const [key, value] = part.split(":").map((x) => x.trim());
+      const name2 = value ?? key;
+      if (name2 && /^[A-Za-z_$][\w$]*$/.test(name2)) out2.push({ name: name2, local: name2, offset: m.index });
+    }
+  }
+  for (const m of skeleton.matchAll(/\bexport\s+\{([^}]*)\}/g)) {
+    for (const part of m[1].split(",")) {
+      const p = part.trim();
+      if (!p || p.startsWith("type ")) continue;
+      const [local, name2] = p.split(/\s+as\s+/).map((x) => x.trim());
+      const exported = name2 ?? local;
+      if (local && exported && /^[A-Za-z_$][\w$]*$/.test(exported)) out2.push({ name: exported, local, offset: m.index });
+    }
+  }
+  return out2.sort((a, b) => a.offset - b.offset);
+}
+function defaultExportOffset(skeleton) {
+  const m = /\bexport\s+default\b/.exec(skeleton);
+  if (m) return m.index;
+  return exportedNames(skeleton).find((e) => e.name === "default")?.offset;
+}
+function defaultExportName(skeleton) {
+  const m = /\bexport\s+default\s+(?:async\s+)?(?:function\s*\*?|class)\s*([A-Za-z_$][\w$]*)/.exec(skeleton);
+  if (m) return m[1];
+  const bare = /\bexport\s+default\s+([A-Za-z_$][\w$]*)\s*;?\s*(?:\n|$)/.exec(skeleton);
+  return bare && !["async", "function", "class"].includes(bare[1]) ? bare[1] : void 0;
+}
+function stringConstants(text2) {
+  const out2 = /* @__PURE__ */ new Map();
+  for (const m of text2.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*string\s*)?=\s*(["'`])((?:\\.|(?!\2)[^\\\n])*)\2/g)) {
+    const raw = `${m[2]}${m[3]}${m[2]}`;
+    const value = stringLiteral(raw);
+    if (value !== void 0 && !out2.has(m[1])) out2.set(m[1], value);
+  }
+  return out2;
+}
+function topLevelColon(raw) {
+  let depth = 0;
+  for (let i2 = 0; i2 < raw.length; i2++) {
+    const ch = raw[i2];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const close = raw.indexOf(ch, i2 + 1);
+      if (close === -1) return -1;
+      i2 = close;
+      continue;
+    }
+    if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") depth--;
+    else if (ch === ":" && depth === 0) return i2;
+  }
+  return -1;
+}
+function objectProps(text2, open) {
+  if (text2[open] !== "{") return void 0;
+  const read = readArgs(text2, open);
+  if (!read) return void 0;
+  const props = [];
+  for (const arg of read.args) {
+    const raw = arg.raw;
+    if (raw.startsWith("...")) {
+      props.push({ key: "", value: raw.slice(3), start: arg.start + 3, at: arg.start });
+      continue;
+    }
+    const colon = topLevelColon(raw);
+    if (colon === -1) {
+      const m = /^(?:async\s+)?\*?\s*([A-Za-z_$][\w$]*)/.exec(raw);
+      if (m) props.push({ key: m[1], value: raw, start: arg.start, at: arg.start });
+      continue;
+    }
+    const keyRaw = raw.slice(0, colon).trim();
+    const key = stringLiteral(keyRaw) ?? (/^[A-Za-z_$][\w$]*$/.test(keyRaw) ? keyRaw : "");
+    const after = raw.slice(colon + 1);
+    const lead = after.length - after.trimStart().length;
+    props.push({ key, value: after.trim(), start: arg.start + colon + 1 + lead, at: arg.start });
+  }
+  return { props, end: read.end };
+}
+function propValue(props, key) {
+  return props.find((p) => p.key === key);
+}
+function chainAfter(skeleton, text2, at) {
+  const out2 = [];
+  let pos = at;
+  for (; ; ) {
+    const m = /^\s*\.\s*([A-Za-z_$][\w$]*)\s*(?:<[^<>()]*>\s*)?\(/.exec(skeleton.slice(pos, pos + 400));
+    if (!m) break;
+    const open = pos + m[0].length - 1;
+    const call2 = readArgs(text2, open);
+    if (!call2) break;
+    out2.push({ name: m[1], dot: skeleton.indexOf(".", pos), args: call2.args, end: call2.end });
+    pos = call2.end;
+  }
+  return out2;
+}
+function literalList(raw) {
+  const one = stringLiteral(raw);
+  if (one !== void 0) return [one];
+  if (!raw.startsWith("[") || !raw.endsWith("]")) return void 0;
+  const out2 = [];
+  for (const part of raw.slice(1, -1).split(",")) {
+    const p = part.trim();
+    if (!p) continue;
+    const v = stringLiteral(p);
+    if (v === void 0) return void 0;
+    out2.push(v);
+  }
+  return out2;
+}
+function identEnd(s, i2) {
+  let j = i2;
+  while (j < s.length && /[\w$]/.test(s[j])) j++;
+  return j;
+}
+function skipSpace(s, i2) {
+  let j = i2;
+  while (j < s.length && /\s/.test(s[j])) j++;
+  return j;
+}
+function decoratorRun(skeleton, text2, i2) {
+  const decorators = [];
+  let last = i2;
+  for (; ; ) {
+    const pos = skipSpace(skeleton, last);
+    if (skeleton[pos] !== "@") break;
+    const m = /^@\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)/.exec(skeleton.slice(pos, pos + 200));
+    if (!m) break;
+    const name2 = m[1].split(".").pop()?.trim();
+    let end = pos + m[0].length;
+    let args2;
+    const open = skipSpace(skeleton, end);
+    if (skeleton[open] === "(") {
+      const call2 = readArgs(text2, open);
+      if (!call2) break;
+      args2 = call2.args;
+      end = call2.end;
+    }
+    decorators.push({ name: name2, args: args2, start: pos, end });
+    last = end;
+  }
+  return { decorators, end: last };
+}
+var MODIFIERS = /* @__PURE__ */ new Set(["public", "private", "protected", "readonly", "static", "async", "declare", "override", "abstract", "accessor", "get", "set"]);
+function blockEnd(skeleton, open) {
+  let depth = 0;
+  for (let i2 = open; i2 < skeleton.length; i2++) {
+    const ch = skeleton[i2];
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return i2 + 1;
+    }
+  }
+  return skeleton.length;
+}
+function decoratedMembers(skeleton, text2, from, to) {
+  const out2 = [];
+  let depth = 0;
+  let i2 = from;
+  while (i2 < to) {
+    const ch = skeleton[i2];
+    if (ch === "{" || ch === "(" || ch === "[") depth++;
+    else if (ch === "}" || ch === ")" || ch === "]") depth--;
+    else if (ch === "@" && depth === 0) {
+      const run2 = decoratorRun(skeleton, text2, i2);
+      if (!run2.decorators.length) {
+        i2++;
+        continue;
+      }
+      let pos = skipSpace(skeleton, run2.end);
+      for (; ; ) {
+        const word = skeleton.slice(pos, identEnd(skeleton, pos));
+        const after = skipSpace(skeleton, pos + word.length);
+        if (MODIFIERS.has(word) && /[A-Za-z_$*[#]/.test(skeleton[after] ?? "")) pos = after;
+        else break;
+      }
+      if (skeleton[pos] === "*") pos = skipSpace(skeleton, pos + 1);
+      const nameEnd = identEnd(skeleton, pos);
+      const name2 = skeleton.slice(pos, nameEnd);
+      if (!name2) {
+        i2 = run2.end;
+        continue;
+      }
+      let k = skipSpace(skeleton, nameEnd);
+      if (skeleton[k] === "?" || skeleton[k] === "!") k = skipSpace(skeleton, k + 1);
+      const member = { decorators: run2.decorators, name: name2, kind: "property", start: pos };
+      if (skeleton[k] === "(" || skeleton[k] === "<") member.kind = "method";
+      else if (skeleton[k] === ":") {
+        let d = 0;
+        let j = k + 1;
+        for (; j < to; j++) {
+          const c2 = skeleton[j];
+          if (c2 === "{" || c2 === "(" || c2 === "[" || c2 === "<") d++;
+          else if (c2 === "}" || c2 === ")" || c2 === "]" || c2 === ">") {
+            if (d === 0) break;
+            d--;
+          } else if (d === 0 && (c2 === ";" || c2 === "=" || c2 === "\n")) break;
+        }
+        member.type = text2.slice(k + 1, j).replace(/\s+/g, " ").trim();
+      }
+      out2.push(member);
+      i2 = nameEnd;
+      continue;
+    }
+    i2++;
+  }
+  return out2;
+}
+var CLASS_PREFIXES = /* @__PURE__ */ new Set(["export", "default", "abstract", "declare"]);
+function endBeforeSpace(s, i2) {
+  let j = i2;
+  while (j > 0 && /\s/.test(s[j - 1])) j--;
+  return j;
+}
+function classDeclarations(skeleton, text2) {
+  const runs = /* @__PURE__ */ new Map();
+  for (const m of skeleton.matchAll(/(?<![\w$.@])@\s*[A-Za-z_$]/g)) {
+    const at = m.index;
+    const prev = endBeforeSpace(skeleton, at);
+    if (skeleton[prev - 1] === ")") continue;
+    let w = prev;
+    while (w > 0 && /[\w$.]/.test(skeleton[w - 1])) w--;
+    if (w < prev && skeleton[w - 1] === "@") continue;
+    const run2 = decoratorRun(skeleton, text2, at);
+    if (run2.decorators.length) runs.set(run2.end, run2.decorators);
+  }
+  const out2 = [];
+  for (const m of skeleton.matchAll(/\bclass\s+([A-Za-z_$][\w$]*)([^{;]*)\{/g)) {
+    const start2 = m.index;
+    let end = endBeforeSpace(skeleton, start2);
+    for (; ; ) {
+      let w = end;
+      while (w > 0 && /\w/.test(skeleton[w - 1])) w--;
+      if (!CLASS_PREFIXES.has(skeleton.slice(w, end))) break;
+      end = endBeforeSpace(skeleton, w);
+    }
+    const decorators = runs.get(end) ?? [];
+    const bodyOpen = start2 + m[0].length - 1;
+    const bodyEnd = blockEnd(skeleton, bodyOpen);
+    out2.push({
+      name: m[1],
+      heritage: m[2].replace(/\s+/g, " ").trim(),
+      decorators,
+      start: start2,
+      bodyOpen,
+      bodyEnd,
+      members: decoratedMembers(skeleton, text2, bodyOpen + 1, bodyEnd - 1)
+    });
+  }
+  return out2;
+}
+function classTarget(raw) {
+  if (!raw) return void 0;
+  const arrow = /^(?:\(\s*[\w$]*\s*\)|[\w$]+)\s*=>\s*(?:\[\s*)?([A-Za-z_$][\w$]*)/.exec(raw);
+  if (arrow) return arrow[1];
+  const lit = stringLiteral(raw);
+  if (lit && /^[A-Za-z_$][\w$]*$/.test(lit)) return lit;
+  return /^[A-Z][\w$]*$/.test(raw) ? raw : void 0;
+}
+
+// src/extract/drizzle.ts
+var ORM2 = "drizzle";
+function objectOpen(raw, start2) {
+  if (raw.startsWith("{")) return start2;
+  const arrow = raw.indexOf("=>");
+  if (arrow === -1) return void 0;
+  const brace = raw.indexOf("{", arrow);
+  if (brace === -1) return void 0;
+  return start2 + brace;
+}
+function columnFields(text2, open) {
+  const obj2 = objectProps(text2, open);
+  if (!obj2) return [];
+  const fields = [];
+  for (const p of obj2.props) {
+    if (!p.key) continue;
+    const builder = /^(?:[A-Za-z_$][\w$]*\s*\.\s*)?([A-Za-z_$][\w$]*)\s*(?:<[^()]*>)?\s*\(/.exec(p.value);
+    if (!builder) continue;
+    const field = { name: p.key, type: builder[1] };
+    const ref2 = /\.\s*references\s*\(\s*\(\s*\)\s*(?::\s*[\w$]+\s*)?=>\s*(?:[A-Za-z_$][\w$]*\s*\.\s*)?([A-Za-z_$][\w$]*)\s*\.\s*[A-Za-z_$]/.exec(p.value);
+    if (ref2) field.relation = ref2[1];
+    fields.push(field);
+  }
+  return fields;
+}
+function relationFields(text2, raw, start2) {
+  const open = objectOpen(raw, start2);
+  if (open === void 0) return [];
+  const obj2 = objectProps(text2, open);
+  if (!obj2) return [];
+  const fields = [];
+  for (const p of obj2.props) {
+    const m = /^(one|many)\s*\(\s*(?:[A-Za-z_$][\w$]*\s*\.\s*)?([A-Za-z_$][\w$]*)/.exec(p.value);
+    if (!p.key || !m) continue;
+    const target = m[2];
+    fields.push({ name: p.key, type: m[1] === "many" ? `${target}[]` : target, relation: target });
+  }
+  return fields;
+}
+var TABLE_CALL = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*(?:(?:pg|mysql|sqlite|singlestore)Table|[A-Za-z_$][\w$]*\s*\.\s*table)\s*\(/g;
+function tableArg(raw, declared2, bindings) {
+  const m = /^([A-Za-z_$][\w$]*)(?:\s*\.\s*([A-Za-z_$][\w$]*))?$/.exec(raw.trim());
+  if (!m) return void 0;
+  const head = m[1];
+  const b = bindings.get(head);
+  if (m[2]) return b && b.imported === "*" && isLocalSpecifier(b.spec) ? m[2] : void 0;
+  if (declared2.has(head)) return head;
+  return b && isLocalSpecifier(b.spec) && b.imported !== "*" ? head : void 0;
+}
+function extractDrizzle(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const declaresSchema = importsModule(text2, "drizzle-orm");
+  const bindings = importBindings(text2);
+  const entities = [];
+  const hints = [];
+  const uses = [];
+  for (const m of declaresSchema ? skeleton.matchAll(TABLE_CALL) : []) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2 || call2.args.length < 2 || stringLiteral(call2.args[0].raw) === void 0) continue;
+    const cols = call2.args[1];
+    const open = objectOpen(cols.raw, cols.start);
+    entities.push({
+      name: m[1],
+      orm: ORM2,
+      file: input.rel,
+      line: lineOf(m.index),
+      fields: open === void 0 ? [] : columnFields(text2, open)
+    });
+  }
+  for (const m of declaresSchema ? skeleton.matchAll(/(?<![\w$.])relations\s*\(\s*([A-Za-z_$][\w$]*)\s*,/g) : []) {
+    const call2 = readArgs(text2, skeleton.indexOf("(", m.index));
+    const second = call2?.args[1];
+    if (!second) continue;
+    const fields = relationFields(text2, second.raw, second.start);
+    if (fields.length) hints.push({ kind: "fields", orm: ORM2, entity: m[1], file: input.rel, line: lineOf(m.index), fields });
+  }
+  const declared2 = new Set(entities.map((e) => e.name));
+  const clients = ["db", "tx", "trx", "database"];
+  for (const m of skeleton.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*(?:await\s+)?drizzle\s*\(/g)) clients.push(m[1]);
+  const recv = `(?<![\\w$.])(?:(?:this|ctx|context)\\s*\\.\\s*)?(?:${[...new Set(clients)].map((c2) => c2.replace(/\$/g, "\\$")).join("|")})\\s*\\.\\s*`;
+  const ARG = "([A-Za-z_$][\\w$]*(?:\\s*\\.\\s*[A-Za-z_$][\\w$]*)?)";
+  const push = (raw, offset, op) => {
+    const entity = tableArg(raw, declared2, bindings);
+    if (entity) uses.push({ entity, file: input.rel, line: lineOf(offset), op });
+  };
+  for (const m of skeleton.matchAll(new RegExp(`${recv}(?:insert|update|delete)\\s*\\(\\s*${ARG}\\s*\\)`, "g")))
+    push(m[1], m.index, "write");
+  for (const m of skeleton.matchAll(new RegExp(`${recv}\\$count\\s*\\(\\s*${ARG}\\s*[,)]`, "g"))) push(m[1], m.index, "read");
+  for (const m of skeleton.matchAll(new RegExp(`${recv}query\\s*\\.\\s*([A-Za-z_$][\\w$]*)\\s*\\.\\s*(?:findMany|findFirst)\\s*\\(`, "g"))) {
+    uses.push({ entity: m[1], file: input.rel, line: lineOf(m.index), op: "read" });
+  }
+  for (const m of skeleton.matchAll(new RegExp(`${recv}(?:select|selectDistinct|selectDistinctOn)\\s*\\(`, "g"))) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2) continue;
+    for (const c2 of chainAfter(skeleton, text2, call2.end)) {
+      if (!/^(?:from|(?:inner|left|right|full|cross)Join)$/.test(c2.name) || !c2.args[0]) continue;
+      push(c2.args[0].raw, m.index, "read");
+    }
+  }
+  const out2 = {};
+  if (entities.length) out2.entities = entities;
+  if (uses.length) out2.entityUses = uses;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var drizzleExtractor = {
+  id: "drizzle",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["drizzle-orm"]);
+  },
+  extract: extractDrizzle
+};
+
+// src/extract/fs-routes.ts
+var HTTP_METHODS = /* @__PURE__ */ new Set(["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]);
+function stem3(name2) {
+  const dot = name2.lastIndexOf(".");
+  return dot > 0 ? name2.slice(0, dot) : name2;
+}
+function under(sub, roots) {
+  for (const r of roots) if (sub.startsWith(r)) return sub.slice(r.length);
+  return void 0;
+}
+function lineAt(text2, offset) {
+  return offset === void 0 ? 1 : lineIndex(text2)(offset);
+}
+function exportedHandlers(input, file, path, framework, map) {
+  const { skeleton, lineOf } = sourceViews(input);
+  const out2 = [];
+  for (const e of exportedNames(skeleton)) {
+    const method = map(e.name);
+    if (!method) continue;
+    out2.push({ method, path, file, line: lineOf(e.offset), framework, handler: e.local });
+  }
+  return out2;
+}
+var NEXT_APP_ROOTS = ["app/", "src/app/"];
+function nextAppParts(input, ctx) {
+  if (!isJsLike(input.rel) && extOf(input.rel) !== ".mdx") return void 0;
+  const rest = under(workspaceRelative(ctx, input.rel).sub, NEXT_APP_ROOTS);
+  if (rest === void 0) return void 0;
+  const parts2 = rest.split("/");
+  const base = stem3(parts2.pop());
+  if (base !== "route" && base !== "page") return void 0;
+  if (parts2.some((d) => d.startsWith("_") || /^\(\.{1,3}\)/.test(d))) return void 0;
+  return { dirs: parts2, base };
+}
+var nextAppExtractor = {
+  id: "next-app",
+  applies(input, ctx) {
+    return declares(ctx, input.rel, ["next"]) && nextAppParts(input, ctx) !== void 0;
+  },
+  extract(input, ctx) {
+    const parts2 = nextAppParts(input, ctx);
+    if (!parts2) return {};
+    const path = pathFromSegments(parts2.dirs.map(bracketSegment));
+    if (parts2.base === "route") {
+      const routes = exportedHandlers(input, input.rel, path, "next-app", (n) => HTTP_METHODS.has(n) ? n : void 0);
+      return routes.length ? { routes } : {};
+    }
+    const { skeleton } = sourceViews(input);
+    return { screens: [{ path, file: input.rel, line: lineAt(skeleton, defaultExportOffset(skeleton)), framework: "next-app" }] };
+  }
+};
+var NEXT_PAGES_ROOTS = ["pages/", "src/pages/"];
+var NEXT_SPECIAL_PAGES = /* @__PURE__ */ new Set(["_app", "_document", "_error"]);
+function nextPagesParts(input, ctx) {
+  if (!isJsLike(input.rel)) return void 0;
+  const rest = under(workspaceRelative(ctx, input.rel).sub, NEXT_PAGES_ROOTS);
+  if (rest === void 0) return void 0;
+  const parts2 = rest.split("/");
+  const last = stem3(parts2.pop());
+  if (parts2.length === 0 && NEXT_SPECIAL_PAGES.has(last)) return void 0;
+  if (last !== "index") parts2.push(last);
+  return parts2;
+}
+function checkedMethods(text2, skeleton) {
+  const found = /* @__PURE__ */ new Set();
+  const take = (raw) => {
+    const v = raw.toUpperCase();
+    if (HTTP_METHODS.has(v)) found.add(v);
+  };
+  const literalAt = (quote) => {
+    const q = text2[quote];
+    const close = text2.indexOf(q, quote + 1);
+    return close === -1 ? void 0 : text2.slice(quote + 1, close);
+  };
+  for (const m of skeleton.matchAll(/\.\s*method\s*(?:===?|!==?)\s*(["'])/g)) {
+    const v = literalAt(m.index + m[0].length - 1);
+    if (v) take(v);
+  }
+  for (const m of skeleton.matchAll(/(["'])\s*(?:===?|!==?)\s*[\w$]+\s*\.\s*method\b/g)) {
+    const end = m.index;
+    const open = text2.lastIndexOf(m[1], end - 1);
+    if (open !== -1) take(text2.slice(open + 1, end));
+  }
+  for (const m of skeleton.matchAll(/\]\s*\.\s*includes\s*\(\s*[\w$]+\s*\.\s*method\s*\)/g)) {
+    const close = m.index;
+    const open = skeleton.lastIndexOf("[", close);
+    for (const lit of text2.slice(open + 1, close).matchAll(/["']([A-Za-z]+)["']/g)) take(lit[1]);
+  }
+  for (const m of skeleton.matchAll(/\bswitch\s*\(\s*[\w$]+\s*\.\s*method\s*(?:\.\s*toUpperCase\s*\(\s*\)\s*)?\)\s*\{/g)) {
+    const open = m.index + m[0].length - 1;
+    let depth = 0;
+    let end = skeleton.length;
+    for (let i2 = open; i2 < skeleton.length; i2++) {
+      if (skeleton[i2] === "{") depth++;
+      else if (skeleton[i2] === "}" && --depth === 0) {
+        end = i2;
+        break;
+      }
+    }
+    for (const c2 of skeleton.slice(open, end).matchAll(/\bcase\s*(["'])/g)) {
+      const v = literalAt(open + c2.index + c2[0].length - 1);
+      if (v) take(v);
+    }
+  }
+  return [...found].sort();
+}
+var nextPagesExtractor = {
+  id: "next-pages",
+  applies(input, ctx) {
+    return declares(ctx, input.rel, ["next"]) && nextPagesParts(input, ctx) !== void 0;
+  },
+  extract(input, ctx) {
+    const parts2 = nextPagesParts(input, ctx);
+    if (!parts2) return {};
+    const { text: text2, skeleton } = sourceViews(input);
+    const path = pathFromSegments(parts2.map(bracketSegment));
+    const line2 = lineAt(skeleton, defaultExportOffset(skeleton));
+    if (parts2[0] === "api") {
+      const handler = defaultExportName(skeleton);
+      const methods = checkedMethods(text2, skeleton);
+      const routes = (methods.length ? methods : ["ALL"]).map((method) => {
+        const r = { method, path, file: input.rel, line: line2, framework: "next-pages" };
+        if (handler) r.handler = handler;
+        return r;
+      });
+      return { routes };
+    }
+    return { screens: [{ path, file: input.rel, line: line2, framework: "next-pages" }] };
+  }
+};
+var NUXT_DEPS = ["nuxt", "nuxt3", "nitropack", "nitro"];
+var NUXT_SERVER_ROOTS = [
+  ["server/api/", "api"],
+  ["server/routes/", ""]
+];
+var NUXT_PAGE_ROOTS = ["pages/", "app/pages/", "src/pages/"];
+var NUXT_PAGE_EXT = /* @__PURE__ */ new Set([".vue", ".tsx", ".jsx"]);
+var NITRO_METHOD = /\.(get|head|post|put|delete|patch|options|connect|trace)$/;
+function nuxtServerRoute(input, ctx) {
+  if (!isJsLike(input.rel)) return void 0;
+  const { sub } = workspaceRelative(ctx, input.rel);
+  for (const [root, prefix] of NUXT_SERVER_ROOTS) {
+    if (!sub.startsWith(root)) continue;
+    const parts2 = sub.slice(root.length).split("/");
+    let last = stem3(parts2.pop());
+    let method = "ALL";
+    const m = NITRO_METHOD.exec(last);
+    if (m) {
+      method = m[1].toUpperCase();
+      last = last.slice(0, m.index);
+    }
+    if (last !== "index") parts2.push(last);
+    return { method, path: pathFromSegments([prefix, ...parts2.map(bracketSegment)]) };
+  }
+  return void 0;
+}
+var nuxtServerExtractor = {
+  id: "nuxt-server",
+  applies(input, ctx) {
+    return declares(ctx, input.rel, NUXT_DEPS) && nuxtServerRoute(input, ctx) !== void 0;
+  },
+  extract(input, ctx) {
+    const route = nuxtServerRoute(input, ctx);
+    if (!route) return {};
+    const { skeleton } = sourceViews(input);
+    return { routes: [{ ...route, file: input.rel, line: lineAt(skeleton, defaultExportOffset(skeleton)), framework: "nuxt" }] };
+  }
+};
+function nuxtPagePath(input, ctx) {
+  if (!NUXT_PAGE_EXT.has(extOf(input.rel))) return void 0;
+  const rest = under(workspaceRelative(ctx, input.rel).sub, NUXT_PAGE_ROOTS);
+  if (rest === void 0) return void 0;
+  const parts2 = rest.split("/");
+  const last = stem3(parts2.pop());
+  if (last !== "index") parts2.push(last);
+  return pathFromSegments(parts2.map(bracketSegment));
+}
+var nuxtPagesExtractor = {
+  id: "nuxt-pages",
+  applies(input, ctx) {
+    return declares(ctx, input.rel, ["nuxt", "nuxt3"]) && nuxtPagePath(input, ctx) !== void 0;
+  },
+  extract(input, ctx) {
+    const path = nuxtPagePath(input, ctx);
+    return path === void 0 ? {} : { screens: [{ path, file: input.rel, line: 1, framework: "nuxt" }] };
+  }
+};
+var SVELTEKIT_METHODS = new Map([...[...HTTP_METHODS].map((m) => [m, m]), ["fallback", "ALL"]]);
+function svelteKitParts(input, ctx) {
+  const rest = under(workspaceRelative(ctx, input.rel).sub, ["src/routes/"]);
+  if (rest === void 0) return void 0;
+  const parts2 = rest.split("/");
+  const base = parts2.pop();
+  if (base === "+page.svelte" || /^\+server\.[cm]?[jt]s$/.test(base)) return { dirs: parts2, base };
+  return void 0;
+}
+var svelteKitExtractor = {
+  id: "sveltekit",
+  applies(input, ctx) {
+    return declares(ctx, input.rel, ["@sveltejs/kit"]) && svelteKitParts(input, ctx) !== void 0;
+  },
+  extract(input, ctx) {
+    const parts2 = svelteKitParts(input, ctx);
+    if (!parts2) return {};
+    const path = pathFromSegments(parts2.dirs.map(bracketSegment));
+    if (parts2.base === "+page.svelte") return { screens: [{ path, file: input.rel, line: 1, framework: "sveltekit" }] };
+    const routes = exportedHandlers(input, input.rel, path, "sveltekit", (n) => SVELTEKIT_METHODS.get(n));
+    return routes.length ? { routes } : {};
+  }
+};
+var REMIX_DEPS = ["@remix-run/", "@react-router/fs-routes"];
+function remixRouteName(input, ctx) {
+  if (!isJsLike(input.rel)) return void 0;
+  const rest = under(workspaceRelative(ctx, input.rel).sub, ["app/routes/"]);
+  if (rest === void 0) return void 0;
+  const parts2 = rest.split("/");
+  if (parts2.length === 1) return stem3(parts2[0]);
+  if (parts2.length === 2 && stem3(parts2[1]) === "route") return parts2[0];
+  return void 0;
+}
+var remixExtractor = {
+  id: "remix",
+  applies(input, ctx) {
+    return declares(ctx, input.rel, REMIX_DEPS) && remixRouteName(input, ctx) !== void 0;
+  },
+  extract(input, ctx) {
+    const name2 = remixRouteName(input, ctx);
+    if (name2 === void 0) return {};
+    const path = flatRoutePath(name2);
+    const routes = exportedHandlers(input, input.rel, path, "remix", (n) => n === "loader" ? "GET" : n === "action" ? "POST" : void 0);
+    const out2 = {};
+    if (routes.length) out2.routes = routes;
+    const { skeleton } = sourceViews(input);
+    const def = defaultExportOffset(skeleton);
+    if (def !== void 0) out2.screens = [{ path, file: input.rel, line: lineAt(skeleton, def), framework: "remix" }];
+    return out2;
+  }
+};
+
+// src/extract/http-calls.ts
+var VERBS3 = ["get", "post", "put", "patch", "delete", "head", "options"];
+function splitConcat(raw) {
+  const out2 = [];
+  let depth = 0;
+  let start2 = 0;
+  for (let i2 = 0; i2 < raw.length; i2++) {
+    const ch = raw[i2];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const quote = ch;
+      let j = i2 + 1;
+      let braces = 0;
+      for (; j < raw.length; j++) {
+        const c2 = raw[j];
+        if (c2 === "\\") {
+          j++;
+          continue;
+        }
+        if (quote === "`" && c2 === "$" && raw[j + 1] === "{") {
+          braces++;
+          j++;
+          continue;
+        }
+        if (braces > 0) {
+          if (c2 === "{") braces++;
+          else if (c2 === "}") braces--;
+          continue;
+        }
+        if (c2 === quote) break;
+      }
+      i2 = j;
+      continue;
+    }
+    if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") depth--;
+    else if (ch === "+" && depth === 0) {
+      out2.push(raw.slice(start2, i2).trim());
+      start2 = i2 + 1;
+    }
+  }
+  out2.push(raw.slice(start2).trim());
+  return out2;
+}
+function templateParts(raw) {
+  const body2 = raw.slice(1, -1);
+  const out2 = [];
+  let lit = "";
+  for (let i2 = 0; i2 < body2.length; i2++) {
+    const ch = body2[i2];
+    if (ch === "\\") {
+      lit += body2[i2 + 1] ?? "";
+      i2++;
+      continue;
+    }
+    if (ch === "$" && body2[i2 + 1] === "{") {
+      let depth = 1;
+      let j = i2 + 2;
+      for (; j < body2.length && depth > 0; j++) {
+        if (body2[j] === "{") depth++;
+        else if (body2[j] === "}") depth--;
+      }
+      if (lit) out2.push({ lit });
+      lit = "";
+      out2.push({ expr: body2.slice(i2 + 2, j - 1).trim() });
+      i2 = j - 1;
+      continue;
+    }
+    lit += ch;
+  }
+  if (lit) out2.push({ lit });
+  return out2;
+}
+function urlParts(raw, consts = /* @__PURE__ */ new Map()) {
+  let src = raw.trim().replace(/\s+as\s+[\w$.<>[\]]+$/, "");
+  const arrow = /^(?:async\s+)?(?:\(\s*\)|[A-Za-z_$][\w$]*)\s*=>\s*/.exec(src);
+  if (arrow) src = src.slice(arrow[0].length).trim();
+  const parts2 = [];
+  for (const piece of splitConcat(src)) {
+    const lit = stringLiteral(piece);
+    if (lit !== void 0) parts2.push({ lit });
+    else if (piece.startsWith("`") && piece.endsWith("`") && piece.length >= 2) {
+      for (const p of templateParts(piece)) {
+        if ("expr" in p && consts.has(p.expr)) parts2.push({ lit: consts.get(p.expr) });
+        else parts2.push(p);
+      }
+    } else if (consts.has(piece)) parts2.push({ lit: consts.get(piece) });
+    else parts2.push({ expr: piece });
+  }
+  const merged = [];
+  for (const p of parts2) {
+    const prev = merged[merged.length - 1];
+    if ("lit" in p && prev && "lit" in prev) prev.lit += p.lit;
+    else merged.push({ ...p });
+  }
+  return merged.some((p) => "lit" in p) ? merged : void 0;
+}
+function normalizeUrlParts(parts2) {
+  return normalizeUrlTemplate(parts2.map((p) => "lit" in p ? p.lit : URL_HOLE).join(""));
+}
+function normalizeUrl(raw, consts) {
+  const parts2 = urlParts(raw, consts);
+  return parts2 ? normalizeUrlParts(parts2) : void 0;
+}
+function normalizeBase(raw, consts) {
+  if (raw === void 0) return void 0;
+  const parts2 = urlParts(raw, consts);
+  return parts2 ? normalizeBaseUrl(parts2.map((p) => "lit" in p ? p.lit : URL_HOLE).join("")) : "";
+}
+function methodOf(props, fallback) {
+  const raw = props ? propValue(props.props, "method")?.value : void 0;
+  const lit = raw ? stringLiteral(raw) : void 0;
+  return lit ? lit.toUpperCase() : fallback;
+}
+function optsOf(text2, arg) {
+  return arg?.raw.startsWith("{") ? objectProps(text2, arg.start) : void 0;
+}
+var BASE_KEYS = { axios: ["baseURL"], ky: ["prefixUrl", "prefix"], ofetch: ["baseURL"] };
+function escapeNames(names) {
+  return [...names].map((n) => n.replace(/\$/g, "\\$")).join("|");
+}
+function extractCalls(input, ctx) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const consts = stringConstants(text2);
+  const bindings = importBindings(text2);
+  const deps = ctx.depsFor(input.rel);
+  const nuxt = declares(ctx, input.rel, ["nuxt", "nuxt3", "nitropack", "nitro"]);
+  const calls = [];
+  const hints = [];
+  const emit2 = (method, url, offset) => {
+    if (url === void 0 || !(url.startsWith("/") || isAbsoluteUrl(url))) return;
+    calls.push({ method, url, file: input.rel, line: lineOf(offset) });
+  };
+  const libs = /* @__PURE__ */ new Map();
+  if (deps.has("axios")) for (const n of ["axios", ...namesImportedFrom(bindings, "axios")]) libs.set(n, "axios");
+  if (deps.has("ky")) for (const n of ["ky", ...namesImportedFrom(bindings, "ky")]) libs.set(n, "ky");
+  if (deps.has("ofetch") || nuxt) {
+    for (const n of namesImportedFrom(bindings, "ofetch", "ofetch")) libs.set(n, "ofetch");
+    for (const n of namesImportedFrom(bindings, "ofetch", "$fetch")) libs.set(n, "ofetch");
+    if (deps.has("ofetch")) libs.set("ofetch", "ofetch");
+    libs.set("$fetch", "ofetch");
+  }
+  const instances = /* @__PURE__ */ new Map();
+  if (libs.size) {
+    const CREATE = new RegExp(
+      `(?:\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*(?::[^=;]+)?=|\\bexport\\s+default)\\s*(${escapeNames(libs.keys())})\\s*\\.\\s*(create|extend)\\s*\\(`,
+      "g"
+    );
+    for (const m of skeleton.matchAll(CREATE)) {
+      const lib = libs.get(m[2]);
+      const call2 = readArgs(text2, m.index + m[0].length - 1);
+      if (!call2) continue;
+      const opts = optsOf(text2, call2.args[0]);
+      const baseRaw = opts ? BASE_KEYS[lib].map((k) => propValue(opts.props, k)?.value).find((v) => v !== void 0) : void 0;
+      const base = normalizeBase(baseRaw, consts);
+      if (m[1]) instances.set(m[1], base);
+      else hints.push({ kind: "http-client", file: input.rel, name: "default", base });
+    }
+    for (const e of exportedNames(skeleton)) {
+      if (instances.has(e.local)) hints.push({ kind: "http-client", file: input.rel, name: e.name, base: instances.get(e.local) });
+    }
+    const def = /\bexport\s+default\s+([A-Za-z_$][\w$]*)\s*;?\s*(?:\n|$)/.exec(skeleton);
+    if (def && instances.has(def[1])) hints.push({ kind: "http-client", file: input.rel, name: "default", base: instances.get(def[1]) });
+  }
+  for (const m of skeleton.matchAll(/(?<![\w$.])(?:(?:window|globalThis|self)\s*\.\s*)?fetch\s*\(/g)) {
+    const at = m.index;
+    if (/\b(?:function|async)\s*$/.test(skeleton.slice(Math.max(0, at - 20), at))) continue;
+    const call2 = readArgs(text2, at + m[0].length - 1);
+    if (!call2?.args[0]) continue;
+    emit2(methodOf(optsOf(text2, call2.args[1]), "GET"), normalizeUrl(call2.args[0].raw, consts), at);
+  }
+  if (nuxt) {
+    for (const m of skeleton.matchAll(/(?<![\w$.])(?:useFetch|useLazyFetch)\s*(?:<[^()]*>)?\s*\(/g)) {
+      const call2 = readArgs(text2, m.index + m[0].length - 1);
+      if (!call2?.args[0]) continue;
+      emit2(methodOf(optsOf(text2, call2.args[1]), "GET"), normalizeUrl(call2.args[0].raw, consts), m.index);
+    }
+  }
+  const scanReceivers = (names, onCall) => {
+    if (!names.length) return;
+    const alt = escapeNames(names);
+    const VERB = new RegExp(`(?<![\\w$.])(${alt})\\s*\\.\\s*(${VERBS3.join("|")}|request|raw)\\s*(?:<[^()]*>)?\\s*\\(`, "g");
+    for (const m of skeleton.matchAll(VERB)) {
+      const call2 = readArgs(text2, m.index + m[0].length - 1);
+      const first = call2?.args[0];
+      if (!call2 || !first) continue;
+      const verb = m[2];
+      if (verb === "request" || verb === "raw" && first.raw.startsWith("{")) {
+        const cfg = optsOf(text2, first);
+        const url = cfg ? propValue(cfg.props, "url")?.value : void 0;
+        if (url) onCall(m[1], methodOf(cfg, "GET"), normalizeUrl(url, consts), m.index);
+        continue;
+      }
+      const method = verb === "raw" ? methodOf(optsOf(text2, call2.args[1]), "GET") : verb.toUpperCase();
+      onCall(m[1], method, normalizeUrl(first.raw, consts), m.index);
+    }
+    const CALL = new RegExp(`(?<![\\w$.])(${alt})\\s*(?:<[^()]*>)?\\s*\\(`, "g");
+    for (const m of skeleton.matchAll(CALL)) {
+      const at = m.index;
+      if (/\b(?:function|async|new)\s*$/.test(skeleton.slice(Math.max(0, at - 20), at))) continue;
+      const call2 = readArgs(text2, at + m[0].length - 1);
+      const first = call2?.args[0];
+      if (!call2 || !first) continue;
+      if (first.raw.startsWith("{")) {
+        const cfg = optsOf(text2, first);
+        const url = cfg ? propValue(cfg.props, "url")?.value : void 0;
+        if (url) onCall(m[1], methodOf(cfg, "GET"), normalizeUrl(url, consts), at);
+        continue;
+      }
+      onCall(m[1], methodOf(optsOf(text2, call2.args[1]), "GET"), normalizeUrl(first.raw, consts), at);
+    }
+  };
+  scanReceivers([...libs.keys()].sort(), (_name, method, url, offset) => emit2(method, url, offset));
+  scanReceivers([...instances.keys()].sort(), (name2, method, url, offset) => {
+    if (url !== void 0) emit2(method, joinBaseUrl(instances.get(name2), url), offset);
+  });
+  const imported = /* @__PURE__ */ new Map();
+  for (const [local, b] of bindings) {
+    if (libs.has(local) || instances.has(local) || b.imported === "*" || !isLocalSpecifier(b.spec)) continue;
+    const module2 = resolveLocalModule(ctx, input.rel, b.spec);
+    if (module2) imported.set(local, { module: module2, name: b.imported });
+  }
+  scanReceivers([...imported.keys()].sort(), (name2, method, url, offset) => {
+    const target = imported.get(name2);
+    if (!target || url === void 0) return;
+    hints.push({ kind: "client-call", file: input.rel, line: lineOf(offset), method, url, module: target.module, name: target.name });
+  });
+  const out2 = {};
+  if (calls.length) out2.calls = calls;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var httpCallsExtractor = {
+  id: "http-calls",
+  applies(input) {
+    return isScriptFile(input.rel);
+  },
+  extract: extractCalls
+};
+var cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function matchCallRoute(call2, routes) {
+  if (!call2.url.startsWith("/")) return void 0;
+  let best;
+  for (const r of routes) {
+    const exact = r.method === call2.method;
+    if (!exact && r.method !== "ALL") continue;
+    const m = routeMatchKey(call2.url, r.path);
+    if (!m) continue;
+    const key = [m[0], m[1], exact ? 0 : 1, `${r.method} ${r.path} ${r.file}`];
+    if (lessKey(key, best?.key)) best = { r, key };
+  }
+  return best?.r;
+}
+function lessKey(a, b) {
+  if (!b) return true;
+  for (let i2 = 0; i2 < 3; i2++) if (a[i2] !== b[i2]) return a[i2] < b[i2];
+  return cmp(a[3], b[3]) < 0;
+}
+var httpCallLinker = {
+  id: "http-calls",
+  link(facts, ctx) {
+    const clients = /* @__PURE__ */ new Map();
+    for (const h of ctx.hints) if (h.kind === "http-client") clients.set(`${h.file}\0${h.name}`, h.base);
+    const calls = [...facts.calls];
+    for (const h of ctx.hints) {
+      if (h.kind !== "client-call") continue;
+      const key = `${h.module}\0${h.name}`;
+      if (!clients.has(key)) continue;
+      const url = joinBaseUrl(clients.get(key), h.url);
+      if (url !== void 0) calls.push({ method: h.method, url, file: h.file, line: h.line });
+    }
+    if (!facts.routes.length && calls.length === facts.calls.length) return facts;
+    return {
+      ...facts,
+      calls: calls.map((c2) => {
+        if (c2.route !== void 0) return c2;
+        const r = matchCallRoute(c2, facts.routes);
+        return r ? { ...c2, route: `route:${r.method} ${r.path}` } : c2;
+      })
+    };
+  }
+};
+
+// src/extract/orm.ts
+function opTable(read, write) {
+  return new Map([...read.map((o) => [o, "read"]), ...write.map((o) => [o, "write"])]);
+}
+var GLOBALS = /* @__PURE__ */ new Set([
+  "Object",
+  "Array",
+  "Promise",
+  "JSON",
+  "Math",
+  "Date",
+  "Reflect",
+  "Map",
+  "Set",
+  "WeakMap",
+  "Number",
+  "String",
+  "Boolean",
+  "Symbol",
+  "Error",
+  "Intl",
+  "Buffer",
+  "URL",
+  "Response",
+  "Request"
+]);
+function reachableModelNames(bindings, declared2) {
+  const out2 = /* @__PURE__ */ new Set();
+  for (const [local, b] of bindings) if (/^[A-Z]/.test(local) && isLocalSpecifier(b.spec) && b.imported !== "*") out2.add(local);
+  for (const d of declared2) if (/^[A-Z]/.test(d)) out2.add(d);
+  for (const g of GLOBALS) out2.delete(g);
+  return out2;
+}
+function staticModelUses(skeleton, rel2, names, ops) {
+  if (!names.size) return [];
+  const lineOf = lineIndex(skeleton);
+  const alt = [...names].sort().map((n) => n.replace(/\$/g, "\\$")).join("|");
+  const re = new RegExp(`(?<![\\w$.])(${alt})\\s*\\.\\s*(${[...ops.keys()].join("|")})\\s*(?:<[^()]*>)?\\s*\\(`, "g");
+  const out2 = [];
+  for (const m of skeleton.matchAll(re))
+    out2.push({ entity: m[1], file: rel2, line: lineOf(m.index), op: ops.get(m[2]) });
+  return out2;
+}
+var JS_ORMS = /* @__PURE__ */ new Set(["drizzle", "typeorm", "mongoose", "sequelize"]);
+var ormFieldsLinker = {
+  id: "orm-fields",
+  link(facts, ctx) {
+    const extra = /* @__PURE__ */ new Map();
+    for (const h of ctx.hints) {
+      if (h.kind !== "fields") continue;
+      const key = `${h.orm}\0${h.entity}`;
+      const list = extra.get(key) ?? [];
+      list.push(...h.fields);
+      extra.set(key, list);
+    }
+    const declared2 = new Set(facts.entities.map((e) => e.name));
+    if (!extra.size && !facts.entities.some((e) => JS_ORMS.has(e.orm))) return facts;
+    const entities = facts.entities.map((e) => {
+      if (!JS_ORMS.has(e.orm)) return e;
+      const fields = e.fields.map((f) => ({ ...f }));
+      for (const f of extra.get(`${e.orm}\0${e.name}`) ?? []) {
+        if (f.relation && !declared2.has(f.relation)) continue;
+        const same = fields.find((x) => x.name === f.name);
+        if (!same) fields.push({ ...f });
+        else if (f.relation && !same.relation) same.relation = f.relation;
+      }
+      return {
+        ...e,
+        fields: fields.map((f) => {
+          const { relation: relation2, ...rest } = f;
+          return relation2 && declared2.has(relation2) ? { ...rest, relation: relation2 } : rest;
+        })
+      };
+    });
+    return { ...facts, entities };
+  }
+};
+
+// src/extract/mongoose.ts
+var ORM3 = "mongoose";
+var OPS = opTable(
+  ["find", "findOne", "findById", "countDocuments", "estimatedDocumentCount", "exists", "aggregate", "distinct"],
+  [
+    "create",
+    "insertMany",
+    "updateOne",
+    "updateMany",
+    "replaceOne",
+    "deleteOne",
+    "deleteMany",
+    "findOneAndUpdate",
+    "findByIdAndUpdate",
+    "findOneAndDelete",
+    "findByIdAndDelete",
+    "findOneAndReplace",
+    "findOneAndRemove",
+    "findByIdAndRemove",
+    "bulkWrite"
+  ]
+);
+function typeName(raw) {
+  const m = /^([A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*)$/.exec(raw.trim());
+  return m ? m[1].split(".").pop().trim() : "Mixed";
+}
+function schemaField(text2, name2, raw, start2) {
+  if (raw.startsWith("[")) {
+    const inner = readArgs(text2, start2)?.args[0];
+    if (!inner) return { name: name2, type: "Array" };
+    const f = schemaField(text2, name2, inner.raw, inner.start);
+    return { ...f, type: `${f.type}[]` };
+  }
+  if (raw.startsWith("{")) {
+    const obj2 = objectProps(text2, start2);
+    const type = obj2 ? propValue(obj2.props, "type") : void 0;
+    if (!obj2 || !type) return { name: name2, type: "Object" };
+    const field = type.value.startsWith("[") ? schemaField(text2, name2, type.value, type.start) : { name: name2, type: typeName(type.value) };
+    const ref2 = propValue(obj2.props, "ref");
+    const target = ref2 ? stringLiteral(ref2.value) : void 0;
+    if (target) field.relation = target;
+    return field;
+  }
+  return { name: name2, type: typeName(raw) };
+}
+function schemaFields(text2, open) {
+  const obj2 = objectProps(text2, open);
+  if (!obj2) return [];
+  return obj2.props.filter((p) => p.key).map((p) => schemaField(text2, p.key, p.value, p.start));
+}
+function extractMongoose(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const bindings = importBindings(text2);
+  const entities = [];
+  const modelNames = [];
+  if (importsModule(text2, "mongoose")) {
+    const schemas = /* @__PURE__ */ new Map();
+    const SCHEMA = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*new\s+(?:[A-Za-z_$][\w$]*\s*\.\s*)?Schema\s*(?:<[^()]*>)?\s*\(\s*\{/g;
+    for (const m of skeleton.matchAll(SCHEMA)) {
+      schemas.set(m[1], { fields: schemaFields(text2, m.index + m[0].length - 1), offset: m.index });
+    }
+    const esc4 = (names) => names.map((n) => n.replace(/\$/g, "\\$")).join("|");
+    const modelFns = esc4(["model", ...namesImportedFrom(bindings, "mongoose", "model")]);
+    const owners = esc4(["mongoose", "connection", "conn", "db", ...namesImportedFrom(bindings, "mongoose")]);
+    const MODEL = new RegExp(`(?<![\\w$.])(?:${modelFns}|(?:${owners})\\s*\\.\\s*model)\\s*(?:<[^()]*>)?\\s*\\(`, "g");
+    for (const m of skeleton.matchAll(MODEL)) {
+      const call2 = readArgs(text2, m.index + m[0].length - 1);
+      const name2 = call2?.args[0] ? stringLiteral(call2.args[0].raw) : void 0;
+      const schema2 = call2?.args[1];
+      if (!name2 || !schema2) continue;
+      let fields = [];
+      let offset = m.index;
+      const known = schemas.get(schema2.raw);
+      if (known) {
+        fields = known.fields;
+        offset = known.offset;
+      } else {
+        const inline = /^new\s+(?:[A-Za-z_$][\w$]*\s*\.\s*)?Schema\s*(?:<[^()]*>)?\s*\(\s*\{/.exec(schema2.raw);
+        if (inline) fields = schemaFields(text2, schema2.start + inline[0].length - 1);
+      }
+      entities.push({ name: name2, orm: ORM3, file: input.rel, line: lineOf(offset), fields });
+      const window2 = skeleton.slice(Math.max(0, m.index - 160), m.index);
+      const decl = [...window2.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=/g)].pop();
+      if (decl && !window2.slice(decl.index).includes(";")) modelNames.push(decl[1]);
+      modelNames.push(name2);
+    }
+  }
+  const uses = staticModelUses(skeleton, input.rel, reachableModelNames(bindings, modelNames), OPS);
+  const out2 = {};
+  if (entities.length) out2.entities = entities;
+  if (uses.length) out2.entityUses = uses;
+  return out2;
+}
+var mongooseExtractor = {
+  id: "mongoose",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["mongoose"]);
+  },
+  extract: extractMongoose
+};
+
+// src/extract/nestjs.ts
+var METHOD_DECORATORS = /* @__PURE__ */ new Map([
+  ["Get", "GET"],
+  ["Post", "POST"],
+  ["Put", "PUT"],
+  ["Patch", "PATCH"],
+  ["Delete", "DELETE"],
+  ["Options", "OPTIONS"],
+  ["Head", "HEAD"],
+  ["All", "ALL"]
+]);
+function decoratorPaths(text2, d) {
+  const arg = d.args?.[0];
+  if (!arg) return [""];
+  if (arg.raw.startsWith("{")) {
+    const obj2 = objectProps(text2, arg.start);
+    const path = obj2 ? propValue(obj2.props, "path") : void 0;
+    if (!path) return [""];
+    return literalList(path.value);
+  }
+  return literalList(arg.raw);
+}
+function extractNest(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  if (!importsModule(text2, "@nestjs/common")) return {};
+  const routes = [];
+  for (const cls of classDeclarations(skeleton, text2)) {
+    const controller = cls.decorators.find((d) => d.name === "Controller");
+    if (!controller) continue;
+    const prefixes = decoratorPaths(text2, controller);
+    if (!prefixes) continue;
+    for (const member of cls.members) {
+      if (member.kind !== "method") continue;
+      for (const d of member.decorators) {
+        const method = METHOD_DECORATORS.get(d.name);
+        if (!method) continue;
+        const paths = decoratorPaths(text2, d);
+        if (!paths) continue;
+        for (const prefix of prefixes) {
+          for (const p of paths) {
+            routes.push({
+              method,
+              path: cleanRoutePath(stripParamPatterns(`${prefix}/${p}`)),
+              file: input.rel,
+              line: lineOf(d.start),
+              framework: "nestjs",
+              handler: member.name
+            });
+          }
+        }
+      }
+    }
+  }
+  return routes.length ? { routes } : {};
+}
+var nestjsExtractor = {
+  id: "nestjs",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["@nestjs/common", "@nestjs/core"]);
+  },
+  extract: extractNest
+};
+
+// src/extract/route-tables.ts
+function joinChild(parent, child2) {
+  if (child2.startsWith("/")) return cleanRoutePath(child2);
+  return cleanRoutePath(`${parent}/${child2}`);
+}
+var REACT_KEYS = { framework: "react-router", renders: ["element", "Component", "lazy", "component"], redirect: /^<\s*Navigate\b/ };
+var VUE_KEYS = { framework: "vue-router", renders: ["component", "components"] };
+function walkTable(text2, open, parent, keys, rel2, lineOf, out2, depth = 0) {
+  if (depth > 20 || text2[open] !== "[") return;
+  const arr2 = readArgs(text2, open);
+  if (!arr2) return;
+  for (const el of arr2.args) {
+    if (!el.raw.startsWith("{")) continue;
+    const obj2 = objectProps(text2, el.start);
+    if (!obj2) continue;
+    const pathProp = propValue(obj2.props, "path");
+    const raw = pathProp ? stringLiteral(pathProp.value) : void 0;
+    if (pathProp && raw === void 0) continue;
+    const isIndex = propValue(obj2.props, "index")?.value === "true";
+    const path = raw !== void 0 ? joinChild(parent, stripParamPatterns(raw)) : parent;
+    const render = keys.renders.map((k) => propValue(obj2.props, k)).find((p) => p !== void 0);
+    const redirect = render && keys.redirect?.test(render.value);
+    if ((raw !== void 0 || isIndex) && render && !redirect) out2.push({ path, file: rel2, line: lineOf(el.start), framework: keys.framework });
+    const children = propValue(obj2.props, "children");
+    if (children?.value.startsWith("[")) walkTable(text2, children.start, path, keys, rel2, lineOf, out2, depth + 1);
+  }
+}
+function constArray(skeleton, name2) {
+  const m = new RegExp(`\\b(?:const|let|var)\\s+${name2.replace(/\$/g, "\\$")}\\s*(?::[^=;]+)?=\\s*\\[`).exec(skeleton);
+  return m ? m.index + m[0].length - 1 : void 0;
+}
+function typedArrays(skeleton, typeName3) {
+  const out2 = [];
+  const re = new RegExp(`\\b(?:const|let|var)\\s+[A-Za-z_$][\\w$]*\\s*:\\s*(?:readonly\\s+)?(?:${typeName3})\\s*\\[\\s*\\]\\s*=\\s*\\[`, "g");
+  for (const m of skeleton.matchAll(re)) out2.push(m.index + m[0].length - 1);
+  return out2;
+}
+function tagEnd(skeleton, from) {
+  let depth = 0;
+  for (let i2 = from + 1; i2 < skeleton.length; i2++) {
+    const ch = skeleton[i2];
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+    else if (depth === 0 && ch === ">") return { end: i2 + 1, selfClosing: skeleton[i2 - 1] === "/" };
+  }
+  return void 0;
+}
+function topLevelAttrs(text2, skeleton, from, to) {
+  let out2 = "";
+  for (let i2 = from; i2 < to; i2++) {
+    if (skeleton[i2] !== "{") {
+      out2 += text2[i2];
+      continue;
+    }
+    let depth = 0;
+    let j = i2;
+    for (; j < to; j++) {
+      if (skeleton[j] === "{") depth++;
+      else if (skeleton[j] === "}" && --depth === 0) break;
+    }
+    if (j >= to) {
+      out2 += " ".repeat(to - i2);
+      break;
+    }
+    const inner = text2.slice(i2 + 1, j);
+    out2 += /^\s*(["'`])[^"'`]*\1\s*$/.test(inner) ? `{${inner}}` : `{${" ".repeat(inner.length)}}`;
+    i2 = j;
+  }
+  return out2;
+}
+function jsxRoutes(text2, skeleton, rel2, lineOf, out2) {
+  const stack = [];
+  for (const m of skeleton.matchAll(/<\s*Route\b|<\/\s*Route\s*>/g)) {
+    const at = m.index;
+    if (m[0].startsWith("</")) {
+      stack.pop();
+      continue;
+    }
+    const tag = tagEnd(skeleton, at);
+    if (!tag) continue;
+    const parent = stack[stack.length - 1] ?? "/";
+    const attrs = topLevelAttrs(text2, skeleton, at, tag.end);
+    const pathM = /\spath\s*=\s*(?:(["'])([^"']*)\1|\{\s*(["'`])([^"'`]*)\3\s*\})/.exec(attrs);
+    const path = pathM ? joinChild(parent, stripParamPatterns(pathM[2] ?? pathM[4])) : parent;
+    const isIndex = /\sindex(?:\s*=\s*\{\s*true\s*\})?(?=[\s/>])/.test(attrs);
+    const renderM = /\s(element|Component|component|lazy)\s*=\s*\{/.exec(attrs);
+    let redirect = false;
+    if (renderM) {
+      const open = at + renderM.index + renderM[0].length - 1;
+      redirect = /^\{\s*<\s*Navigate\b/.test(text2.slice(open, open + 40));
+    }
+    if ((pathM || isIndex) && renderM && !redirect) out2.push({ path, file: rel2, line: lineOf(at), framework: "react-router" });
+    if (!tag.selfClosing) stack.push(path);
+  }
+}
+function extractReactRouter(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  if (!importsModule(text2, "react-router-dom") && !importsModule(text2, "react-router")) return {};
+  const screens = [];
+  const tables = new Set(typedArrays(skeleton, "RouteObject"));
+  for (const m of skeleton.matchAll(/(?<![\w$.])(?:createBrowserRouter|createHashRouter|createMemoryRouter|createStaticRouter|useRoutes)\s*\(/g)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    const first = call2?.args[0];
+    if (!first) continue;
+    if (first.raw.startsWith("[")) tables.add(first.start);
+    else if (/^[A-Za-z_$][\w$]*$/.test(first.raw)) {
+      const at = constArray(skeleton, first.raw);
+      if (at !== void 0) tables.add(at);
+    }
+  }
+  for (const at of [...tables].sort((a, b) => a - b)) walkTable(text2, at, "/", REACT_KEYS, input.rel, lineOf, screens);
+  jsxRoutes(text2, skeleton, input.rel, lineOf, screens);
+  return screens.length ? { screens } : {};
+}
+var reactRouterExtractor = {
+  id: "react-router",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["react-router", "react-router-dom"]);
+  },
+  extract: extractReactRouter
+};
+function extractVueRouter(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  if (!importsModule(text2, "vue-router") && !/\bRouteRecordRaw\b/.test(skeleton)) return {};
+  const tables = new Set(typedArrays(skeleton, "RouteRecordRaw"));
+  for (const m of skeleton.matchAll(/(?<![\w$.])createRouter\s*\(\s*\{/g)) {
+    const obj2 = objectProps(text2, m.index + m[0].length - 1);
+    const routes = obj2 ? propValue(obj2.props, "routes") : void 0;
+    if (!routes) continue;
+    if (routes.value.startsWith("[")) tables.add(routes.start);
+    else if (/^[A-Za-z_$][\w$]*$/.test(routes.value)) {
+      const at = constArray(skeleton, routes.value);
+      if (at !== void 0) tables.add(at);
+    }
+  }
+  const screens = [];
+  for (const at of [...tables].sort((a, b) => a - b)) walkTable(text2, at, "/", VUE_KEYS, input.rel, lineOf, screens);
+  return screens.length ? { screens } : {};
+}
+var vueRouterExtractor = {
+  id: "vue-router",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["vue-router"]);
+  },
+  extract: extractVueRouter
+};
+
+// src/extract/sequelize.ts
+var ORM4 = "sequelize";
+var OPS2 = opTable(
+  ["findAll", "findOne", "findByPk", "findAndCountAll", "count", "max", "min", "sum", "aggregate"],
+  ["create", "bulkCreate", "update", "destroy", "upsert", "findOrCreate", "increment", "decrement", "truncate", "restore"]
+);
+var ASSOCIATIONS = /* @__PURE__ */ new Map([
+  ["hasMany", true],
+  ["belongsToMany", true],
+  ["hasOne", false],
+  ["belongsTo", false]
+]);
+var TS_RELATIONS = /* @__PURE__ */ new Map([
+  ["HasMany", true],
+  ["BelongsToMany", true],
+  ["HasOne", false],
+  ["BelongsTo", false]
+]);
+function columnType(text2, raw, start2) {
+  let src = raw;
+  if (raw.startsWith("{")) {
+    const type = propValue(objectProps(text2, start2)?.props ?? [], "type");
+    if (!type) return "unknown";
+    src = type.value;
+  }
+  const m = /^(?:[A-Za-z_$][\w$]*\s*\.\s*)*([A-Za-z_$][\w$]*)/.exec(src);
+  return m ? m[1] : "unknown";
+}
+function attributeFields(text2, open) {
+  const obj2 = objectProps(text2, open);
+  if (!obj2) return [];
+  return obj2.props.filter((p) => p.key).map((p) => ({ name: p.key, type: columnType(text2, p.value, p.start) }));
+}
+function extractSequelize(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const entities = [];
+  const hints = [];
+  const declared2 = [];
+  const classes = classDeclarations(skeleton, text2);
+  const usesSequelize = importsModule(text2, "sequelize") || importsModule(text2, "sequelize-typescript") || importsModule(text2, "@sequelize/core");
+  if (usesSequelize) {
+    for (const m of skeleton.matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)\s*\.\s*define\s*(?:<[^()]*>)?\s*\(/g)) {
+      const call2 = readArgs(text2, m.index + m[0].length - 1);
+      const name2 = call2?.args[0] ? stringLiteral(call2.args[0].raw) : void 0;
+      const attrs = call2?.args[1];
+      if (!name2 || !attrs?.raw.startsWith("{")) continue;
+      entities.push({ name: name2, orm: ORM4, file: input.rel, line: lineOf(m.index), fields: attributeFields(text2, attrs.start) });
+      const window2 = skeleton.slice(Math.max(0, m.index - 80), m.index);
+      const decl = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$/.exec(window2);
+      declared2.push(name2, ...decl ? [decl[1]] : []);
+    }
+    const modelClasses = new Map(classes.filter((c2) => /\bextends\s+Model\b/.test(c2.heritage)).map((c2) => [c2.name, c2]));
+    for (const m of skeleton.matchAll(/(?<![\w$.])([A-Z][\w$]*)\s*\.\s*init\s*\(\s*\{/g)) {
+      const cls = modelClasses.get(m[1]);
+      if (!cls) continue;
+      entities.push({
+        name: cls.name,
+        orm: ORM4,
+        file: input.rel,
+        line: lineOf(cls.start),
+        fields: attributeFields(text2, m.index + m[0].length - 1)
+      });
+      declared2.push(cls.name);
+    }
+    for (const cls of classes) {
+      if (!cls.decorators.some((d) => d.name === "Table") || !modelClasses.has(cls.name)) continue;
+      const fields = [];
+      for (const mem of cls.members) {
+        if (mem.kind !== "property") continue;
+        const rel2 = mem.decorators.find((d) => TS_RELATIONS.has(d.name));
+        if (rel2) {
+          const target = classTarget(rel2.args?.[0]?.raw);
+          const field = { name: mem.name, type: mem.type ?? target ?? "unknown" };
+          if (target) field.relation = target;
+          fields.push(field);
+        } else if (mem.decorators.some((d) => d.name === "Column" || d.name === "PrimaryKey" || d.name === "ForeignKey")) {
+          fields.push({ name: mem.name, type: mem.type ?? "unknown" });
+        }
+      }
+      entities.push({ name: cls.name, orm: ORM4, file: input.rel, line: lineOf(cls.decorators[0]?.start ?? cls.start), fields });
+      declared2.push(cls.name);
+    }
+  }
+  for (const m of skeleton.matchAll(/(?<![\w$.])(this|[A-Z][\w$]*)\s*\.\s*(hasMany|belongsToMany|hasOne|belongsTo)\s*\(/g)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    const targetRaw = call2?.args[0]?.raw;
+    const target = targetRaw ? /^(?:[A-Za-z_$][\w$]*\s*\.\s*)?([A-Z][\w$]*)$/.exec(targetRaw)?.[1] : void 0;
+    if (!call2 || !target) continue;
+    let owner = m[1];
+    if (owner === "this") {
+      const cls = classes.filter((c2) => c2.bodyOpen < m.index && m.index < c2.bodyEnd).pop();
+      if (!cls) continue;
+      owner = cls.name;
+    }
+    const opts = call2.args[1]?.raw.startsWith("{") ? objectProps(text2, call2.args[1].start) : void 0;
+    const as = opts ? propValue(opts.props, "as") : void 0;
+    const alias = as ? stringLiteral(as.value) : void 0;
+    const many = ASSOCIATIONS.get(m[2]);
+    hints.push({
+      kind: "fields",
+      orm: ORM4,
+      entity: owner,
+      file: input.rel,
+      line: lineOf(m.index),
+      fields: [{ name: alias ?? target, type: many ? `${target}[]` : target, relation: target }]
+    });
+  }
+  const uses = staticModelUses(skeleton, input.rel, reachableModelNames(importBindings(text2), declared2), OPS2);
+  const ops = [...OPS2.keys()].join("|");
+  for (const m of skeleton.matchAll(new RegExp(`(?<![\\w$.])(?:models|db)\\s*\\.\\s*([A-Z][\\w$]*)\\s*\\.\\s*(${ops})\\s*\\(`, "g"))) {
+    uses.push({ entity: m[1], file: input.rel, line: lineOf(m.index), op: OPS2.get(m[2]) });
+  }
+  const out2 = {};
+  if (entities.length) out2.entities = entities;
+  if (uses.length) out2.entityUses = uses;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var sequelizeExtractor = {
+  id: "sequelize",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["sequelize", "sequelize-typescript", "@sequelize/core"]);
+  },
+  extract: extractSequelize
+};
+
+// src/extract/servers.ts
+var ROOT = "\0root";
+function lastHandler2(args2) {
+  const last = args2[args2.length - 1];
+  return last ? identifierPath(last.raw) : void 0;
+}
+function isRoutePath2(path) {
+  return path.startsWith("/") || path === "*" || path === "";
+}
+function prefixesOf(mounts, recv, seen = /* @__PURE__ */ new Set()) {
+  if (recv === ROOT) return [""];
+  const parents = mounts.filter((m) => m.local === recv);
+  if (!parents.length || seen.has(recv)) return [""];
+  const next = new Set(seen).add(recv);
+  return [...new Set(parents.flatMap((p) => prefixesOf(mounts, p.parent, next).map((outer) => joinRoutePath(outer, p.prefix))))];
+}
+function mountedModule(ctx, rel2, raw, imports) {
+  const dyn = /^(?:await\s+)?(?:require|import)\s*\(\s*(["'])([^"']+)\1\s*\)(?:\s*\.\s*[\w$]+)?$/.exec(raw);
+  const spec = dyn ? dyn[2] : /^[A-Za-z_$][\w$]*$/.test(raw) ? imports.get(raw)?.spec : void 0;
+  if (!spec || !isLocalSpecifier(spec)) return void 0;
+  const file = resolveLocalModule(ctx, rel2, spec);
+  return file ? moduleTarget(file) : void 0;
+}
+function toFacts(input, framework, routes, prefixes, lineOf) {
+  const out2 = [];
+  for (const r of routes) {
+    for (const prefix of prefixes(r)) {
+      const path = cleanRoutePath(stripParamPatterns(joinRoutePath(joinRoutePath(prefix, r.chainPrefix ?? ""), r.path)));
+      const fact = { method: r.method, path, file: input.rel, line: lineOf(r.offset), framework };
+      if (r.handler) fact.handler = r.handler;
+      out2.push(fact);
+    }
+  }
+  return out2;
+}
+var HONO_VERBS = /* @__PURE__ */ new Set(["get", "post", "put", "patch", "delete", "all", "options"]);
+function extractHono(input, ctx) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const imports = importBindings(text2);
+  const receivers = /* @__PURE__ */ new Set();
+  const routes = [];
+  const mounts = [];
+  const onCall = (recv, name2, args2, offset, chain) => {
+    const first = args2[0] ? stringLiteral(args2[0].raw) : void 0;
+    if (name2 === "use" || name2 === "notFound" || name2 === "onError") return true;
+    if (HONO_VERBS.has(name2)) {
+      if (first === void 0 || !isRoutePath2(first) || args2.length < 2) return false;
+      routes.push({ receiver: recv, method: name2.toUpperCase(), path: first, offset, handler: lastHandler2(args2.slice(1)), chainPrefix: chain.prefix });
+      return true;
+    }
+    if (name2 === "on") {
+      const methods = args2[0] ? literalList(args2[0].raw) : void 0;
+      const path = args2[1] ? stringLiteral(args2[1].raw) : void 0;
+      if (!methods || path === void 0 || !isRoutePath2(path) || args2.length < 3) return false;
+      for (const m of methods)
+        routes.push({ receiver: recv, method: m.toUpperCase(), path, offset, handler: lastHandler2(args2.slice(2)), chainPrefix: chain.prefix });
+      return true;
+    }
+    if (name2 === "basePath") {
+      if (first === void 0) return false;
+      if (chain.assigned) mounts.push({ parent: ROOT, prefix: joinRoutePath(chain.prefix, first), local: recv, offset });
+      else chain.prefix = joinRoutePath(chain.prefix, first);
+      return true;
+    }
+    if (name2 === "route") {
+      const child2 = args2[1]?.raw;
+      if (first === void 0 || !first.startsWith("/") || !child2) return false;
+      const prefix = joinRoutePath(chain.prefix, first);
+      if (receivers.has(child2) && child2 !== recv) mounts.push({ parent: recv, prefix, local: child2, offset });
+      else {
+        const target = mountedModule(ctx, input.rel, child2, imports);
+        if (target) mounts.push({ parent: recv, prefix, target, offset });
+      }
+      return true;
+    }
+    return false;
+  };
+  const walkChain = (recv, from, chain) => {
+    for (const c2 of chainAfter(skeleton, text2, from)) if (!onCall(recv, c2.name, c2.args, c2.dot, chain)) break;
+  };
+  const ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*new\s+(?:Hono|OpenAPIHono)\s*(?:<[^()]*>)?\s*\(/g;
+  const created = [];
+  for (const m of skeleton.matchAll(ASSIGN)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2) continue;
+    receivers.add(m[1]);
+    created.push({ recv: m[1], end: call2.end });
+  }
+  for (const m of skeleton.matchAll(/\b([A-Za-z_$][\w$]*)\s*:\s*Hono\b(?!\s*\()/g)) receivers.add(m[1]);
+  if (!receivers.size && importsModule(text2, "hono")) receivers.add("app");
+  const DERIVE = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*\.\s*basePath\s*\(/g;
+  const derived = [];
+  for (const m of skeleton.matchAll(DERIVE)) {
+    if (!receivers.has(m[2])) continue;
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    const prefix = call2?.args[0] ? stringLiteral(call2.args[0].raw) : void 0;
+    if (!call2 || prefix === void 0) continue;
+    receivers.add(m[1]);
+    mounts.push({ parent: m[2], prefix, local: m[1], offset: m.index });
+    derived.push({ recv: m[1], at: call2.end });
+  }
+  if (!receivers.size) return {};
+  for (const c2 of created) walkChain(c2.recv, c2.end, { prefix: "", assigned: true });
+  for (const d of derived) walkChain(d.recv, d.at, { prefix: "", assigned: true });
+  const names = [...receivers].map((r) => r.replace(/\$/g, "\\$")).join("|");
+  const CALL = new RegExp(`(?<![\\w$.])(${names})\\s*\\.\\s*(get|post|put|patch|delete|all|options|on|route|basePath)\\s*\\(`, "g");
+  for (const m of skeleton.matchAll(CALL)) {
+    const recv = m[1];
+    const name2 = m[2];
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2) continue;
+    if (name2 === "basePath" && /=\s*$/.test(skeleton.slice(Math.max(0, m.index - 40), m.index))) continue;
+    const chain = { prefix: "", assigned: false };
+    if (onCall(recv, name2, call2.args, m.index, chain)) walkChain(recv, call2.end, chain);
+  }
+  const facts = toFacts(input, "hono", routes, (r) => prefixesOf(mounts, r.receiver), lineOf);
+  const hints = [];
+  for (const mt of mounts) {
+    if (!mt.target) continue;
+    for (const outer of prefixesOf(mounts, mt.parent)) {
+      hints.push({ kind: "mount", framework: "hono", file: input.rel, line: lineOf(mt.offset), prefix: joinRoutePath(outer, mt.prefix), target: mt.target });
+    }
+  }
+  const out2 = {};
+  if (facts.length) out2.routes = facts;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var honoExtractor = {
+  id: "hono",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["hono", "@hono/zod-openapi"]);
+  },
+  extract: extractHono
+};
+var FASTIFY_VERBS = /* @__PURE__ */ new Set(["get", "head", "post", "put", "delete", "options", "patch", "all"]);
+function blockEndFrom(skeleton, from) {
+  const open = skeleton.indexOf("{", from);
+  if (open === -1) return from;
+  let depth = 0;
+  for (let i2 = open; i2 < skeleton.length; i2++) {
+    if (skeleton[i2] === "{") depth++;
+    else if (skeleton[i2] === "}" && --depth === 0) return i2 + 1;
+  }
+  return skeleton.length;
+}
+function firstParam(raw) {
+  const m = /^(?:async\s+)?(?:function\s*\*?\s*[\w$]*\s*)?\(\s*([A-Za-z_$][\w$]*)/.exec(raw) ?? /^(?:async\s+)?([A-Za-z_$][\w$]*)\s*=>/.exec(raw);
+  return m?.[1];
+}
+function extractFastify(input, ctx) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const imports = importBindings(text2);
+  const factories = /* @__PURE__ */ new Set(["Fastify", "fastify", ...namesImportedFrom(imports, "fastify")]);
+  const wrappers = /* @__PURE__ */ new Set(["fp", ...namesImportedFrom(imports, "fastify-plugin")]);
+  const receivers = /* @__PURE__ */ new Set(["fastify"]);
+  const factoryAlt = [...factories].map((f) => f.replace(/\$/g, "\\$")).join("|");
+  const ASSIGN = new RegExp(
+    `\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*(?::[^=;]+)?=\\s*(?:await\\s+)?(?:(?:${factoryAlt})|require\\s*\\(\\s*["']fastify["']\\s*\\))\\s*\\(`,
+    "g"
+  );
+  for (const m of skeleton.matchAll(ASSIGN)) receivers.add(m[1]);
+  for (const m of skeleton.matchAll(/\b([A-Za-z_$][\w$]*)\s*:\s*FastifyInstance\b/g)) receivers.add(m[1]);
+  if (importsModule(text2, "fastify") || importsModule(text2, "fastify-plugin")) for (const n of ["app", "server", "instance"]) receivers.add(n);
+  const spans = [];
+  const hintsRaw = [];
+  const seenRegister = /* @__PURE__ */ new Set();
+  for (let pass = 0; pass < 5; pass++) {
+    const before = receivers.size;
+    const names2 = [...receivers].map((r) => r.replace(/\$/g, "\\$")).join("|");
+    for (const m of skeleton.matchAll(new RegExp(`(?<![\\w$.])(${names2})\\s*\\.\\s*register\\s*\\(`, "g"))) {
+      const offset = m.index;
+      if (seenRegister.has(offset)) continue;
+      const call2 = readArgs(text2, offset + m[0].length - 1);
+      if (!call2?.args[0]) continue;
+      seenRegister.add(offset);
+      const callRecv = m[1];
+      const opts = call2.args[1]?.raw.startsWith("{") ? objectProps(text2, call2.args[1].start) : void 0;
+      const prefixRaw = opts ? propValue(opts.props, "prefix")?.value : void 0;
+      const prefix = prefixRaw ? stringLiteral(prefixRaw) ?? "" : "";
+      let plugin = call2.args[0];
+      const wrapped = /^([A-Za-z_$][\w$]*)\s*\(/.exec(plugin.raw);
+      if (wrapped && wrappers.has(wrapped[1])) {
+        const inner = readArgs(text2, plugin.start + wrapped[0].length - 1);
+        if (inner?.args[0]) plugin = inner.args[0];
+      }
+      const inlineParam = firstParam(plugin.raw);
+      if (inlineParam && /^(?:async\b|function\b|\(|[A-Za-z_$][\w$]*\s*=>)/.test(plugin.raw)) {
+        spans.push({ start: plugin.start, end: plugin.start + plugin.raw.length, param: inlineParam, prefix, callRecv, callOffset: offset });
+        receivers.add(inlineParam);
+        continue;
+      }
+      if (/^[A-Za-z_$][\w$]*$/.test(plugin.raw)) {
+        const name2 = plugin.raw.replace(/\$/g, "\\$");
+        const decl = new RegExp(`\\b(?:async\\s+)?function\\s*\\*?\\s*${name2}\\s*\\(\\s*([A-Za-z_$][\\w$]*)`).exec(skeleton) ?? new RegExp(
+          `\\b(?:const|let|var)\\s+${name2}\\s*(?::[^=;]+)?=\\s*(?:[A-Za-z_$][\\w$]*\\s*\\(\\s*)?(?:async\\s+)?(?:function\\s*[\\w$]*\\s*)?\\(\\s*([A-Za-z_$][\\w$]*)`
+        ).exec(skeleton);
+        if (decl) {
+          const start2 = decl.index;
+          spans.push({ start: start2, end: blockEndFrom(skeleton, start2 + decl[0].length), param: decl[1], prefix, callRecv, callOffset: offset });
+          receivers.add(decl[1]);
+          continue;
+        }
+      }
+      const target = mountedModule(ctx, input.rel, plugin.raw, imports);
+      if (target) hintsRaw.push({ callRecv, callOffset: offset, prefix, target });
+    }
+    if (receivers.size === before) break;
+  }
+  const contextPrefixes = (recv, offset, depth = 0) => {
+    const inside = spans.filter((s) => s.param === recv && s.start <= offset && offset < s.end);
+    if (!inside.length || depth > 10) return [""];
+    const innermost = Math.max(...inside.map((s) => s.start));
+    const out3 = /* @__PURE__ */ new Set();
+    for (const s of inside.filter((x) => x.start === innermost)) {
+      for (const outer of contextPrefixes(s.callRecv, s.callOffset, depth + 1)) out3.add(joinRoutePath(outer, s.prefix));
+    }
+    return [...out3];
+  };
+  const routes = [];
+  const names = [...receivers].map((r) => r.replace(/\$/g, "\\$")).join("|");
+  const CALL = new RegExp(`(?<![\\w$.])(${names})\\s*\\.\\s*(get|head|post|put|delete|options|patch|all|route)\\s*\\(`, "g");
+  const onCall = (recv, name2, args2, offset) => {
+    if (FASTIFY_VERBS.has(name2)) {
+      const path = args2[0] ? stringLiteral(args2[0].raw) : void 0;
+      if (path === void 0 || !isRoutePath2(path) || args2.length < 2) return false;
+      routes.push({ receiver: recv, method: name2.toUpperCase(), path, offset, handler: lastHandler2(args2.slice(1)) });
+      return true;
+    }
+    if (name2 === "route") {
+      if (!args2[0]?.raw.startsWith("{")) return false;
+      const opts = objectProps(text2, args2[0].start);
+      if (!opts) return false;
+      const methods = literalList(propValue(opts.props, "method")?.value ?? "");
+      const url = propValue(opts.props, "url") ?? propValue(opts.props, "path");
+      const path = url ? stringLiteral(url.value) : void 0;
+      if (!methods?.length || path === void 0 || !isRoutePath2(path)) return false;
+      const handlerRaw = propValue(opts.props, "handler")?.value;
+      const handler = handlerRaw ? identifierPath(handlerRaw) : void 0;
+      for (const method of methods) routes.push({ receiver: recv, method: method.toUpperCase(), path, offset, handler });
+      return true;
+    }
+    return false;
+  };
+  for (const m of skeleton.matchAll(CALL)) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    if (!call2 || !onCall(m[1], m[2], call2.args, m.index)) continue;
+    for (const c2 of chainAfter(skeleton, text2, call2.end)) if (!onCall(m[1], c2.name, c2.args, c2.dot)) break;
+  }
+  const facts = toFacts(input, "fastify", routes, (r) => contextPrefixes(r.receiver, r.offset), lineOf);
+  const hints = [];
+  for (const h of hintsRaw) {
+    for (const outer of contextPrefixes(h.callRecv, h.callOffset)) {
+      hints.push({
+        kind: "mount",
+        framework: "fastify",
+        file: input.rel,
+        line: lineOf(h.callOffset),
+        prefix: joinRoutePath(outer, h.prefix),
+        target: h.target
+      });
+    }
+  }
+  const out2 = {};
+  if (facts.length) out2.routes = facts;
+  if (hints.length) out2.hints = hints;
+  return out2;
+}
+var fastifyExtractor = {
+  id: "fastify",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["fastify"]);
+  },
+  extract: extractFastify
+};
+var jsMountLinker = {
+  id: "js-mounts",
+  link(facts, ctx) {
+    const files = new Set(ctx.files);
+    const resolve21 = (h) => moduleFile(h.target, files);
+    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve21), ctx.hints, "fastify", resolve21);
+  }
+};
+
+// src/extract/typeorm.ts
+var ORM5 = "typeorm";
+var ENTITY_DECORATORS = /* @__PURE__ */ new Set(["Entity", "ChildEntity", "ViewEntity"]);
+var COLUMN_DECORATORS = /* @__PURE__ */ new Set([
+  "Column",
+  "PrimaryColumn",
+  "PrimaryGeneratedColumn",
+  "CreateDateColumn",
+  "UpdateDateColumn",
+  "DeleteDateColumn",
+  "VersionColumn",
+  "ObjectIdColumn",
+  "ViewColumn"
+]);
+var RELATION_DECORATORS = /* @__PURE__ */ new Set(["ManyToOne", "OneToMany", "OneToOne", "ManyToMany"]);
+var OPS3 = opTable(
+  [
+    "find",
+    "findOne",
+    "findOneBy",
+    "findBy",
+    "findAndCount",
+    "findAndCountBy",
+    "findOneOrFail",
+    "findOneByOrFail",
+    "count",
+    "countBy",
+    "exist",
+    "exists",
+    "existsBy",
+    "sum",
+    "average",
+    "minimum",
+    "maximum"
+  ],
+  ["save", "insert", "update", "upsert", "delete", "remove", "softDelete", "softRemove", "restore", "recover", "increment", "decrement", "clear"]
+);
+var OP_ALT = [...OPS3.keys()].join("|");
+function extractTypeorm(input) {
+  const { text: text2, skeleton, lineOf } = sourceViews(input);
+  const entities = [];
+  const classes = classDeclarations(skeleton, text2);
+  if (importsModule(text2, "typeorm")) {
+    for (const cls of classes) {
+      if (!cls.decorators.some((d) => ENTITY_DECORATORS.has(d.name))) continue;
+      const fields = [];
+      for (const m of cls.members) {
+        if (m.kind !== "property") continue;
+        const rel2 = m.decorators.find((d) => RELATION_DECORATORS.has(d.name));
+        if (rel2) {
+          const target = classTarget(rel2.args?.[0]?.raw);
+          const field = { name: m.name, type: m.type ?? target ?? "unknown" };
+          if (target) field.relation = target;
+          fields.push(field);
+        } else if (m.decorators.some((d) => COLUMN_DECORATORS.has(d.name))) fields.push({ name: m.name, type: m.type ?? "unknown" });
+      }
+      entities.push({ name: cls.name, orm: ORM5, file: input.rel, line: lineOf(cls.decorators[0]?.start ?? cls.start), fields });
+    }
+  }
+  const repos = /* @__PURE__ */ new Map();
+  const REPO_ASSIGN = /([A-Za-z_$][\w$]*)\s*(?::\s*[^=;\n]+)?=\s*(?:await\s+)?(?:[A-Za-z_$][\w$.]*\s*\.\s*)?get(?:Mongo|Tree)?Repository\s*(?:<[^()]*>)?\s*\(\s*([A-Z][\w$]*)\s*\)/g;
+  for (const m of skeleton.matchAll(REPO_ASSIGN)) repos.set(m[1], m[2]);
+  for (const m of skeleton.matchAll(/@InjectRepository\s*\(\s*([A-Z][\w$]*)\s*\)\s*(?:(?:private|public|protected|readonly)\s+)*([A-Za-z_$][\w$]*)/g)) {
+    repos.set(m[2], m[1]);
+  }
+  for (const m of skeleton.matchAll(/([A-Za-z_$][\w$]*)\s*[!?]?\s*:\s*(?:Repository|MongoRepository|TreeRepository)\s*<\s*([A-Z][\w$]*)\s*>/g)) {
+    if (!repos.has(m[1])) repos.set(m[1], m[2]);
+  }
+  const uses = [];
+  if (repos.size) {
+    const alt = [...repos.keys()].map((r) => r.replace(/\$/g, "\\$")).join("|");
+    for (const m of skeleton.matchAll(new RegExp(`(?<![\\w$])(?:this\\s*\\.\\s*)?(${alt})\\s*\\.\\s*(${OP_ALT})\\s*(?:<[^()]*>)?\\s*\\(`, "g"))) {
+      const before = skeleton.slice(Math.max(0, m.index - 1), m.index);
+      if (before === ".") continue;
+      uses.push({
+        entity: repos.get(m[1]),
+        file: input.rel,
+        line: lineOf(m.index),
+        op: OPS3.get(m[2])
+      });
+    }
+  }
+  for (const m of skeleton.matchAll(new RegExp(`get(?:Mongo|Tree)?Repository\\s*\\(\\s*([A-Z][\\w$]*)\\s*\\)\\s*\\.\\s*(${OP_ALT})\\s*\\(`, "g"))) {
+    uses.push({ entity: m[1], file: input.rel, line: lineOf(m.index), op: OPS3.get(m[2]) });
+  }
+  for (const m of skeleton.matchAll(
+    new RegExp(`(?<![\\w$])(?:manager|entityManager|em)\\s*\\.\\s*(${OP_ALT})\\s*(?:<[^()]*>)?\\s*\\(\\s*([A-Z][\\w$]*)\\s*[,)]`, "g")
+  )) {
+    uses.push({ entity: m[2], file: input.rel, line: lineOf(m.index), op: OPS3.get(m[1]) });
+  }
+  const names = reachableModelNames(
+    importBindings(text2),
+    classes.filter((c2) => /\bextends\s+BaseEntity\b/.test(c2.heritage)).map((c2) => c2.name)
+  );
+  uses.push(...staticModelUses(skeleton, input.rel, names, OPS3));
+  const out2 = {};
+  if (entities.length) out2.entities = entities;
+  if (uses.length) out2.entityUses = uses;
+  return out2;
+}
+var typeormExtractor = {
+  id: "typeorm",
+  applies(input, ctx) {
+    return isScriptFile(input.rel) && declares(ctx, input.rel, ["typeorm"]);
+  },
+  extract: extractTypeorm
+};
+
 // src/extract/index.ts
 var PY_OPS_EXTRACTORS = [
   fastapiExtractor,
@@ -34161,8 +36217,28 @@ var PY_OPS_EXTRACTORS = [
   k8sExtractor
 ];
 var PY_OPS_LINKERS = [pythonMountLinker, drfViewsetLinker, ormRelationLinker, sqlUseLinker];
-var EXTRACTORS2 = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...PY_OPS_EXTRACTORS];
-var LINKERS = [expressMountLinker, prismaLinker, ...PY_OPS_LINKERS, entityUseLinker];
+var JS_WEB_EXTRACTORS = [
+  nextAppExtractor,
+  nextPagesExtractor,
+  nuxtServerExtractor,
+  nuxtPagesExtractor,
+  svelteKitExtractor,
+  remixExtractor,
+  honoExtractor,
+  fastifyExtractor,
+  nestjsExtractor,
+  httpCallsExtractor,
+  reactRouterExtractor,
+  vueRouterExtractor,
+  drizzleExtractor,
+  typeormExtractor,
+  mongooseExtractor,
+  sequelizeExtractor
+];
+var JS_WEB_LINKERS = [jsMountLinker, ormFieldsLinker];
+var JS_WEB_CALL_LINKERS = [httpCallLinker];
+var EXTRACTORS2 = [expressExtractor, prismaSchemaExtractor, prismaClientExtractor, ...JS_WEB_EXTRACTORS, ...PY_OPS_EXTRACTORS];
+var LINKERS = [expressMountLinker, ...JS_WEB_LINKERS, prismaLinker, ...PY_OPS_LINKERS, ...JS_WEB_CALL_LINKERS, entityUseLinker];
 function emptyFacts() {
   return { schema: FACTS_SCHEMA, routes: [], calls: [], screens: [], entities: [], entityUses: [], jobs: [], externals: [], infra: [] };
 }
@@ -34182,13 +36258,13 @@ function identity(kind, r) {
       return String(r.id);
   }
 }
-var cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function normalizeFacts(facts) {
   const out2 = emptyFacts();
   for (const kind of FACT_KINDS) {
     const rows = facts[kind].map((r) => ({ r, key: stableJson(r) }));
     rows.sort(
-      (a, b) => cmp(String(a.r.file), String(b.r.file)) || a.r.line - b.r.line || cmp(identity(kind, a.r), identity(kind, b.r)) || cmp(a.key, b.key)
+      (a, b) => cmp2(String(a.r.file), String(b.r.file)) || a.r.line - b.r.line || cmp2(identity(kind, a.r), identity(kind, b.r)) || cmp2(a.key, b.key)
     );
     const seen = /* @__PURE__ */ new Set();
     const kept = [];
@@ -34310,10 +36386,10 @@ function fileOfId(id) {
 
 // src/model/assemble.ts
 var SYMBOLS_PER_FILE = 50;
-var cmp2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var round4 = (x) => Math.round(x * 1e4) / 1e4;
 var zeroMetrics = () => ({ loc: 0, pagerank: 0, churn: 0, tests: 0 });
-var uniqSorted = (xs) => [...new Set(xs)].sort(cmp2);
+var uniqSorted = (xs) => [...new Set(xs)].sort(cmp3);
 function humanizeSegment(path) {
   const last = path.split("/").filter(Boolean).pop() ?? path;
   const words = last.replace(/[^A-Za-z0-9]+/g, " ").trim().toLowerCase();
@@ -34363,7 +36439,7 @@ function workspaceSystems(files, workspaces) {
     ),
     label: w.name || w.dir,
     dir: w.dir
-  })).sort((a, b) => cmp2(a.dir, b.dir));
+  })).sort((a, b) => cmp3(a.dir, b.dir));
   const of = /* @__PURE__ */ new Map();
   if (!pkgs.length) {
     for (const rel2 of files) of.set(rel2, APP_SYS);
@@ -34403,7 +36479,7 @@ function assembleWithNotes(inp) {
     if (!nodes.has(n.id)) nodes.set(n.id, n);
   };
   const emptyGlobs = [];
-  const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp2(a.rel, b.rel));
+  const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp3(a.rel, b.rel));
   const rels = files.map((f) => f.rel);
   const testMap = codeindex_engine_exports.computeTestMap(graph);
   let systemOrder;
@@ -34425,7 +36501,7 @@ function assembleWithNotes(inp) {
     filesByModule.set(f.module, list);
   }
   const usedSystems = new Set(systemOrder.map((s) => s.id));
-  const modules = [...graph.modules].filter((m) => filesByModule.has(m.slug)).sort((a, b) => cmp2(a.slug, b.slug));
+  const modules = [...graph.modules].filter((m) => filesByModule.has(m.slug)).sort((a, b) => cmp3(a.slug, b.slug));
   const testModules = /* @__PURE__ */ new Set();
   for (const m of modules) {
     const members = filesByModule.get(m.slug);
@@ -34506,7 +36582,7 @@ function assembleWithNotes(inp) {
       }
     }
     for (const [rel2, defs] of byFile) {
-      defs.sort((a, b) => a.line - b.line || cmp2(a.name, b.name));
+      defs.sort((a, b) => a.line - b.line || cmp3(a.name, b.name));
       const seen = /* @__PURE__ */ new Set();
       const kept = defs.filter((d) => {
         if (seen.has(d.name)) return false;
@@ -34717,15 +36793,15 @@ ${kind}`;
       ...e.cite ? { cite: e.cite } : {}
     });
   }
-  edges.sort((a, b) => cmp2(a.from, b.from) || cmp2(a.to, b.to) || cmp2(a.kind, b.kind) || Number(a.derived) - Number(b.derived));
+  edges.sort((a, b) => cmp3(a.from, b.from) || cmp3(a.to, b.to) || cmp3(a.kind, b.kind) || Number(a.derived) - Number(b.derived));
   const codeFiles = files.filter((f) => f.fileKind === "code");
   const inSystems = codeFiles.filter((f) => fileSystems.get(f.rel) !== UNASSIGNED_SYS).length;
   const codeModules = modules.filter((m) => !testModules.has(m.slug) && filesByModule.get(m.slug).some((f) => f.fileKind === "code" && !f.testFile));
   const inCaps = codeModules.filter((m) => nodes.get(modId(m.slug)).caps.some((c2) => c2 !== FOUNDATIONS_CAP)).length;
   const ratio = (n, d) => d === 0 ? 1 : round4(n / d);
   const isStale = (sources) => !!sources && Object.entries(sources).some(([path, hash]) => (inp.currentHashes.get(path) ?? null) !== hash);
-  const flows = [...inp.flows].sort((a, b) => cmp2(a.id, b.id));
-  const lenses = [...inp.lenses].sort((a, b) => cmp2(a.id, b.id));
+  const flows = [...inp.flows].sort((a, b) => cmp3(a.id, b.id));
+  const lenses = [...inp.lenses].sort((a, b) => cmp3(a.id, b.id));
   const view = {
     schema: VIEW_SCHEMA,
     repo: { name: inp.repoName, ...inp.commit ? { commit: inp.commit } : {} },
@@ -34735,7 +36811,7 @@ ${kind}`;
       cites: citesOf(model?.app.summary),
       audience: model?.app.audience ?? "everyone"
     },
-    nodes: [...nodes.values()].sort((a, b) => cmp2(a.id, b.id)),
+    nodes: [...nodes.values()].sort((a, b) => cmp3(a.id, b.id)),
     edges,
     flows,
     lenses,
@@ -34866,7 +36942,7 @@ var TIMELINE_SPEC = obj(
   },
   ["at", "source", "title", "summary", "items"]
 );
-var typeName = (v) => v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
+var typeName2 = (v) => v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
 var child = (base, key) => base ? `${base}.${key}` : key;
 function walkSpec(spec, value, path, out2) {
   const fail = (message) => {
@@ -34877,7 +36953,7 @@ function walkSpec(spec, value, path, out2) {
       if (value !== spec.value) fail(`must be ${spec.value} (got ${JSON.stringify(value) ?? "undefined"})`);
       return;
     case "string": {
-      if (typeof value !== "string") return fail(`must be a string (got ${typeName(value)})`);
+      if (typeof value !== "string") return fail(`must be a string (got ${typeName2(value)})`);
       if (spec.nonEmpty && value.trim() === "") return fail("must not be empty");
       if (spec.slug && !SLUG_RE.test(value)) return fail(`"${value}" is not a valid id: lowercase letters, digits and dashes, starting with a letter or digit`);
       if (spec.enum && !spec.enum.includes(value)) return fail(`"${value}" is not one of ${spec.enum.join(", ")}`);
@@ -34890,7 +36966,7 @@ function walkSpec(spec, value, path, out2) {
       return;
     }
     case "array": {
-      if (!Array.isArray(value)) return fail(`must be an array (got ${typeName(value)})`);
+      if (!Array.isArray(value)) return fail(`must be an array (got ${typeName2(value)})`);
       if (spec.nonEmpty && value.length === 0) fail("must not be empty");
       const seen = /* @__PURE__ */ new Set();
       value.forEach((item, i2) => {
@@ -34903,12 +36979,12 @@ function walkSpec(spec, value, path, out2) {
       return;
     }
     case "record": {
-      if (value === null || typeof value !== "object" || Array.isArray(value)) return fail(`must be an object (got ${typeName(value)})`);
+      if (value === null || typeof value !== "object" || Array.isArray(value)) return fail(`must be an object (got ${typeName2(value)})`);
       for (const [k, v] of Object.entries(value)) walkSpec(spec.of, v, child(path, k), out2);
       return;
     }
     case "object": {
-      if (value === null || typeof value !== "object" || Array.isArray(value)) return fail(`must be an object (got ${typeName(value)})`);
+      if (value === null || typeof value !== "object" || Array.isArray(value)) return fail(`must be an object (got ${typeName2(value)})`);
       const rec = value;
       for (const key of spec.required) if (!(key in rec)) out2.push({ path: child(path, key), message: "is required" });
       for (const [key, v] of Object.entries(rec)) {
@@ -34979,11 +37055,11 @@ function fileSha256(abs) {
     return null;
   }
 }
-function readAgentJson(repo, rel2, validate, problems, stem3) {
+function readAgentJson(repo, rel2, validate, problems, stem4) {
   const { value, problems: syntax } = parseJson(readFileSync25(join43(repo, rel2), "utf8"));
   const found = syntax.length ? syntax : validate(value);
   const id = value?.id;
-  if (!found.length && stem3 !== void 0 && id !== stem3) found.push({ path: "id", message: `"${String(id)}" must match the file name (${stem3}.json)` });
+  if (!found.length && stem4 !== void 0 && id !== stem4) found.push({ path: "id", message: `"${String(id)}" must match the file name (${stem4}.json)` });
   for (const p of found) problems.push({ file: rel2, ...p });
   return found.length ? void 0 : value;
 }
@@ -35357,14 +37433,14 @@ function liveView(repo) {
   const assembled = assembleWithNotes(loaded2.inputs);
   return { ...assembled, loaded: loaded2, byId: new Map(assembled.view.nodes.map((n) => [n.id, n])) };
 }
-var cmp3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function listOf(nodes) {
   const byKind = {};
   for (const n of nodes) byKind[n.kind] = (byKind[n.kind] ?? 0) + 1;
-  const ids = nodes.map((n) => n.id).sort(cmp3);
+  const ids = nodes.map((n) => n.id).sort(cmp4);
   return { total: ids.length, byKind, first: ids.slice(0, CARD_LIST) };
 }
-var byWeight = (key) => (a, b) => b.weight - a.weight || cmp3(a[key], b[key]) || cmp3(a.kind, b.kind);
+var byWeight = (key) => (a, b) => b.weight - a.weight || cmp4(a[key], b[key]) || cmp4(a.kind, b.kind);
 function nodeCard(live, id) {
   const node = live.byId.get(id);
   if (!node) return void 0;
@@ -35397,17 +37473,17 @@ function nodeCard(live, id) {
   }
   if (id === UNASSIGNED_SYS) {
     const codeFiles = new Set(view.nodes.filter((n) => n.kind === "file" && n.tags.includes("code")).map((n) => n.id.slice("file:".length)));
-    card.unassignedFiles = [...live.fileSystems].filter(([rel2, sys]) => sys === UNASSIGNED_SYS && codeFiles.has(rel2)).map(([rel2]) => rel2).sort(cmp3);
+    card.unassignedFiles = [...live.fileSystems].filter(([rel2, sys]) => sys === UNASSIGNED_SYS && codeFiles.has(rel2)).map(([rel2]) => rel2).sort(cmp4);
   }
   return card;
 }
 function similarIds(view, query, n = 5) {
   const q = query.toLowerCase().replace(/^[a-z]+:/, "");
   if (!q) return [];
-  return view.nodes.filter((x) => x.id.toLowerCase().includes(q) || x.label.toLowerCase().includes(q)).map((x) => x.id).sort((a, b) => a.length - b.length || cmp3(a, b)).slice(0, n);
+  return view.nodes.filter((x) => x.id.toLowerCase().includes(q) || x.label.toLowerCase().includes(q)).map((x) => x.id).sort((a, b) => a.length - b.length || cmp4(a, b)).slice(0, n);
 }
 function fmtList(l) {
-  const kinds2 = Object.entries(l.byKind).sort((a, b) => cmp3(a[0], b[0])).map(([k, v]) => `${v} ${k}`).join(", ");
+  const kinds2 = Object.entries(l.byKind).sort((a, b) => cmp4(a[0], b[0])).map(([k, v]) => `${v} ${k}`).join(", ");
   return `${l.total}${kinds2 ? ` (${kinds2})` : ""}`;
 }
 function fmtEdge(e, other, arrow) {
@@ -35456,7 +37532,7 @@ var HEAD_LINES2 = 60;
 var NEIGHBOURS = 12;
 var FACTS_PER_KIND = 25;
 var SITES = 12;
-var cmp4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp5 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 var CITE_RULE = "Every sentence you write cites the file it rests on as `[path:line]` (or `[path:start-end]`); `ultraview check` fails a dead citation and an uncited sentence.";
 function readLines(repo, rel2) {
   try {
@@ -35507,7 +37583,7 @@ function neighbourLines(live, id, leafOnly = false) {
   const label = (x) => live.byId.get(x)?.label ?? x;
   const coarse = /* @__PURE__ */ new Set(["cap", "sys", "mod"]);
   const keep = (other) => !leafOnly || !coarse.has(kindOf2(other) ?? "");
-  const byW = (key) => (a, b) => b.weight - a.weight || cmp4(a[key], b[key]) || cmp4(a.kind, b.kind);
+  const byW = (key) => (a, b) => b.weight - a.weight || cmp5(a[key], b[key]) || cmp5(a.kind, b.kind);
   const outs = live.view.edges.filter((e) => e.from === id && keep(e.to)).sort(byW("to"));
   const ins = live.view.edges.filter((e) => e.to === id && keep(e.from)).sort(byW("from"));
   const lines = [];
@@ -35528,7 +37604,7 @@ function factLines(nodes) {
   ];
   const lines = [];
   for (const [kind, plural2] of order) {
-    const of = nodes.filter((n) => n.kind === kind).sort((a, b) => cmp4(a.id, b.id));
+    const of = nodes.filter((n) => n.kind === kind).sort((a, b) => cmp5(a.id, b.id));
     if (!of.length) continue;
     lines.push(`${plural2} (${of.length}):`);
     for (const n of of.slice(0, FACTS_PER_KIND)) lines.push(`- ${n.id}${n.tags.length ? ` (${n.tags.join(", ")})` : ""}${n.at ? `  [${n.at}]` : ""}`);
@@ -35556,32 +37632,32 @@ function header(n, task) {
 }
 function topFiles(files) {
   const isCode3 = (f) => f.tags.includes("code") ? 0 : 1;
-  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode3(a) - isCode3(b) || b.metrics.pagerank - a.metrics.pagerank || cmp4(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
+  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode3(a) - isCode3(b) || b.metrics.pagerank - a.metrics.pagerank || cmp5(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
 }
 function groupDossier(live, repo, n, budget) {
   const nodes = live.view.nodes;
   let members;
   if (n.kind === "cap") members = nodes.filter((x) => x.caps.includes(n.id));
   else {
-    const under = /* @__PURE__ */ new Set([n.id]);
+    const under2 = /* @__PURE__ */ new Set([n.id]);
     for (let grew = true; grew; ) {
       grew = false;
       for (const x of nodes) {
-        if (x.parent && under.has(x.parent) && !under.has(x.id)) {
-          under.add(x.id);
+        if (x.parent && under2.has(x.parent) && !under2.has(x.id)) {
+          under2.add(x.id);
           grew = true;
         }
       }
     }
-    under.delete(n.id);
-    for (const [rel2, sys] of live.fileSystems) if (sys === n.id) under.add(fileId(rel2));
-    members = nodes.filter((x) => under.has(x.id));
+    under2.delete(n.id);
+    for (const [rel2, sys] of live.fileSystems) if (sys === n.id) under2.add(fileId(rel2));
+    members = nodes.filter((x) => under2.has(x.id));
   }
   const files = members.filter((x) => x.kind === "file");
   const fileSet = new Set(files.map((f) => f.id));
   const exts = new Set(live.view.edges.filter((e) => fileSet.has(e.from) && kindOf2(e.to) === "ext").map((e) => e.to));
   const factNodes = [...members, ...[...exts].map((x) => live.byId.get(x))].filter((x) => x && x.kind !== "file" && x.kind !== "sym" && x.kind !== "mod");
-  const mods = members.filter((x) => x.kind === "mod").sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp4(a.id, b.id));
+  const mods = members.filter((x) => x.kind === "mod").sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp5(a.id, b.id));
   const modLines = mods.map(
     (m) => `- ${m.id} (${m.label}): ${nodes.filter((x) => x.parent === m.id && x.kind === "file").length} file(s), pagerank ${m.metrics.pagerank}`
   );
@@ -35632,7 +37708,7 @@ ${ex}
   }
   if (n.fields?.length)
     sections.push(["## Fields", ...n.fields.map((f) => `- ${f.name}: ${f.type}${f.relation ? ` -> entity:${f.relation}` : ""}`)].join("\n"));
-  const sites = sitesOf(live.loaded.inputs.facts, n).sort((a, b) => cmp4(a.file, b.file) || a.line - b.line);
+  const sites = sitesOf(live.loaded.inputs.facts, n).sort((a, b) => cmp5(a.file, b.file) || a.line - b.line);
   const neigh = neighbourLines(live, n.id, true);
   if (neigh.length) sections.push(neigh.join("\n"));
   if (sites.length) {
@@ -35657,8 +37733,8 @@ function renderNodeDossier(live, repo, id, opts = {}) {
     const module2 = live.loaded.inputs.graph.modules.find((m) => m.slug === slug);
     if (!module2) return void 0;
     const base = renderModuleDossier(repo, live.loaded.inputs.graph, module2, budget).trimEnd();
-    const under = live.view.nodes.filter((x) => x.parent && (x.parent === id || live.byId.get(x.parent)?.parent === id));
-    const facts = factLines(under);
+    const under2 = live.view.nodes.filter((x) => x.parent && (x.parent === id || live.byId.get(x.parent)?.parent === id));
+    const facts = factLines(under2);
     const extra = [`## ultraview`, `node ${id} \xB7 parent ${n.parent ?? "-"} \xB7 caps ${n.caps.join(", ") || "(none)"}`, ...facts].join("\n");
     return `${base}
 

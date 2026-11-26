@@ -1,0 +1,218 @@
+{
+  "calls": [
+    {
+      "file": "composables/useOrders.ts",
+      "line": 2,
+      "method": "GET",
+      "route": "route:ALL /api/orders",
+      "url": "/api/orders"
+    },
+    {
+      "file": "composables/useOrders.ts",
+      "line": 6,
+      "method": "POST",
+      "route": "route:ALL /api/orders",
+      "url": "/api/orders"
+    },
+    {
+      "file": "pages/index.vue",
+      "line": 2,
+      "method": "GET",
+      "route": "route:GET /api/products",
+      "url": "/api/products"
+    },
+    {
+      "file": "pages/products/[id].vue",
+      "line": 3,
+      "method": "GET",
+      "route": "route:GET /api/products/:id",
+      "url": "/api/products/:p"
+    },
+    {
+      "file": "pages/products/[id].vue",
+      "line": 6,
+      "method": "DELETE",
+      "route": "route:DELETE /api/products/:id",
+      "url": "/api/products/:p"
+    },
+    {
+      "file": "pages/products/index.vue",
+      "line": 2,
+      "method": "GET",
+      "route": "route:GET /api/products",
+      "url": "/api/products"
+    },
+    {
+      "file": "pages/products/index.vue",
+      "line": 5,
+      "method": "POST",
+      "route": "route:POST /api/products",
+      "url": "/api/products"
+    }
+  ],
+  "entities": [
+    {
+      "fields": [
+        {
+          "name": "product",
+          "relation": "Product",
+          "type": "ObjectId"
+        },
+        {
+          "name": "lines",
+          "relation": "Product",
+          "type": "ObjectId[]"
+        },
+        {
+          "name": "customer",
+          "type": "ObjectId"
+        },
+        {
+          "name": "status",
+          "type": "String"
+        }
+      ],
+      "file": "server/models/order.ts",
+      "line": 3,
+      "name": "Order",
+      "orm": "mongoose"
+    },
+    {
+      "fields": [
+        {
+          "name": "name",
+          "type": "String"
+        },
+        {
+          "name": "priceCents",
+          "type": "Number"
+        },
+        {
+          "name": "tags",
+          "type": "String[]"
+        },
+        {
+          "name": "dimensions",
+          "type": "Object"
+        }
+      ],
+      "file": "server/models/product.ts",
+      "line": 3,
+      "name": "Product",
+      "orm": "mongoose"
+    }
+  ],
+  "entityUses": [
+    {
+      "entity": "Order",
+      "file": "server/api/orders.ts",
+      "line": 4,
+      "op": "write"
+    },
+    {
+      "entity": "Order",
+      "file": "server/api/orders.ts",
+      "line": 5,
+      "op": "read"
+    },
+    {
+      "entity": "Product",
+      "file": "server/api/products/[id].delete.ts",
+      "line": 5,
+      "op": "write"
+    },
+    {
+      "entity": "Product",
+      "file": "server/api/products/[id].get.ts",
+      "line": 4,
+      "op": "read"
+    },
+    {
+      "entity": "Product",
+      "file": "server/api/products/index.get.ts",
+      "line": 4,
+      "op": "read"
+    },
+    {
+      "entity": "Product",
+      "file": "server/api/products/index.post.ts",
+      "line": 5,
+      "op": "write"
+    }
+  ],
+  "externals": [
+    {
+      "file": "server/utils/db.ts",
+      "id": "mongodb",
+      "line": 4,
+      "via": "env"
+    }
+  ],
+  "infra": [],
+  "jobs": [],
+  "routes": [
+    {
+      "file": "server/api/orders.ts",
+      "framework": "nuxt",
+      "line": 3,
+      "method": "ALL",
+      "path": "/api/orders"
+    },
+    {
+      "file": "server/api/products/[id].delete.ts",
+      "framework": "nuxt",
+      "line": 3,
+      "method": "DELETE",
+      "path": "/api/products/:id"
+    },
+    {
+      "file": "server/api/products/[id].get.ts",
+      "framework": "nuxt",
+      "line": 3,
+      "method": "GET",
+      "path": "/api/products/:id"
+    },
+    {
+      "file": "server/api/products/index.get.ts",
+      "framework": "nuxt",
+      "line": 3,
+      "method": "GET",
+      "path": "/api/products"
+    },
+    {
+      "file": "server/api/products/index.post.ts",
+      "framework": "nuxt",
+      "line": 3,
+      "method": "POST",
+      "path": "/api/products"
+    },
+    {
+      "file": "server/routes/health.ts",
+      "framework": "nuxt",
+      "line": 1,
+      "method": "ALL",
+      "path": "/health"
+    }
+  ],
+  "schema": 1,
+  "screens": [
+    {
+      "file": "pages/index.vue",
+      "framework": "nuxt",
+      "line": 1,
+      "path": "/"
+    },
+    {
+      "file": "pages/products/[id].vue",
+      "framework": "nuxt",
+      "line": 1,
+      "path": "/products/:id"
+    },
+    {
+      "file": "pages/products/index.vue",
+      "framework": "nuxt",
+      "line": 1,
+      "path": "/products"
+    }
+  ]
+}

@@ -5,21 +5,23 @@
 //   httpx.get(url); c = httpx.Client(base_url=…); c.get("/x")
 //   async with httpx.AsyncClient(base_url=…) as c: await c.get("/x")
 //
-// URLs are normalized like every call fact (docs/design.md §5): f-string and
-// concatenated substitutions become `:p`, a leading non-literal base
-// (`f"{settings.API_URL}/orders"`, an env/config-based `base_url`) is dropped,
-// the query and fragment are dropped. A URL with no literal part is skipped.
+// URLs are normalized like every call fact, by the shared urls.ts rules
+// (docs/design.md §5): f-string and concatenated substitutions become `:p`, a
+// leading non-literal base (`f"{settings.API_URL}/orders"`, an env/config-based
+// `base_url`) is dropped, localhost is dropped, the query and fragment are
+// dropped. A URL with no literal part is skipped.
 // Only `CallFact`s are emitted; matching calls to routes is a linker's job.
 
 import { type Arg, readArgs } from "./js.js";
 import { lineIndex, maskSource } from "./mask.js";
 import { importsPyModule, isPython, kwarg, positional, pyImports, pyString } from "./py.js";
 import type { CallFact, ExtractInput, ExtractOutput, Extractor, RepoContext } from "./types.js";
+import { joinBaseUrl, normalizeBaseUrl, normalizeUrlTemplate, URL_HOLE } from "./urls.js";
 
 const VERBS = ["get", "post", "put", "patch", "delete", "head", "options"];
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-/** Placeholder for a non-literal part of a URL while it is assembled. */
-const HOLE = "\uE000"; // a private-use character: never in a URL
+/** Placeholder for a non-literal part of a URL while it is assembled (the shared template hole). */
+const HOLE = URL_HOLE;
 
 /** Split `raw` on top-level `+` (string concatenation). */
 function concatParts(raw: string): string[] {
@@ -89,23 +91,14 @@ function urlTemplate(raw: string): string | undefined {
 }
 
 /**
- * Normalize a URL template: drop a leading base HOLE, the query and the
- * fragment; HOLEs left in the path become `:p`. `base` is the client's base
- * URL: a literal is prefixed, "" (a non-literal base, dropped) makes a
- * relative path absolute. Undefined when what remains is neither an absolute
- * URL nor a path.
+ * Normalize a URL template with the rules every call extractor shares
+ * (urls.ts), then apply the client's `base`: a literal is prefixed, ""
+ * (a non-literal base, dropped) makes a relative path absolute. Undefined
+ * when what remains is neither an absolute URL nor a path.
  */
 export function normalizePyUrl(template: string, base?: string): string | undefined {
-  let url = template.replace(/[?#][\s\S]*$/, "");
-  if (url.startsWith(HOLE)) url = url.replace(/^\uE000+/, "");
-  if (!/^https?:\/\//i.test(url)) {
-    const path = url && !url.startsWith("/") && base !== undefined ? `/${url}` : url;
-    if (base) url = `${base.replace(/\/+$/, "")}${path}`;
-    else if (path.startsWith("/")) url = path;
-    else return undefined;
-  }
-  url = url.replace(/\uE000+/g, ":p");
-  return url || undefined;
+  const url = normalizeUrlTemplate(template);
+  return url === undefined ? undefined : joinBaseUrl(base === undefined ? undefined : normalizeBaseUrl(base), url);
 }
 
 interface Receiver {
