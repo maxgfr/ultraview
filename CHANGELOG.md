@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.4.0](https://github.com/maxgfr/ultraview/compare/v1.3.1...v1.4.0) (2026-11-26)
+
+
+### Features
+
+* **extract:** rpc and server actions, precise externals, deduped infra ([b356fea](https://github.com/maxgfr/ultraview/commit/b356fead097b535803459efd4f365f372d4af6fa)), closes [#6](https://github.com/maxgfr/ultraview/issues/6)
+
 ## [1.3.1](https://github.com/maxgfr/ultraview/compare/v1.3.0...v1.3.1) (2026-11-26)
 
 
