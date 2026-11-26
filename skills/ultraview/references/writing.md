@@ -18,6 +18,23 @@
 
 - Every sentence ends with at least one `[path:line]` or `[path:start-end]`
   (several allowed). Paths are repo-relative, as the index prints them.
+- "Every sentence" is literal: the summary or opening line, each lead-in,
+  transition and conclusion ("In short, …", "To sum up, …"), the line that
+  introduces a list, and each list item, as much as the main facts.
+- What `check` counts as a sentence: each paragraph and each list item is
+  split after `.`, `!` or `?` when a space and a capital (any script), a
+  digit, `¿`/`¡` or a markup opener follow; a paragraph or item with no such
+  break is one sentence, full stop or not. `#` headings, code fences and
+  tables are skipped. A sentence of 15 characters or fewer is not checked.
+- A bold label (`**How it works.**`, `**In short:**`, alone on its line or
+  not) is part of the sentence it introduces, so that sentence's citation
+  covers it; a bold label with nothing after it is checked as a sentence.
+  Bold text inside a sentence is not a label: `It **deletes every cart.**
+  Then …` is two sentences.
+- Correct: `**In short:** a nightly job deletes expired carts
+  [src/jobs/carts.ts:12-30]. It skips a cart with a pending payment
+  [src/jobs/carts.ts:18].` Refused: the same with no citation after the
+  first sentence, or with a closing `In summary, carts never pile up.`
 - Cite the lines that show the claim, not the top of the file. A range for a
   block, one line for one fact.
 - `check` proves each citation resolves to real lines and each sentence has

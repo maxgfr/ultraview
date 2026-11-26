@@ -40,8 +40,11 @@ result.
   `dossier` and `lens new` give one node or one question at a time.
 - **I1 Every sentence cites.** Each sentence you write (summaries, notes,
   answers, timeline summaries) carries `[path:line]` or `[path:start-end]`
-  from source you read. `check` fails a dead citation and an uncited
-  sentence; fix both, never work around them.
+  from source you read, the opening summary, lead-ins, transitions,
+  conclusions and list items included; a bold label (`**In short:**`) goes
+  with the sentence after it; a sentence with nothing to cite is dropped
+  (the exact rule: [writing.md](references/writing.md)). `check` fails a
+  dead citation and an uncited sentence; fix both, never work around them.
 - **I2 Never hand-copy a detected edge.** `model.json` `edges` hold only what
   the engine cannot see (queues, events, webhooks, cron, cross-repo), each
   with a `cite`. A detected import, call or data use is derived; copying it

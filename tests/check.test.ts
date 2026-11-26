@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildMap } from "../src/build.js";
 import { checkMap, FILES_IN_SYSTEMS_MIN, MODULES_IN_CAPABILITIES_MIN } from "../src/check.js";
-import { splitSentences, uncitedSentences } from "../src/model/prose.js";
+import { CITATION_EXAMPLE, CITATION_RULE, splitSentences, uncitedSentences } from "../src/model/prose.js";
 import { saveTurn } from "../src/chat.js";
 import { main } from "../src/cli.js";
 import { saveFlow, saveLens } from "../src/save.js";
@@ -34,6 +34,70 @@ describe("prose rules", () => {
   it("flags each substantive sentence without a citation", () => {
     expect(uncitedSentences("Places the order. [src/a.ts:3] It also emails a receipt to the customer.")).toEqual(["It also emails a receipt to the customer."]);
     expect(uncitedSentences("Short one. [src/a.ts:3] Ok.")).toEqual([]);
+  });
+
+  it("checks the summary, lead-ins, list intros and conclusions like any sentence", () => {
+    expect(uncitedSentences("**In short:** a nightly job deletes expired carts.")).toEqual(["**In short:** a nightly job deletes expired carts."]);
+    expect(uncitedSentences("A job deletes carts [src/a.ts:3]. In summary, carts never pile up.")).toEqual(["In summary, carts never pile up."]);
+    expect(uncitedSentences("The job does three things:\n\n- reads the carts [src/a.ts:1]\n- deletes the old ones [src/a.ts:2]")).toEqual([
+      "The job does three things:",
+    ]);
+  });
+
+  it("joins a bold label to the sentence it introduces", () => {
+    const body = "For each source, the job reads the table [src/a.ts:2].";
+    for (const label of ["**How it works.**", "**How it works**.", "**How it works:**", "__How it works__"]) {
+      expect(splitSentences(`${label} ${body}`), label).toEqual([`${label} ${body}`]);
+      expect(uncitedSentences(`${label} ${body}`), label).toEqual([]);
+      // On its own line or paragraph, as a heading of what follows.
+      expect(splitSentences(`${label}\n\n${body}`), label).toEqual([`${label} ${body}`]);
+      expect(uncitedSentences(`${label}\n\n${body}`), label).toEqual([]);
+    }
+    expect(splitSentences(`The job runs nightly [src/a.ts:1]. **How it works.** ${body}`)).toEqual([
+      "The job runs nightly [src/a.ts:1].",
+      `**How it works.** ${body}`,
+    ]);
+    // The sentence it introduces still needs its citation, and a label with nothing after it is checked.
+    expect(uncitedSentences("**How it works.** For each source, the job reads the table.")).toEqual([
+      "**How it works.** For each source, the job reads the table.",
+    ]);
+    expect(uncitedSentences("The job runs nightly [src/a.ts:1].\n\n**What to remember about it**")).toEqual(["**What to remember about it**"]);
+  });
+
+  it("stays strict on real claims: bold or accented sentences split like the others", () => {
+    expect(uncitedSentences("It **deletes every cart.** Then it emails the owner [src/a.ts:4].")).toEqual(["It **deletes every cart.**"]);
+    expect(uncitedSentences("Le job lit la table [src/a.ts:2]. À la fin, il supprime toutes les commandes.")).toEqual([
+      "À la fin, il supprime toutes les commandes.",
+    ]);
+    expect(uncitedSentences("El job lee la tabla [src/a.ts:2]. ¿Y luego? Borra todos los pedidos antiguos.")).toEqual(["Borra todos los pedidos antiguos."]);
+  });
+
+  it("keeps bracketed citation paths with their sentence under the lead-in and capital rules", () => {
+    expect(splitSentences("**In short:** the page loads one item [app/[id]/page.tsx:3]. À la fin, it renders it [app/[id]/page.tsx:9].")).toEqual([
+      "**In short:** the page loads one item [app/[id]/page.tsx:3].",
+      "À la fin, it renders it [app/[id]/page.tsx:9].",
+    ]);
+    expect(uncitedSentences("The page loads one item. [app/[id]/page.tsx:3] ¿Y luego? It renders every field of it.")).toEqual([
+      "It renders every field of it.",
+    ]);
+  });
+
+  it("shows the agents an example the gate agrees with", () => {
+    expect(uncitedSentences(CITATION_EXAMPLE.correct)).toEqual([]);
+    expect(uncitedSentences(CITATION_EXAMPLE.incorrect)).toEqual([...CITATION_EXAMPLE.uncited]);
+    const rule = CITATION_RULE.join("\n");
+    for (const part of [
+      "EVERY sentence",
+      "lead-in",
+      "transition",
+      "conclusion",
+      "list item",
+      "introduces a list",
+      "bold label",
+      "dropped",
+      CITATION_EXAMPLE.correct,
+    ])
+      expect(rule).toContain(part);
   });
 });
 

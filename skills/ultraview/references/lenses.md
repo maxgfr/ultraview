@@ -24,8 +24,10 @@ Then:
 
 1. Read the excerpts. When they do not settle it, `show` / `dossier` a
    candidate or open the file. The candidates are hints, not the answer.
-2. Answer in 2–5 sentences, each cited (see [writing](writing.md)). Say what
-   the code does, including when it surprises ("the order is not deleted").
+2. Answer in 2–5 sentences, each cited (see [writing](writing.md)): the
+   opening summary, a bold lead-in's sentence and the conclusion too; drop a
+   sentence you cannot cite. Say what the code does, including when it
+   surprises ("the order is not deleted").
 3. `nodes`: what the answer is about (3–8 ids); `focus`: the one to centre on;
    `edges`: only the links the answer relies on. Write ids as the candidates
    list them (`mod:<slug>`, `file:<path>`, `route:GET /x`): an ultraindex

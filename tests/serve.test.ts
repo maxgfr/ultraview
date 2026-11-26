@@ -15,6 +15,7 @@ import {
   resolveAskAgent,
 } from "../src/ask.js";
 import { lensNew } from "../src/lens.js";
+import { CITATION_EXAMPLE, CITATION_RULE } from "../src/model/prose.js";
 import { allowedHostHeader, isLoopbackHost, type ServeHandle, startServe } from "../src/serve.js";
 import { builtShop, readModelFile, writeView } from "./helpers.js";
 
@@ -513,6 +514,23 @@ describe("ask bridge", () => {
     expect(chatPrompt({ question: "q", mode: "dev", context: { value: { node: "sym:a.ts#it's" }, lines: [] } }, "/x/u.mjs")).toContain(
       `--context '{"node":"sym:a.ts#it'\\''s"}'`,
     );
+  });
+
+  it("states the citation rule, with its examples, where the answer is written", () => {
+    for (const p of [askPrompt("q", "q", "/x/u.mjs"), chatPrompt({ question: "q", mode: "business" }, "/x/u.mjs")]) {
+      const at = p.indexOf("   - answer: Markdown");
+      expect(at).toBeGreaterThan(0);
+      // Right under the answer bullet, before the nodes bullet: the agent reads it as it writes.
+      expect(p.slice(at, p.indexOf("   - nodes:"))).toContain(CITATION_RULE.map((l) => `     ${l}`).join("\n"));
+      expect(p).toContain("The citation rule, exactly as ultraview checks it before it saves your reply:");
+      expect(p).toContain(`Correct:   ${CITATION_EXAMPLE.correct}`);
+      expect(p).toContain(`Incorrect: ${CITATION_EXAMPLE.incorrect}`);
+      expect(p).toContain("the summary or opening line,");
+      expect(p).toContain("each lead-in, transition and conclusion, the line that introduces a list, and each list item");
+      expect(p).toContain("A bold label (**How it works.**, **In short:**) is part of the sentence it introduces");
+      expect(p).toContain("is dropped, not left uncited");
+    }
+    expect(correctionPrompt("P", {}, [])).toContain("(a summary, lead-in, transition or conclusion too; a bold label belongs to the sentence after it).");
   });
 
   it("asks the agent for English --terms when the question is not in English", () => {

@@ -39905,7 +39905,8 @@ var FENCE = /^\s*(```|~~~)/;
 var HEADING_OR_RULE = /^(#{1,6}\s|([-*_])\2{2,}\s*$)/;
 var TABLE_SEP = /^[\s:|-]+$/;
 var LIST_ITEM = /^\s*([-*+]|\d+\.)\s+/;
-var SENTENCE_BREAK = /(?<=[.!?]["')]*(?:\s*\[(?:[^[\]\n]|\[(?:[^[\]\n]|\[[^\]\n]*\])*\])+\])*)\s+(?=[A-Z0-9"'(*_`])/;
+var SENTENCE_BREAK = /(?<=[.!?]["'”»)*_]*(?:\s*\[(?:[^[\]\n]|\[(?:[^[\]\n]|\[[^\]\n]*\])*\])+\])*)\s+(?=[\p{Lu}\p{Lt}0-9"'“«(*_`¿¡])/u;
+var BOLD_LABEL = /^(\*\*|__)(?:(?!\1).)+\1[\s.:!?;,]*$/u;
 function proseUnits(text2) {
   const units = [];
   let cur = [];
@@ -39937,13 +39938,39 @@ function proseUnits(text2) {
   return units;
 }
 function splitSentences(text2) {
-  return proseUnits(text2).flatMap(
+  const all = proseUnits(text2).flatMap(
     (u) => u.split(SENTENCE_BREAK).map((s) => s.trim()).filter(Boolean)
   );
+  const out2 = [];
+  let lead = "";
+  for (const s of all) {
+    if (BOLD_LABEL.test(s)) lead = lead ? `${lead} ${s}` : s;
+    else {
+      out2.push(lead ? `${lead} ${s}` : s);
+      lead = "";
+    }
+  }
+  if (lead) out2.push(lead);
+  return out2;
 }
 function uncitedSentences(text2) {
   return splitSentences(text2).flatMap((s) => citationlessClaims(s));
 }
+var CITATION_EXAMPLE = {
+  correct: "**In short:** a nightly job deletes expired carts [src/jobs/carts.ts:12-30]. It skips a cart with a pending payment [src/jobs/carts.ts:18].",
+  incorrect: "**In short:** a nightly job deletes expired carts. It skips a cart with a pending payment [src/jobs/carts.ts:18]. In summary, carts never pile up.",
+  uncited: ["**In short:** a nightly job deletes expired carts.", "In summary, carts never pile up."]
+};
+var CITATION_RULE = [
+  "EVERY sentence ends with at least one citation, [path:line] or [path:start-end], a file of this repository: the summary or opening line,",
+  "each lead-in, transition and conclusion, the line that introduces a list, and each list item, as much as the main facts.",
+  "A sentence ends at . ! or ? followed by a space and a capital; a paragraph or a list item with no full stop is one sentence.",
+  "A bold label (**How it works.**, **In short:**) is part of the sentence it introduces: that sentence's citation covers it.",
+  "A sentence you cannot cite (a recap, a reassurance, a guess) is dropped, not left uncited. # headings need no citation.",
+  `Correct:   ${CITATION_EXAMPLE.correct}`,
+  `Incorrect: ${CITATION_EXAMPLE.incorrect}`,
+  `           (refused: ${CITATION_EXAMPLE.uncited.map((s) => JSON.stringify(s)).join(" and ")} cite nothing)`
+];
 
 // src/timeline.ts
 function summaryProblems(text2, graph, path = "summary") {
@@ -42964,7 +42991,8 @@ function instructions(pack) {
   const lines = [
     "## Next",
     `1. Answer the question from the evidence above (open more files if you need to); \`ultraview show <node-id>\` and \`ultraview dossier <node-id>\` give more about one node.`,
-    "2. Every sentence of `answer` cites the file it rests on as `[path:line]` (or `[path:start-end]`): `ultraview check` fails a dead citation and an uncited sentence.",
+    "2. The citation rule for `answer` (`ultraview check` fails a dead citation and an uncited sentence):",
+    ...CITATION_RULE.map((l) => `   ${l}`),
     "3. `nodes`: the node ids the answer is about (pick from the candidates, or any id `ultraview show` knows); `edges` (optional): the links between them that matter; `focus`: the one node to centre the map on.",
     `4. Write the JSON above, filled in, to ${pack.file}${pack.reask ? " (it already holds this question: the new answer replaces the old one)" : ""}. Leave \`sources\` out: \`lens save\` stamps it.`,
     `5. Run \`ultraview lens save ${pack.file}\`${pack.conflict ? " --force (the id holds a different question)" : ""}, then \`ultraview check\`, and fix what they report.`,
@@ -42976,7 +43004,8 @@ function turnInstructions(pack) {
   return [
     "## Next",
     '1. Read the question with the conversation above: "it", "that", "this", "and then?" refer to the most recent turn\'s nodes ("In play") unless the question names something else; a question about something new is a new topic. `ultraview show <node-id>` and `ultraview dossier <node-id>` give more about one node.',
-    "2. Every sentence of `answer` cites the file it rests on as `[path:line]` (or `[path:start-end]`): `lens save --thread` refuses a dead citation, an uncited sentence and an unknown node id.",
+    "2. The citation rule for `answer` (`lens save --thread` refuses a dead citation, an uncited sentence and an unknown node id):",
+    ...CITATION_RULE.map((l) => `   ${l}`),
     "3. Answer in the language of the question (`lang`: its BCP-47 tag, e.g. en, fr, ja; citations stay as they are). `mode` business: plain words for someone who does not read code, no function, file or symbol names unless the question asks for them; `mode` dev: the technical detail (symbols, calls, files, routes).",
     "4. `nodes`: the node ids the answer is about; `edges` (optional): the links that matter; `focus`: the one node to centre the map on.",
     "5. `followUps`: exactly 3 short questions the user could ask next about this app, in the question's language.",
@@ -43222,6 +43251,7 @@ function nodeIdRule(examples) {
     "     ultraindex module slugs and file paths are not node ids: write mod:<slug> for a module and file:<path> for a file."
   ];
 }
+var citationRuleLines = () => CITATION_RULE.map((l) => `     ${l}`);
 function askPrompt(question, id, script, examples = []) {
   const uv = scriptCommand(script);
   return [
@@ -43240,7 +43270,8 @@ function askPrompt(question, id, script, examples = []) {
     `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the lens JSON object (no prose before or after it), filled in from the template:",
     `   {"schema": 1, "id": "${id}", "question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "..."}`,
-    "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
+    "   - answer: Markdown in plain words. The citation rule, exactly as ultraview checks it before it saves your reply:",
+    ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(examples),
     "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
@@ -43284,7 +43315,8 @@ function chatPrompt(input, script) {
     `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the turn JSON object (no prose before or after it):",
     `   {"question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "...", "lang": "<the question's language: en, fr, ja...>", "followUps": ["...", "...", "..."]}`,
-    "   - answer: Markdown, in the question's language; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
+    "   - answer: Markdown, in the question's language. The citation rule, exactly as ultraview checks it before it saves your reply:",
+    ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(input.examples ?? []),
     "   - followUps: exactly 3 short questions the user could ask next about this app, in the question's language.",
@@ -43454,7 +43486,8 @@ function correctionPrompt(prompt, previous, problems) {
     "```",
     "",
     "Reply with ONLY the corrected JSON object (no prose before or after it). Keep what was right and fix exactly what the reasons name:",
-    "a node id is written as the candidates list it (mod:<slug>, file:<path>, route:<METHOD> <path>\u2026); a sentence without a citation gets one, or goes.",
+    "a node id is written as the candidates list it (mod:<slug>, file:<path>, route:<METHOD> <path>\u2026); a sentence without a citation gets one, or goes",
+    "(a summary, lead-in, transition or conclusion too; a bold label belongs to the sentence after it).",
     "Do not start over: check an id or a line with the ultraview commands above only when you need to.",
     ""
   ].join("\n");

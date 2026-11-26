@@ -193,7 +193,12 @@ fetches it from `serve`).
   **stale** when a cited file's hash changed.
 - Every turn passes a lens's gates: `lens save`'s (schema, citations resolve,
   `sources`: `prepareLens`) and `check`'s (node ids resolve, every sentence
-  cited: `src/gates.ts`), at save time and again in `check`.
+  cited: `src/gates.ts`), at save time and again in `check`. A sentence is
+  what `src/model/prose.ts` splits: each paragraph and list item, broken
+  after `.` `!` `?` before a capital (any script), a digit, `¿` `¡` or a
+  markup opener; a bold-only label (`**In short:**`) joins the sentence
+  after it; more than 15 characters and no citation fails. The prompts
+  state that rule (`CITATION_RULE`) with an example the tests run through it.
 - Bounds: ids are slugs of at most 64 characters (a path never leaves the
   directory); at most 40 turns, questions of at most 500 characters, titles
   of 120, follow-ups of 300, context values of 300.

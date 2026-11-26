@@ -36,6 +36,7 @@ import { CHAT_QUESTION_MAX, type ContextView, chatDigest, resolveContext, saveTu
 import { type IdRepair, repairLines } from "./gates.js";
 import { type LensNewOptions, lensNew, proposeLensId } from "./lens.js";
 import { kindOf } from "./model/ids.js";
+import { CITATION_RULE } from "./model/prose.js";
 import { type ChatContext, type ChatMode, type ChatTurn, type Conversation, NODE_KINDS } from "./model/types.js";
 import type { Problem } from "./model/validate.js";
 import { VIEW_DIR } from "./paths.js";
@@ -159,6 +160,9 @@ function nodeIdRule(examples: readonly string[]): string[] {
   ];
 }
 
+/** The citation rule (src/model/prose.ts), indented under a prompt's `answer` bullet. */
+const citationRuleLines = (): string[] => CITATION_RULE.map((l) => `     ${l}`);
+
 /** The prompt handed to the agent on stdin; `examples`: node ids of this question's pack (nodeIdExamples). */
 export function askPrompt(question: string, id: string, script: string, examples: readonly string[] = []): string {
   const uv = scriptCommand(script);
@@ -178,7 +182,8 @@ export function askPrompt(question: string, id: string, script: string, examples
     `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the lens JSON object (no prose before or after it), filled in from the template:",
     `   {"schema": 1, "id": "${id}", "question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "..."}`,
-    "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
+    "   - answer: Markdown in plain words. The citation rule, exactly as ultraview checks it before it saves your reply:",
+    ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(examples),
     "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
@@ -248,7 +253,8 @@ export function chatPrompt(input: ChatPromptInput, script: string): string {
     `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the turn JSON object (no prose before or after it):",
     `   {"question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "...", "lang": "<the question's language: en, fr, ja...>", "followUps": ["...", "...", "..."]}`,
-    "   - answer: Markdown, in the question's language; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
+    "   - answer: Markdown, in the question's language. The citation rule, exactly as ultraview checks it before it saves your reply:",
+    ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(input.examples ?? []),
     "   - followUps: exactly 3 short questions the user could ask next about this app, in the question's language.",
@@ -503,7 +509,8 @@ export function correctionPrompt(prompt: string, previous: Record<string, unknow
     "```",
     "",
     "Reply with ONLY the corrected JSON object (no prose before or after it). Keep what was right and fix exactly what the reasons name:",
-    "a node id is written as the candidates list it (mod:<slug>, file:<path>, route:<METHOD> <path>…); a sentence without a citation gets one, or goes.",
+    "a node id is written as the candidates list it (mod:<slug>, file:<path>, route:<METHOD> <path>…); a sentence without a citation gets one, or goes",
+    "(a summary, lead-in, transition or conclusion too; a bold label belongs to the sentence after it).",
     "Do not start over: check an id or a line with the ultraview commands above only when you need to.",
     "",
   ].join("\n");

@@ -38,6 +38,7 @@ import { stableJson } from "./json.js";
 import { guessLang, type QuestionReading, questionId, readQuestion, verbMethods } from "./lens-terms.js";
 import { fileOfId, modId, SLUG_RE } from "./model/ids.js";
 import { LENSES_DIR } from "./model/load.js";
+import { CITATION_RULE } from "./model/prose.js";
 import type { ChatContext, ChatMode, Conversation, ViewEdge, ViewNode } from "./model/types.js";
 import { viewPaths } from "./paths.js";
 import { carriedOver } from "./refresh.js";
@@ -562,7 +563,8 @@ function instructions(pack: Pick<LensPack, "id" | "file" | "reask" | "conflict">
   const lines = [
     "## Next",
     `1. Answer the question from the evidence above (open more files if you need to); \`ultraview show <node-id>\` and \`ultraview dossier <node-id>\` give more about one node.`,
-    "2. Every sentence of `answer` cites the file it rests on as `[path:line]` (or `[path:start-end]`): `ultraview check` fails a dead citation and an uncited sentence.",
+    "2. The citation rule for `answer` (`ultraview check` fails a dead citation and an uncited sentence):",
+    ...CITATION_RULE.map((l) => `   ${l}`),
     "3. `nodes`: the node ids the answer is about (pick from the candidates, or any id `ultraview show` knows); `edges` (optional): the links between them that matter; `focus`: the one node to centre the map on.",
     `4. Write the JSON above, filled in, to ${pack.file}${pack.reask ? " (it already holds this question: the new answer replaces the old one)" : ""}. Leave \`sources\` out: \`lens save\` stamps it.`,
     `5. Run \`ultraview lens save ${pack.file}\`${pack.conflict ? " --force (the id holds a different question)" : ""}, then \`ultraview check\`, and fix what they report.`,
@@ -576,7 +578,8 @@ function turnInstructions(pack: { thread: string; file: string }): string {
   return [
     "## Next",
     '1. Read the question with the conversation above: "it", "that", "this", "and then?" refer to the most recent turn\'s nodes ("In play") unless the question names something else; a question about something new is a new topic. `ultraview show <node-id>` and `ultraview dossier <node-id>` give more about one node.',
-    "2. Every sentence of `answer` cites the file it rests on as `[path:line]` (or `[path:start-end]`): `lens save --thread` refuses a dead citation, an uncited sentence and an unknown node id.",
+    "2. The citation rule for `answer` (`lens save --thread` refuses a dead citation, an uncited sentence and an unknown node id):",
+    ...CITATION_RULE.map((l) => `   ${l}`),
     "3. Answer in the language of the question (`lang`: its BCP-47 tag, e.g. en, fr, ja; citations stay as they are). `mode` business: plain words for someone who does not read code, no function, file or symbol names unless the question asks for them; `mode` dev: the technical detail (symbols, calls, files, routes).",
     "4. `nodes`: the node ids the answer is about; `edges` (optional): the links that matter; `focus`: the one node to centre the map on.",
     "5. `followUps`: exactly 3 short questions the user could ask next about this app, in the question's language.",
