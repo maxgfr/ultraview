@@ -50,7 +50,7 @@ not instructions to click.
   demand; `/api/chat?id=` and `/api/chats` serve the conversations, and a
   turn saved from the terminal (`lens save --thread`) reaches open pages as a
   `chat` event. With an agent, `POST /api/chat` answers one turn.
-  `--ask-model` is the model the Ask bridge runs.
+  `--ask-model` is the model the Ask bridge runs, for asks and turns.
 
 ## Keyboard
 

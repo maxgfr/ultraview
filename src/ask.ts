@@ -108,7 +108,7 @@ function scriptCommand(script: string): string {
 }
 
 /** ultraview subcommands the agent may run: all read-only. */
-const READ_ONLY_COMMANDS = ["lens new", "lens list", "show", "dossier", "status", "check"];
+export const READ_ONLY_COMMANDS = ["lens new", "lens list", "show", "dossier", "explain", "status", "check"];
 
 /** The prompt handed to the agent on stdin. */
 export function askPrompt(question: string, id: string, script: string): string {
@@ -126,6 +126,7 @@ export function askPrompt(question: string, id: string, script: string): string 
     "   would use for what is asked (e.g. order cancel delete), plus this repository's own names when you know them. Keep the",
     "   question exactly as asked; the terms carry the search.",
     `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
+    `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the lens JSON object (no prose before or after it), filled in from the template:",
     `   {"schema": 1, "id": "${id}", "question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "..."}`,
     "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
@@ -192,6 +193,7 @@ export function chatPrompt(input: ChatPromptInput, script: string): string {
     "   asked, including what its pronouns refer to in the conversation (e.g. order cancel delete), plus this repository's own names when you know them.",
     "   Keep the question exactly as asked; the terms carry the search.",
     `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
+    `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the turn JSON object (no prose before or after it):",
     `   {"question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "...", "lang": "<the question's language: en, fr, ja...>", "followUps": ["...", "...", "..."]}`,
     "   - answer: Markdown, in the question's language; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
@@ -421,8 +423,9 @@ interface RunOutcome {
  * Run the agent once: spawn it read-only with `prompt` on stdin, log
  * everything it prints, enforce the timeout, then hand its reply's JSON object
  * to `accept`, which validates and saves it. `label` heads the log entry.
- * Never throws. (The one place an agent is started: a model choice would be
- * passed through `agentInvocation` here.)
+ * Never throws. The one place an agent is started, for an ask and for a
+ * conversation turn alike: `req.model` (`serve --ask-model`) reaches
+ * `agentInvocation` here.
  */
 function runAgent<O extends RunOutcome>(
   req: AskRequest,

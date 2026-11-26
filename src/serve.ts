@@ -100,7 +100,7 @@ export interface ServeOptions {
   hostExplicit?: boolean;
   /** Default `auto`. */
   ask?: AskMode;
-  /** The model the agent runs for asks (claude `--model`, codex `-m`); its default when absent. */
+  /** The model the agent runs for asks and conversation turns (claude `--model`, codex `-m`); its default when absent. */
   askModel?: string;
   askTimeoutMs?: number;
   /** Environment for the agent lookup (PATH) and the agent's own minimal env. Default process.env. */
@@ -568,6 +568,7 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
       repo,
       question: body.question,
       agent: agent!,
+      ...(askModel ? { model: askModel } : {}),
       env,
       timeoutMs: opts.askTimeoutMs,
       mode: body.mode,

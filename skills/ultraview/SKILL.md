@@ -212,7 +212,7 @@ Details: [writing](references/writing.md).
 - `chat new [--title <t>]` / `chat list` / `chat show <id>` — conversations; `lens new "<q>" --thread <id> [--context '<json>']` and `lens save <draft> --thread <id>` add a turn.
 - `chat promote <id> <turn> [--lens-id <slug>] [--force]` — one turn as a lens.
 - `render [--out <file>] [--open]` — the offline page, `.ultraview/index.html`, from the current agent files; notes a stale index.
-- `serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--ask-model <m>] [--open]` — the live map on 127.0.0.1:4178; `--ask-model` picks the model the Ask bridge runs.
+- `serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--ask-model <m>] [--open]` — the live map on 127.0.0.1:4178; `--ask-model` picks the model the Ask bridge runs (asks and conversation turns).
 - `diff [--base <ref> | --staged | --worktree] [--depth <n>] [--record] [--markdown] [--quiet]` — the change on the map.
 - `diff --record [--source agent|pr|manual] [--title <t>] [--summary <s>] [--request <r>]` — and its timeline entry.
 - `timeline add --title <t> --summary <s> [--request <r>] [--source <s>] [--ref <id> [--change <c>] [--note <n>]]… | [--items <json>]`.

@@ -42371,7 +42371,7 @@ function ultraviewScript() {
 function scriptCommand(script) {
   return /^[A-Za-z0-9_./:\\-]+$/.test(script) ? `node ${script}` : `node "${script}"`;
 }
-var READ_ONLY_COMMANDS = ["lens new", "lens list", "show", "dossier", "status", "check"];
+var READ_ONLY_COMMANDS = ["lens new", "lens list", "show", "dossier", "explain", "status", "check"];
 function askPrompt(question, id, script) {
   const uv = scriptCommand(script);
   return [
@@ -42387,6 +42387,7 @@ function askPrompt(question, id, script) {
     "   would use for what is asked (e.g. order cancel delete), plus this repository's own names when you know them. Keep the",
     "   question exactly as asked; the terms carry the search.",
     `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
+    `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the lens JSON object (no prose before or after it), filled in from the template:",
     `   {"schema": 1, "id": "${id}", "question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "..."}`,
     "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
@@ -42429,6 +42430,7 @@ function chatPrompt(input, script) {
     "   asked, including what its pronouns refer to in the conversation (e.g. order cancel delete), plus this repository's own names when you know them.",
     "   Keep the question exactly as asked; the terms carry the search.",
     `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
+    `   ${uv} explain <node-id> gives instant proven facts about a node (what it is, its callers, callees, data and routes), every sentence cited.`,
     "3. Reply with ONLY the turn JSON object (no prose before or after it):",
     `   {"question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "...", "lang": "<the question's language: en, fr, ja...>", "followUps": ["...", "...", "..."]}`,
     "   - answer: Markdown, in the question's language; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
@@ -43885,6 +43887,7 @@ data: ${JSON.stringify(data)}
       repo,
       question: body2.question,
       agent,
+      ...askModel ? { model: askModel } : {},
       env,
       timeoutMs: opts.askTimeoutMs,
       mode: body2.mode,
@@ -44515,9 +44518,9 @@ Options:
                  explicitly, with a warning
   --ask <agent>  serve: the Ask bridge, ${ASK_MODES.join("|")} (default auto:
                  claude, then codex, if installed; none turns it off)
-  --ask-model <m> serve: the model the agent runs for asks (claude --model,
-                 codex -m), e.g. sonnet or haiku for faster turns; default:
-                 the agent's own
+  --ask-model <m> serve: the model the agent runs for asks and conversation
+                 turns (claude --model, codex -m), e.g. sonnet or haiku for
+                 faster turns; default: the agent's own
   --mode <m>     explain: business (default) or dev
   --lang <xx>    explain: language of the answer's templates (en default, fr);
                  another tag falls back to en and says so

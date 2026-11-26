@@ -186,9 +186,9 @@ Options:
                  explicitly, with a warning
   --ask <agent>  serve: the Ask bridge, ${ASK_MODES.join("|")} (default auto:
                  claude, then codex, if installed; none turns it off)
-  --ask-model <m> serve: the model the agent runs for asks (claude --model,
-                 codex -m), e.g. sonnet or haiku for faster turns; default:
-                 the agent's own
+  --ask-model <m> serve: the model the agent runs for asks and conversation
+                 turns (claude --model, codex -m), e.g. sonnet or haiku for
+                 faster turns; default: the agent's own
   --mode <m>     explain: business (default) or dev
   --lang <xx>    explain: language of the answer's templates (en default, fr);
                  another tag falls back to en and says so

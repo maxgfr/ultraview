@@ -306,20 +306,28 @@ describe("POST /api/explain", () => {
   });
 });
 
-/** A fake agent CLI named `name` that records its arguments into `<dir>/args.json`, then answers with the shop lens. */
+/**
+ * A fake agent CLI named `name` that records its arguments into `<dir>/args.json`, then answers with the shop lens
+ * (or, asked a conversation turn, with the turn JSON built from it).
+ */
 function fakeAgent(name: "claude" | "codex"): string {
   const dir = mkdtempSync(join(tmpdir(), "ultraview-fake-model-"));
   cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
-  const lens = JSON.stringify(readModelFile("shop.lens.json"));
+  const shop = readModelFile("shop.lens.json") as Record<string, unknown>;
+  const lens = JSON.stringify(shop);
+  const { schema: _schema, id: _id, ...answer } = shop;
+  const turn = JSON.stringify({ ...answer, lang: "en", followUps: ["Who calls it?", "What does it store?", "Can it fail?"] });
   const script = `#!/usr/bin/env node
 const fs = require("node:fs");
 const args = process.argv.slice(2);
 fs.writeFileSync(${JSON.stringify(join(dir, "args.json"))}, JSON.stringify(args));
-process.stdin.resume();
+let prompt = "";
+process.stdin.on("data", (c) => (prompt += c));
 process.stdin.on("end", () => {
+  const reply = prompt.includes("one turn of a conversation") ? ${JSON.stringify(turn)} : ${JSON.stringify(lens)};
   const out = args.indexOf("--output-last-message");
-  if (out !== -1) fs.writeFileSync(args[out + 1], ${JSON.stringify(lens)});
-  else process.stdout.write(${JSON.stringify(lens)});
+  if (out !== -1) fs.writeFileSync(args[out + 1], reply);
+  else process.stdout.write(reply);
 });
 `;
   const file = join(dir, name);
@@ -420,6 +428,30 @@ describe("serve --ask-model", () => {
       const flag = agent === "claude" ? "--model" : "-m";
       expect(args[args.indexOf(flag) + 1]).toBe(model);
       expect(readFileSync(join(repo, ".ultraview/ask.log"), "utf8")).toContain(`${flag} ${model}`);
+    });
+
+    it(`passes the model to a ${agent} conversation turn`, async () => {
+      if (process.platform === "win32") return;
+      const repo = await builtShop(cleanups as (() => void)[]);
+      const fake = fakeAgent(agent);
+      const model = agent === "claude" ? "sonnet" : "o4-mini";
+      const handle = await startServe({
+        repo,
+        port: 0,
+        ask: agent,
+        askModel: model,
+        env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` },
+      });
+      cleanups.push(() => handle.close());
+      const r = await post(handle, "/api/chat", JSON.stringify({ question: "How is an order placed?", mode: "dev" }));
+      expect(r.status).toBe(200);
+      expect(r.body).toContain("event: turn");
+      const args = JSON.parse(readFileSync(join(fake, "args.json"), "utf8")) as string[];
+      const flag = agent === "claude" ? "--model" : "-m";
+      expect(args[args.indexOf(flag) + 1]).toBe(model);
+      const log = readFileSync(join(repo, ".ultraview/ask.log"), "utf8");
+      expect(log).toContain("chat ");
+      expect(log).toContain(`${flag} ${model}`);
     });
   }
 });

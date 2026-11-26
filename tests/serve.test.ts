@@ -513,6 +513,12 @@ describe("ask bridge", () => {
       "--allowedTools",
     ]);
     expect(claude.args).toContain("Bash(node /x/ultraview.mjs lens new:*)");
+    // explain is read-only: the agent may run it for a node's proven facts.
+    expect(claude.args).toContain("Bash(node /x/ultraview.mjs explain:*)");
+    expect(askPrompt("q", "q", "/x/ultraview.mjs")).toContain("node /x/ultraview.mjs explain <node-id> gives instant proven facts about a node");
+    expect(chatPrompt({ question: "q", mode: "dev" }, "/x/ultraview.mjs")).toContain(
+      "node /x/ultraview.mjs explain <node-id> gives instant proven facts about a node",
+    );
     expect(claude.args).not.toContain("Bash(node /x/ultraview.mjs lens save:*)");
     const codex = agentInvocation({ name: "codex", path: "/bin/codex" }, { script: "/x/ultraview.mjs", repo: "/r", tmpDir: "/t" });
     expect(codex.args).toEqual([

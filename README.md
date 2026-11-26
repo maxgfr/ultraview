@@ -165,7 +165,7 @@ Nothing committed holds a machine-local path. Outside `.ultraview/`, only
   a question to the Claude Code or Codex CLI, read-only, and saves the answer
   as a lens, or as the next turn of a conversation (`POST /api/chat`,
   streamed). Only one ask at a time; nothing else is written. `--ask-model`
-  picks a faster model for it; `explain <node-id>` (and `POST /api/explain`)
+  picks a faster model for asks and turns alike; `explain <node-id>` (and `POST /api/explain`)
   answers "what is this?" instantly from the proven facts alone, cited.
 - **Record every turn**: `hook install` (Claude Code only, opt-in) records
   each agent turn as a change set, silently, never failing the turn.

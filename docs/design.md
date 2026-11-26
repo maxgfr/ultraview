@@ -652,13 +652,16 @@ English), read more if needed, reply with only the lens JSON, write no file. Com
 - `claude -p --output-format text --no-session-persistence --permission-mode dontAsk --tools Bash,Read,Glob,Grep --allowedTools "Bash(node <ultraview.mjs> lens new:*)" … Read Glob Grep --disallowedTools Write Edit NotebookEdit WebFetch WebSearch`
   — `dontAsk` denies whatever is not pre-allowed without prompting; Bash is
   allowed only for ultraview's read-only commands (`lens new`, `lens list`,
-  `show`, `dossier`, `status`, `check`).
+  `show`, `dossier`, `explain`, `status`, `check`). Both prompts point the
+  agent at `explain <node-id>` for a node's proven facts, cited, at no cost.
 - `codex exec --sandbox read-only --ephemeral --skip-git-repo-check --color never --cd <repo> --output-last-message <private temp dir>/last-message.txt -`
 
 `--ask-model <m>` appends `--model <m>` to the claude line and `-m <m>` (before
 the final `-`) to the codex line; the name must match `ASK_MODEL_RE`
 (a letter or digit first, then letters, digits and `. _ : / @ [ ] -`, at most
 100), so it can never read as a flag. Absent, the agent's default model runs.
+It applies to every agent run, an ask or a conversation turn: both go
+through `runAgent`, the one place an agent is started.
 
 The reply (Claude: stdout; Codex: the last-message file) is parsed (bare
 JSON, a fenced block, or the outermost `{…}`); ultraview forces the proposed

@@ -115,10 +115,12 @@ with the turn JSON, which ultraview validates like `lens save --thread` and
 appends. The answer comes back as an event stream (progress, then the turn
 or an error), and every open page gets a `chat` event.
 
-`serve --ask-model <model>` picks the model the agent CLI runs (handed to
-Claude Code or Codex as its model option; letters, digits and
-`. _ : / @ [ ] -` only): a smaller model (`sonnet`, `haiku`) answers a
-follow-up faster. Without it the agent's own default runs.
+`serve --ask-model <model>` picks the model the agent CLI runs, for asks and
+conversation turns alike (handed to Claude Code or Codex as its model option;
+letters, digits and `. _ : / @ [ ] -` only): a smaller model (`sonnet`,
+`haiku`) answers a follow-up faster. Without it the agent's own default runs.
+The agent may also run `explain <node-id>` (read-only) for a node's proven
+facts, cited.
 
 ## Explain: answers without the agent
 
