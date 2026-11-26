@@ -74,3 +74,25 @@ prompt asks the agent to add `--terms` when the question is not in English),
 and saves the reply with `lens save`. One ask at a time, 180 s timeout;
 nothing is written but the lens; the agent's output goes to `.ultraview/ask.log`. An ask never replaces
 another question's lens.
+
+`serve --ask-model <model>` picks the model the agent CLI runs (handed to
+Claude Code or Codex as its model option; letters, digits and
+`. _ : / @ [ ] -` only): a smaller model (`sonnet`, `haiku`) answers a
+follow-up faster. Without it the agent's own default runs.
+
+## Explain: answers without the agent
+
+`ultraview explain <node-id> [--mode business|dev] [--lang <xx>] [--json]`
+(and `POST /api/explain {"node", "mode", "lang"}` when served) answers "what
+is this?" instantly from what is already proven: the node's checked prose
+(its summary, tour stop, flow steps; only the sentences whose citations
+resolve), its extractor facts (a route's method, path and handler, an
+entity's fields and relations, a job's schedule) and its neighbourhood
+(callers and callees from the engine's call sites, data read and written,
+routes served, externals reached), every sentence cited where its evidence
+sits. `business` never names a symbol or a file; `dev` does. The templates are
+in English and French (`--lang fr`); any other language falls back to English
+and says so (`langFallback`). The result has the lens answer's shape
+(`answer`, `nodes`, `edges`) plus `citations` and `escalate`: true when the
+node has no prose and fewer than 2 facts beyond what it is. Then the facts
+are thin: ask the question as a lens instead.

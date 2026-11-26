@@ -1,0 +1,125 @@
+// The sentence templates of `ultraview explain` (src/explain.ts), one table per
+// language: English is the source and the fallback, every other table holds
+// every key (the type says so). `{name}` placeholders are filled with facts;
+// citations are appended by the caller, never written here.
+//
+// Keep them few and plain: one claim per template, no plural forms (lists,
+// not counts), each one a whole sentence on its own line.
+
+const en = {
+  // What the node is.
+  "is.route.dev": "`{name}` is a route ({framework}) declared in `{file}`.",
+  "is.route.dev.handler": "`{name}` is a route ({framework}) declared in `{file}`, handled by `{handler}`.",
+  "is.route.business": "{name} is a request the app answers, to {verb}.",
+  "verb.read": "read information",
+  "verb.create": "create something",
+  "verb.update": "change something",
+  "verb.delete": "remove something",
+  "verb.action": "run an action",
+  "verb.any": "handle any kind of request",
+  "is.screen.dev": "`{name}` is a screen ({framework}) declared in `{file}`.",
+  "is.screen.business": "{name} is a page of the app.",
+  "is.entity.dev": "`{name}` is a data model ({orm}) declared in `{file}`, with the fields {fields}.",
+  "is.entity.business": "{name} is a kind of record the app keeps, with: {fields}.",
+  "is.job.dev": "`{name}` is a job ({kind}) declared in `{file}`.",
+  "is.job.dev.schedule": "`{name}` is a job ({kind}) declared in `{file}`, on the schedule `{schedule}`.",
+  "is.job.business.cron": "{name} is work the app runs on a schedule.",
+  "is.job.business.queue": "{name} is work the app takes from a queue.",
+  "is.job.business.worker": "{name} is work the app runs in the background.",
+  "is.ext.dev": "`{name}` is a third-party service, reached through {via}.",
+  "is.ext.business": "{name} is an outside service the app relies on.",
+  "is.infra.dev": "`{name}` is a deployable unit ({kind}) declared in `{file}`.",
+  "is.infra.business": "{name} is a part of how the app is deployed.",
+  "is.sym.dev": "`{name}` is an exported symbol ({kind}) in `{file}`.",
+  "is.sym.business": "It is a building block of {place}.",
+  "is.file.dev": "`{name}` is a file ({kind}) of the module `{module}`.",
+  "is.file.business": "It is a file of {place}.",
+  // What surrounds it.
+  "rel.caps": "It is part of: {list}.",
+  "rel.calledBy": "Called by: {list}.",
+  "rel.calls": "Calls: {list}.",
+  "rel.reads": "Reads: {list}.",
+  "rel.writes": "Writes: {list}.",
+  "rel.readBy": "Read by: {list}.",
+  "rel.writtenBy": "Written by: {list}.",
+  "rel.usedBy": "Used by: {list}.",
+  "rel.fields.dev": "Its relations: {list}.",
+  "rel.fields.business": "Each {name} is linked to: {list}.",
+  "rel.referencedBy": "Referenced by: {list}.",
+  "rel.routes": "Requests it answers: {list}.",
+  "rel.screens": "Pages it shows: {list}.",
+  "rel.entities": "Data it declares: {list}.",
+  "rel.externals": "Outside services it talks to: {list}.",
+  "rel.jobs": "Background work it runs: {list}.",
+  "rel.defines": "It defines: {list}.",
+  "rel.files": "It holds the files: {list}.",
+  "rel.model": "Linked to {name}: {label}.",
+  "rel.modelNoLabel": "Linked to {name}.",
+  "flow.step": "In the flow “{title}”, step {n}: {note}",
+  more: "and {n} more",
+} as const;
+
+export type ExplainKey = keyof typeof en;
+
+const fr: Record<ExplainKey, string> = {
+  "is.route.dev": "`{name}` est une route ({framework}) déclarée dans `{file}`.",
+  "is.route.dev.handler": "`{name}` est une route ({framework}) déclarée dans `{file}`, traitée par `{handler}`.",
+  "is.route.business": "{name} est une requête à laquelle l'application répond, pour {verb}.",
+  "verb.read": "lire des informations",
+  "verb.create": "créer quelque chose",
+  "verb.update": "modifier quelque chose",
+  "verb.delete": "supprimer quelque chose",
+  "verb.action": "exécuter une action",
+  "verb.any": "traiter tout type de requête",
+  "is.screen.dev": "`{name}` est un écran ({framework}) déclaré dans `{file}`.",
+  "is.screen.business": "{name} est une page de l'application.",
+  "is.entity.dev": "`{name}` est un modèle de données ({orm}) déclaré dans `{file}`, avec les champs {fields}.",
+  "is.entity.business": "{name} est un type d'enregistrement que l'application conserve, avec : {fields}.",
+  "is.job.dev": "`{name}` est une tâche ({kind}) déclarée dans `{file}`.",
+  "is.job.dev.schedule": "`{name}` est une tâche ({kind}) déclarée dans `{file}`, planifiée `{schedule}`.",
+  "is.job.business.cron": "{name} est un travail que l'application exécute selon un calendrier.",
+  "is.job.business.queue": "{name} est un travail que l'application prend dans une file d'attente.",
+  "is.job.business.worker": "{name} est un travail que l'application exécute en arrière-plan.",
+  "is.ext.dev": "`{name}` est un service tiers, joint via {via}.",
+  "is.ext.business": "{name} est un service extérieur dont l'application dépend.",
+  "is.infra.dev": "`{name}` est une unité déployable ({kind}) déclarée dans `{file}`.",
+  "is.infra.business": "{name} fait partie de la façon dont l'application est déployée.",
+  "is.sym.dev": "`{name}` est un symbole exporté ({kind}) dans `{file}`.",
+  "is.sym.business": "C'est un élément de {place}.",
+  "is.file.dev": "`{name}` est un fichier ({kind}) du module `{module}`.",
+  "is.file.business": "C'est un fichier de {place}.",
+  "rel.caps": "Fait partie de : {list}.",
+  "rel.calledBy": "Appelé par : {list}.",
+  "rel.calls": "Appelle : {list}.",
+  "rel.reads": "Lit : {list}.",
+  "rel.writes": "Écrit : {list}.",
+  "rel.readBy": "Lu par : {list}.",
+  "rel.writtenBy": "Écrit par : {list}.",
+  "rel.usedBy": "Utilisé par : {list}.",
+  "rel.fields.dev": "Ses relations : {list}.",
+  "rel.fields.business": "Chaque {name} est lié à : {list}.",
+  "rel.referencedBy": "Référencé par : {list}.",
+  "rel.routes": "Requêtes auxquelles il répond : {list}.",
+  "rel.screens": "Pages qu'il affiche : {list}.",
+  "rel.entities": "Données qu'il déclare : {list}.",
+  "rel.externals": "Services extérieurs avec lesquels il communique : {list}.",
+  "rel.jobs": "Travaux en arrière-plan qu'il exécute : {list}.",
+  "rel.defines": "Il définit : {list}.",
+  "rel.files": "Il contient les fichiers : {list}.",
+  "rel.model": "Lié à {name} : {label}.",
+  "rel.modelNoLabel": "Lié à {name}.",
+  "flow.step": "Dans le parcours « {title} », étape {n} : {note}",
+  more: "et {n} autres",
+};
+
+/** Languages with a template table; English first (source and fallback). */
+export const EXPLAIN_LANGS = ["en", "fr"] as const;
+export type ExplainLang = (typeof EXPLAIN_LANGS)[number];
+
+export const EXPLAIN_STRINGS: Record<ExplainLang, Record<ExplainKey, string>> = { en, fr };
+
+/** The template `key` in `lang`, its `{name}` placeholders filled from `params`. */
+export function explainText(lang: ExplainLang, key: ExplainKey, params: Record<string, string | number> = {}): string {
+  const text = EXPLAIN_STRINGS[lang][key] ?? en[key];
+  return text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? String(params[name]) : m));
+}

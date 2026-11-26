@@ -23,7 +23,8 @@ import { viewPaths } from "./paths.js";
 import { type SaveResult, saveFlow, saveLens } from "./save.js";
 import { openFile, renderMap } from "./render.js";
 // --- serve / lens new / lens list (issue #10) ---
-import { ASK_MODES, type AskMode } from "./ask.js";
+import { ASK_MODES, type AskMode, askModelProblem } from "./ask.js";
+import { EXPLAIN_MODES, type ExplainMode, explainContext, explainNode, formatExplanation, LANG_RE } from "./explain.js";
 import { formatLensList, LENS_BUDGET, lensList, lensNew } from "./lens.js";
 import { isLoopbackHost, SERVE_HOST, SERVE_PORT, startServe } from "./serve.js";
 // --- end serve / lens ---
@@ -68,6 +69,13 @@ Commands:
                      facts with file:line, neighbours. Cut to --budget tokens.
   show <node-id>     Compact card for one node: kind, label, parent,
                      capabilities, summary, citations, metrics, top edges.
+  explain <node-id>  Instant answer about one node, without an agent: its
+                     checked prose (summary, tour, flow steps), its facts and
+                     its neighbours (callers, callees, data read / written,
+                     routes, externals), every sentence cited. --mode business
+                     (plain words, default) or dev (symbols, files); --lang
+                     picks the templates (en, fr; others fall back to en).
+                     "escalate" says the facts are thin: ask the agent.
   lens new "<question>"
                      Evidence pack to answer a question as a lens: the
                      proposed id and target path, the JSON template, candidate
@@ -122,7 +130,8 @@ Commands:
   serve              Local server for the map with live data: the page, its
                      view.json, an event stream that pushes every change
                      under .ultraview/ (and a stale notice when source files
-                     change), /api/node, /api/search, /api/callgraph, and the
+                     change), /api/node, /api/search, /api/callgraph,
+                     POST /api/explain (the explain answer), and the
                      optional Ask bridge (POST /api/ask: a read-only run of
                      the claude or codex CLI whose answer is saved as a lens).
                      Binds ${SERVE_HOST}:${SERVE_PORT}; Ctrl-C stops it.
@@ -150,6 +159,12 @@ Options:
                  explicitly, with a warning
   --ask <agent>  serve: the Ask bridge, ${ASK_MODES.join("|")} (default auto:
                  claude, then codex, if installed; none turns it off)
+  --ask-model <m> serve: the model the agent runs for asks (claude --model,
+                 codex -m), e.g. sonnet or haiku for faster turns; default:
+                 the agent's own
+  --mode <m>     explain: business (default) or dev
+  --lang <xx>    explain: language of the answer's templates (en default, fr);
+                 another tag falls back to en and says so
   --base <ref>   diff: the ref to compare with (its merge-base with HEAD)
   --staged       diff: staged changes only, against HEAD
   --worktree     diff: everything uncommitted, against HEAD
@@ -191,7 +206,23 @@ Exit codes: 0 ok, 1 failure (check failed, save / record / timeline entry
 refused), 2 usage error or unknown node id. diff --hook always exits 0.
 `;
 
-export const COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render", "diff", "timeline", "hook", "insights", "export", "serve"];
+export const COMMANDS = [
+  "build",
+  "status",
+  "check",
+  "dossier",
+  "show",
+  "lens",
+  "flow",
+  "render",
+  "diff",
+  "timeline",
+  "hook",
+  "insights",
+  "export",
+  "serve",
+  "explain",
+];
 export const VALUE_FLAGS = [
   "repo",
   "budget",
@@ -215,6 +246,9 @@ export const VALUE_FLAGS = [
   "port",
   "host",
   "ask",
+  "ask-model",
+  "mode",
+  "lang",
 ];
 export const BOOL_FLAGS = [
   "json",
@@ -250,7 +284,8 @@ const ARITY: Record<string, { min: number; max: number; usage: string }> = {
   hook: { min: 1, max: 1, usage: "hook install|uninstall [--agent claude]" },
   insights: { min: 0, max: 0, usage: "insights" },
   export: { min: 0, max: 0, usage: "export --mermaid|--svg|--md [--level cap|sys|mod] [--lens <id>] [--flow <id>] [--out <file>]" },
-  serve: { min: 0, max: 0, usage: "serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--open]" },
+  serve: { min: 0, max: 0, usage: "serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--ask-model <m>] [--open]" },
+  explain: { min: 1, max: 1, usage: "explain <node-id> [--mode business|dev] [--lang <xx>]" },
 };
 
 export interface Io {
@@ -381,6 +416,19 @@ async function cmdShow(p: Parsed, io: Io): Promise<number> {
   const card = nodeCard(live, id);
   if (!card) return unknownId(p, io, id, similarIds(live.view, id));
   io.out(p.bools.has("json") ? json(card) : formatNodeCard(card));
+  return EXIT_OK;
+}
+
+async function cmdExplain(p: Parsed, io: Io): Promise<number> {
+  const id = p.positional[0] as string;
+  const mode = p.values.mode ?? "business";
+  if (!(EXPLAIN_MODES as readonly string[]).includes(mode)) return usage(io, `--mode must be one of ${EXPLAIN_MODES.join(", ")} (got ${mode})`);
+  const lang = p.values.lang;
+  if (lang !== undefined && !LANG_RE.test(lang)) return usage(io, `--lang must be a language tag such as en, fr or pt-BR (got ${lang})`);
+  const live = liveView(p.values.repo ?? ".");
+  const x = explainNode(explainContext(live), id, { mode: mode as ExplainMode, lang });
+  if (!x) return unknownId(p, io, id, similarIds(live.view, id));
+  io.out(p.bools.has("json") ? json(x) : formatExplanation(x));
   return EXIT_OK;
 }
 
@@ -685,6 +733,9 @@ async function cmdServe(p: Parsed, io: Io): Promise<number> {
       return EXIT_USAGE;
     }
   }
+  const askModel = p.values["ask-model"];
+  const modelError = askModel !== undefined ? askModelProblem(askModel) : undefined;
+  if (modelError) return usage(io, modelError);
   const host = p.values.host;
   const handle = await startServe({
     repo: p.values.repo ?? ".",
@@ -692,6 +743,7 @@ async function cmdServe(p: Parsed, io: Io): Promise<number> {
     host,
     hostExplicit: host !== undefined,
     ask,
+    ...(askModel !== undefined ? { askModel } : {}),
     onWarning: (m) => io.err(`ultraview: ${m}\n`),
   });
   if (!isLoopbackHost(handle.host))
@@ -701,12 +753,20 @@ async function cmdServe(p: Parsed, io: Io): Promise<number> {
   const opened = p.bools.has("open") ? await openFile(handle.url) : undefined;
   if (p.bools.has("json"))
     io.out(
-      json({ url: handle.url, host: handle.host, port: handle.port, repo: handle.repo, ask: handle.ask ?? null, ...(opened !== undefined ? { opened } : {}) }),
+      json({
+        url: handle.url,
+        host: handle.host,
+        port: handle.port,
+        repo: handle.repo,
+        ask: handle.ask ?? null,
+        ...(handle.askModel ? { askModel: handle.askModel } : {}),
+        ...(opened !== undefined ? { opened } : {}),
+      }),
     );
   else {
     io.out(`serving    ${handle.url}  (live: every change under .ultraview/ shows up without a reload)\n`);
     io.out(
-      `ask        ${handle.ask ? `${handle.ask.name} (${handle.ask.path}), read-only; answers saved as lenses` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}\n`,
+      `ask        ${handle.ask ? `${handle.ask.name} (${handle.ask.path})${handle.askModel ? `, model ${handle.askModel}` : ""}, read-only; answers saved as lenses` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}\n`,
     );
     if (opened === false) io.out("open       no opener found: open the address in a browser\n");
     io.out("stop       Ctrl-C\n");
@@ -759,6 +819,8 @@ export async function main(argv: readonly string[], io: Io = processIo): Promise
         return await cmdShow(p, io);
       case "dossier":
         return await cmdDossier(p, io);
+      case "explain":
+        return await cmdExplain(p, io);
       case "lens":
         return await cmdLens(p, io);
       case "flow":

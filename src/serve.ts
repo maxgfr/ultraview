@@ -8,6 +8,7 @@
 //   GET  /api/search     ?q=           node label / id match + ultraindex find over modules
 //   GET  /api/callgraph  ?sym=&depth=&dir=   the codeindex symbol neighbourhood
 //   POST /api/ask        {question}    the Ask bridge (src/ask.ts), when an agent CLI is enabled
+//   POST /api/explain    {node, mode, lang?}   the instant answer from proven facts (src/explain.ts)
 //
 // Live data: `.ultraview/` (model.json, flows/, lenses/, timeline.jsonl,
 // changes/, facts.json) and `.ultraindex/` are watched; a change re-assembles
@@ -28,8 +29,9 @@ import { existsSync, type FSWatcher, readdirSync, readFileSync, statSync, watch 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { isIP } from "node:net";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { type AskAgent, type AskMode, askAgent, askLensId, checkQuestion, resolveAskAgent } from "./ask.js";
+import { type AskAgent, type AskMode, askAgent, askLensId, askModelProblem, checkQuestion, resolveAskAgent } from "./ask.js";
 import { codeindex, indexExists, loadCache, loadManifest, runFind } from "./engine.js";
+import { explainContext, explainRequest } from "./explain.js";
 import { modId } from "./model/ids.js";
 import type { ViewModel, ViewNode } from "./model/types.js";
 import { INDEX_DIR_NAME, VIEW_DIR, viewPaths } from "./paths.js";
@@ -76,6 +78,8 @@ export interface ServeOptions {
   hostExplicit?: boolean;
   /** Default `auto`. */
   ask?: AskMode;
+  /** The model the agent runs for asks (claude `--model`, codex `-m`); its default when absent. */
+  askModel?: string;
   askTimeoutMs?: number;
   /** Environment for the agent lookup (PATH) and the agent's own minimal env. Default process.env. */
   env?: NodeJS.ProcessEnv;
@@ -98,6 +102,8 @@ export interface ServeHandle {
   repo: string;
   /** The agent the Ask bridge runs, when enabled. */
   ask?: AskAgent;
+  /** The model it runs, when `askModel` was given. */
+  askModel?: string;
   /** Re-assemble now; true when the view changed (and `view` was pushed). */
   refresh: () => boolean;
   close: () => Promise<void>;
@@ -213,6 +219,9 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
   const env = opts.env ?? process.env;
   const warn = opts.onWarning ?? (() => {});
   const debounceMs = opts.debounceMs ?? SERVE_DEBOUNCE_MS;
+  const askModelError = opts.askModel !== undefined ? askModelProblem(opts.askModel) : undefined;
+  if (askModelError) throw new Error(askModelError);
+  const askModel = opts.askModel;
   const agent = resolveAskAgent(opts.ask ?? "auto", env.PATH ?? env.Path);
   const template = readFileSync(opts.template ?? viewerTemplatePath(), "utf8");
 
@@ -426,6 +435,7 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
         repo,
         question,
         agent: agent!,
+        ...(askModel ? { model: askModel } : {}),
         env,
         timeoutMs: opts.askTimeoutMs,
         onProgress: (stage, detail) => broadcast("ask-progress", { id, question, agent: who, stage, ...detail }),
@@ -475,7 +485,7 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
         if (clients.size >= SSE_CLIENTS_MAX) return send(res, 503, "text/plain; charset=utf-8", "too many event streams\n");
         res.writeHead(200, { ...SECURITY_HEADERS, "Content-Type": "text/event-stream; charset=utf-8", Connection: "keep-alive", "X-Accel-Buffering": "no" });
         res.write(
-          `retry: 3000\n\nevent: hello\ndata: ${JSON.stringify({ version: state.version, stale, ask: agent ? { agent: agent.name, busy: !!asking } : null })}\n\n`,
+          `retry: 3000\n\nevent: hello\ndata: ${JSON.stringify({ version: state.version, stale, ask: agent ? { agent: agent.name, busy: !!asking, ...(askModel ? { model: askModel } : {}) } : null })}\n\n`,
         );
         clients.add(res);
         req.on("close", () => clients.delete(res));
@@ -540,6 +550,14 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
           { sym: raw, depth, dir, root: n.root.map((r) => viewId(r.id)), nodes, edges, ...(truncated ? { truncated: true } : {}) },
           head,
         );
+      }
+      case "/api/explain": {
+        if (method !== "POST") return send(res, 405, "text/plain; charset=utf-8", "method not allowed\n", false, { Allow: "POST" });
+        if (!(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) return sendJson(res, 415, { error: "send application/json" });
+        const body = await readBody(req, BODY_MAX);
+        if (body === undefined) return sendJson(res, 413, { error: `body over ${BODY_MAX} bytes` });
+        const r = explainRequest(explainContext(state), body, (id) => similarIds(state.view, id));
+        return sendJson(res, r.status, r.value);
       }
       case "/api/ask": {
         if (!agent) return sendJson(res, 404, { error: "the Ask bridge is off (no agent CLI found, or --ask none)" });
@@ -618,5 +636,5 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
     return closing;
   };
 
-  return { url: `http://${urlHost}:${port}/`, host, port, repo, ...(agent ? { ask: agent } : {}), refresh, close, closed };
+  return { url: `http://${urlHost}:${port}/`, host, port, repo, ...(agent ? { ask: agent } : {}), ...(askModel ? { askModel } : {}), refresh, close, closed };
 }

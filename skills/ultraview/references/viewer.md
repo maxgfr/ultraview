@@ -41,11 +41,12 @@ not instructions to click.
   re-indexing), so what you saved shows without a `build`. When source files
   changed since the last `build`, it says the index is stale (`"stale": true`
   with `--json`) and still draws the map as of that build.
-- `serve [--open] [--port 4178] [--host 127.0.0.1] [--ask …]`: re-assembles
+- `serve [--open] [--port 4178] [--host 127.0.0.1] [--ask …] [--ask-model <m>]`: re-assembles
   on every `.ultraview/` change and pushes it to open pages (no reload); a
   source change only marks the index stale until `build`. Loopback only unless
   `--host` is passed explicitly. `/api/node`, `/api/search`,
-  `/api/callgraph` answer on demand.
+  `/api/callgraph` and `POST /api/explain` (the `explain` answer) answer on
+  demand. `--ask-model` is the model the Ask bridge runs.
 
 ## Keyboard
 

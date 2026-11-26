@@ -124,7 +124,8 @@ A question answered once is saved as a lens: a view anyone can reopen at
    search. Without them the pack says `reading   not English and no --terms`:
    run it again with them.
 2. Open more source if the excerpts do not settle it (`show` / `dossier` on a
-   candidate). Answer only what the code shows.
+   candidate; `explain <node-id>` gives a node's proven facts in cited
+   sentences). Answer only what the code shows.
 3. Write the lens JSON to the printed path: `answer` (every sentence cited),
    `nodes`, optional `edges`, `focus`. Leave `sources` out.
 4. `ultraview lens save <file>` (stamps the hashes of the cited files), then
@@ -180,12 +181,13 @@ Details: [writing](references/writing.md).
 - `build [--no-ast]` — refresh the index and facts, re-assemble the view, print the summary.
 - `check [--strict]` — the gate: schema, ids, citations, coverage; `--strict` fails stale lenses / flows too.
 - `show <node-id>` — one node's card: kind, parent, capabilities, summary, cites, metrics, edges.
+- `explain <node-id> [--mode business|dev] [--lang <xx>]` — an instant, cited answer about one node from proven facts only (no agent); `escalate: true` means the facts are thin.
 - `dossier <node-id> [--budget <n>]` — the evidence to write about one node.
 - `lens new "<question>" [--terms "<English keywords>"] [--id <slug>] [--budget <n>]` — the evidence pack for a question; `--terms` whenever it is not in English.
 - `lens save <file> [--force]` / `flow save <file> [--force]` — validate, stamp `sources`, store.
 - `lens list` — saved questions, with their stale flag.
 - `render [--out <file>] [--open]` — the offline page, `.ultraview/index.html`, from the current agent files; notes a stale index.
-- `serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--open]` — the live map on 127.0.0.1:4178.
+- `serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--ask-model <m>] [--open]` — the live map on 127.0.0.1:4178; `--ask-model` picks the model the Ask bridge runs.
 - `diff [--base <ref> | --staged | --worktree] [--depth <n>] [--record] [--markdown] [--quiet]` — the change on the map.
 - `diff --record [--source agent|pr|manual] [--title <t>] [--summary <s>] [--request <r>]` — and its timeline entry.
 - `timeline add --title <t> --summary <s> [--request <r>] [--source <s>] [--ref <id> [--change <c>] [--note <n>]]… | [--items <json>]`.

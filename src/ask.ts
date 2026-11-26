@@ -39,6 +39,18 @@ export const ASK_QUESTION_MAX = 500;
 /** Agent output kept in memory to read the answer from (the log gets everything). */
 const OUTPUT_MAX = 4 * 1024 * 1024;
 export const ASK_LOG = `${VIEW_DIR}/ask.log`;
+/**
+ * A model name `--ask-model` accepts (`sonnet`, `claude-haiku-4-5`, `gpt-5-codex`,
+ * `opus[1m]`): starts with a letter or digit, so it can never read as a flag.
+ */
+export const ASK_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/@[\]-]{0,99}$/;
+
+/** Why `model` is refused as `--ask-model`, or undefined when it is fine. */
+export function askModelProblem(model: string): string | undefined {
+  return ASK_MODEL_RE.test(model)
+    ? undefined
+    : `--ask-model must be a model name (letters, digits and . _ : / @ [ ] -, at most 100), got ${JSON.stringify(model)}`;
+}
 
 export interface AskAgent {
   name: AskAgentName;
@@ -128,8 +140,11 @@ export interface AgentInvocation {
  * not allowed below is denied without a prompt), only the read tools plus
  * Bash, and Bash only for ultraview's read-only commands. Codex: `exec` in the
  * read-only sandbox, nothing persisted, the last message into `tmpDir`.
+ * `model` (`serve --ask-model`, checked by `askModelProblem`) is passed as
+ * Claude's `--model` / Codex's `-m`; without it the agent's default runs.
  */
-export function agentInvocation(agent: AskAgent, ctx: { script: string; repo: string; tmpDir: string }): AgentInvocation {
+export function agentInvocation(agent: AskAgent, ctx: { script: string; repo: string; tmpDir: string; model?: string }): AgentInvocation {
+  const model = ctx.model;
   const uv = scriptCommand(ctx.script);
   if (agent.name === "claude") {
     return {
@@ -155,6 +170,7 @@ export function agentInvocation(agent: AskAgent, ctx: { script: string; repo: st
         "NotebookEdit",
         "WebFetch",
         "WebSearch",
+        ...(model ? ["--model", model] : []),
       ],
     };
   }
@@ -173,6 +189,7 @@ export function agentInvocation(agent: AskAgent, ctx: { script: string; repo: st
       ctx.repo,
       "--output-last-message",
       lastMessageFile,
+      ...(model ? ["-m", model] : []),
       "-",
     ],
     lastMessageFile,
@@ -250,6 +267,8 @@ export interface AskRequest {
   repo: string;
   question: string;
   agent: AskAgent;
+  /** The model the agent runs (`serve --ask-model`); the agent's default when absent. */
+  model?: string;
   /** The server's environment (filtered by agentEnv). */
   env: NodeJS.ProcessEnv;
   timeoutMs?: number;
@@ -322,7 +341,7 @@ export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.q
   const { question, agent } = req;
   const base = { id, question };
   const tmpDir = mkdtempSync(join(tmpdir(), "ultraview-ask-"));
-  const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir });
+  const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir, ...(req.model ? { model: req.model } : {}) });
   mkdirSync(join(repo, VIEW_DIR), { recursive: true });
   const log = openAskLog(join(repo, ASK_LOG));
   log.write(

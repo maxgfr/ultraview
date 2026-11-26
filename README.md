@@ -159,7 +159,9 @@ Nothing committed holds a machine-local path. Outside `.ultraview/`, only
   `node` commands and JSON files.
 - **Serve with Ask**: `serve --ask auto|claude|codex|none` lets the page send
   a question to the Claude Code or Codex CLI, read-only, and saves the answer
-  as a lens. Only one ask at a time; nothing else is written.
+  as a lens. Only one ask at a time; nothing else is written. `--ask-model`
+  picks a faster model for it; `explain <node-id>` (and `POST /api/explain`)
+  answers "what is this?" instantly from the proven facts alone, cited.
 - **Record every turn**: `hook install` (Claude Code only, opt-in) records
   each agent turn as a change set, silently, never failing the turn.
 - **Big repos**: the skill fans out one subagent per capability where the host
