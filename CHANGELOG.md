@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.8.1](https://github.com/maxgfr/ultraview/compare/v1.8.0...v1.8.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **diff:** attribute hunks to the facts they actually touch ([17695d2](https://github.com/maxgfr/ultraview/commit/17695d23515063327a02c7507729c83b6c46441e)), closes [#11](https://github.com/maxgfr/ultraview/issues/11)
+
 # [1.8.0](https://github.com/maxgfr/ultraview/compare/v1.7.0...v1.8.0) (2026-11-26)
 
 
