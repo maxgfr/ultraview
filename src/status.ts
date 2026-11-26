@@ -5,7 +5,7 @@
 //   index-stale       sources changed since the index, or facts.json missing → build
 //   no-model          .ultraview/model.json absent          → write the model
 //   model-incomplete  `check` fails: schema, ids, citations or coverage → fix the model
-//   stale-views       `check` passes but warns: lenses / flows / prose went stale → re-ask
+//   stale-views       `check` passes but warns: lenses / conversation turns / flows / prose went stale → re-ask
 //   ready             nothing to do
 //
 // Each situation is a probe; a later milestone adds its probe to PROBES and
@@ -42,8 +42,8 @@ export interface StatusReport {
   index: IndexState;
   facts: { exists: boolean };
   model: { exists: boolean };
-  /** The check gate's verdict, when status ran it. */
-  check?: { ok: boolean; errors: number; warnings: number; coverage: CheckReport["coverage"] };
+  /** The check gate's verdict, when status ran it: counts, coverage, and what went stale (lenses, conversation turns, flows, prose). */
+  check?: { ok: boolean; errors: number; warnings: number; coverage: CheckReport["coverage"]; stale: CheckReport["stale"] };
   /** Changes since the last recorded change set (only once one was recorded): its id and mode. */
   unrecorded?: { last: string; mode: string };
 }
@@ -110,12 +110,17 @@ const modelIncomplete: Probe = (s) => {
   };
 };
 
+/** `orders (turn 1)`, `orders (turns 1, 3)`: turns counted from 1, as `chat show` numbers them. */
+const staleTurnsLine = (c: CheckReport["stale"]["conversations"][number]) =>
+  `${c.id} (turn${c.turns.length > 1 ? "s" : ""} ${c.turns.map((i) => i + 1).join(", ")})`;
+
 const staleViews: Probe = (s) => {
   const c = s.check();
-  const stale = c.stale.lenses.length + c.stale.flows.length + c.stale.prose.length;
+  const stale = c.stale.lenses.length + c.stale.conversations.length + c.stale.flows.length + c.stale.prose.length;
   if (!stale) return undefined;
   const reasons: string[] = [];
   if (c.stale.lenses.length) reasons.push(`stale lenses: ${c.stale.lenses.join(", ")}`);
+  if (c.stale.conversations.length) reasons.push(`stale conversation turns: ${c.stale.conversations.map(staleTurnsLine).join(", ")}`);
   if (c.stale.flows.length) reasons.push(`stale flows: ${c.stale.flows.join(", ")}`);
   if (c.stale.prose.length) reasons.push(`stale module prose: ${c.stale.prose.join(", ")}`);
   const staleWarnings = c.warnings.filter((w) => w.message.includes("stale"));
@@ -170,7 +175,9 @@ export function readStatus(repoArg: string, probes: readonly Probe[] = PROBES): 
     index: inputs.index,
     facts: inputs.facts,
     model: inputs.model,
-    ...(report ? { check: { ok: report.ok, errors: report.errors.length, warnings: report.warnings.length, coverage: report.coverage } } : {}),
+    ...(report
+      ? { check: { ok: report.ok, errors: report.errors.length, warnings: report.warnings.length, coverage: report.coverage, stale: report.stale } }
+      : {}),
     ...(unrecorded ? { unrecorded } : {}),
   };
 }

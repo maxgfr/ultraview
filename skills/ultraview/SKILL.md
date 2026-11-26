@@ -70,7 +70,7 @@ Run `ultraview status` first; it names one situation and a worklist.
 | `index-stale` | `build` (incremental; your files survive), then status again |
 | `no-model` | the first-map loop from step 3 |
 | `model-incomplete` | fix what the worklist names (`check` lists every error), `check` until clean |
-| `stale-views` | re-ask only the stale lenses and re-check only the stale flows (`lens save` / `flow save`), then `check`; stale module prose is ultraindex's: re-read that code before citing it |
+| `stale-views` | re-ask only the stale lenses and conversation turns (a turn in its thread: `lens new --thread`) and re-check only the stale flows (`lens save` / `flow save`), then `check`; stale module prose is ultraindex's: re-read that code before citing it |
 | `ready` | follow the user's intent |
 
 Then by what the user wants:

@@ -40278,6 +40278,25 @@ function guessLang(question) {
   if (english >= ENGLISH_SHARE && most < 2) return "en";
   return most ? best : english > 0 ? "en" : "und";
 }
+var ID_HASH_DIGITS = 6;
+function asciiSlug(text2, max) {
+  const ws = codeindex_engine_exports.foldText(text2).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  let slug = "";
+  for (const w of ws) {
+    const next = slug ? `${slug}-${w}` : w;
+    if (next.length > max) break;
+    slug = next;
+  }
+  return slug || (ws[0]?.slice(0, max) ?? "");
+}
+function questionId(question, opts) {
+  const own = asciiSlug(question, opts.max);
+  if (own && !mostlyNonLatin(question)) return own;
+  const fromTerms = opts.terms ? asciiSlug(opts.terms, opts.max) : "";
+  if (fromTerms) return fromTerms;
+  const normalized = question.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+  return `${opts.prefix}-${codeindex_engine_exports.shortHash(normalized, ID_HASH_DIGITS)}`;
+}
 
 // src/refresh.ts
 import { readFileSync as readFileSync27, renameSync as renameSync8, writeFileSync as writeFileSync11 } from "fs";
@@ -40595,16 +40614,10 @@ function chatList(repoArg) {
   const list = conversations.map((c2) => ({ id: c2.id, title: c2.title, turns: c2.turns.length, updatedAt: updatedAt(c2), stale: staleTurns(repo, c2).length })).sort((a, b) => cmp9(b.updatedAt, a.updatedAt) || cmp9(a.id, b.id));
   return { conversations: list, invalid: problems };
 }
+var CHAT_SLUG_MAX = 48;
 function proposeChatId(repoArg, title) {
   const taken = new Set(conversationIds(repoArg));
-  const words2 = codeindex_engine_exports.foldText(title).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  let base = "";
-  for (const w of words2) {
-    const next = base ? `${base}-${w}` : w;
-    if (next.length > 48) break;
-    base = next;
-  }
-  if (!SLUG_RE.test(base)) base = "conversation";
+  const base = questionId(title, { prefix: "chat", max: CHAT_SLUG_MAX });
   for (let n = 1; ; n++) {
     const id = n === 1 ? base : `${base}-${n}`;
     if (!taken.has(id)) return id;
@@ -40924,6 +40937,7 @@ function checkMap(repoArg, opts = {}) {
   const errors = [];
   const warnings = [];
   let view;
+  let staleConversations = [];
   const report = () => ({
     repo,
     ok: errors.length === 0,
@@ -40931,7 +40945,7 @@ function checkMap(repoArg, opts = {}) {
     warnings,
     coverage: view?.coverage ?? { filesInSystems: 0, modulesInCapabilities: 0 },
     thresholds: THRESHOLDS,
-    stale: view?.stale ?? { lenses: [], flows: [], prose: [] }
+    stale: { ...view?.stale ?? { lenses: [], flows: [], prose: [] }, conversations: staleConversations }
   });
   if (!indexExists(paths.index)) {
     errors.push({ file: ".ultraindex", path: "", message: "no ultraindex index: run `ultraview build` first" });
@@ -41043,8 +41057,9 @@ function checkMap(repoArg, opts = {}) {
       path: "",
       message: "stale: a cited file changed since it was saved; re-check, then `ultraview flow save`"
     });
-  for (const c2 of chats.conversations)
-    for (const i2 of staleTurns(repo, c2))
+  staleConversations = chats.conversations.map((c2) => ({ id: c2.id, turns: staleTurns(repo, c2) })).filter((c2) => c2.turns.length);
+  for (const c2 of staleConversations)
+    for (const i2 of c2.turns)
       staleSink.push({
         file: conversationFile(c2.id),
         path: `turns[${i2}]`,
@@ -41878,21 +41893,13 @@ function savedQuestions(repo) {
   }
   return out2;
 }
-function questionSlug(question) {
-  const words2 = codeindex_engine_exports.foldText(question).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  let slug = "";
-  for (const w of words2) {
-    const next = slug ? `${slug}-${w}` : w;
-    if (next.length > ID_MAX) break;
-    slug = next;
-  }
-  if (!slug && words2.length) slug = words2[0].slice(0, ID_MAX);
-  return SLUG_RE.test(slug) ? slug : "lens";
+function questionSlug(question, terms) {
+  return questionId(question, { prefix: "lens", max: ID_MAX, terms });
 }
-function proposeLensId(repo, question) {
+function proposeLensId(repo, question, terms) {
   const saved = savedQuestions(resolve29(repo));
   for (const [id, q] of saved) if (q === question) return { id, reask: true };
-  const base = questionSlug(question);
+  const base = questionSlug(question, terms);
   for (let n = 1; ; n++) {
     const id = n === 1 ? base : `${base}-${n}`;
     if (!saved.has(id)) return { id, reask: false };
@@ -42213,6 +42220,7 @@ function lensNew(repoArg, question, opts = {}) {
     context = { value: opts.context, ...r };
   }
   const seeds = threadSeeds(conv, context?.nodes ?? [], live.byId);
+  const supplied = opts.terms?.trim() || void 0;
   let id;
   let reask;
   let conflict;
@@ -42224,9 +42232,8 @@ function lensNew(repoArg, question, opts = {}) {
     const saved = savedQuestions(repo);
     reask = saved.has(id) && saved.get(id) === q;
     if (saved.has(id) && !reask) conflict = saved.get(id) ?? "(unreadable file)";
-  } else ({ id, reask } = proposeLensId(repo, q));
+  } else ({ id, reask } = proposeLensId(repo, q, supplied));
   const file = conv ? draftFile(conv.id) : `${LENSES_DIR}/${id}.json`;
-  const supplied = opts.terms?.trim() || void 0;
   const reading = readQuestion(q, supplied);
   const terms = reading.terms;
   const found = findMatches(live, viewPaths(repo).index, supplied ? reading.bridged ? supplied : `${q} ${supplied}` : q);
@@ -44334,12 +44341,14 @@ var modelIncomplete = (s) => {
     worklist: worklistOf(c2.errors, "run `ultraview check` until it passes")
   };
 };
+var staleTurnsLine = (c2) => `${c2.id} (turn${c2.turns.length > 1 ? "s" : ""} ${c2.turns.map((i2) => i2 + 1).join(", ")})`;
 var staleViews = (s) => {
   const c2 = s.check();
-  const stale = c2.stale.lenses.length + c2.stale.flows.length + c2.stale.prose.length;
+  const stale = c2.stale.lenses.length + c2.stale.conversations.length + c2.stale.flows.length + c2.stale.prose.length;
   if (!stale) return void 0;
   const reasons = [];
   if (c2.stale.lenses.length) reasons.push(`stale lenses: ${c2.stale.lenses.join(", ")}`);
+  if (c2.stale.conversations.length) reasons.push(`stale conversation turns: ${c2.stale.conversations.map(staleTurnsLine).join(", ")}`);
   if (c2.stale.flows.length) reasons.push(`stale flows: ${c2.stale.flows.join(", ")}`);
   if (c2.stale.prose.length) reasons.push(`stale module prose: ${c2.stale.prose.join(", ")}`);
   const staleWarnings = c2.warnings.filter((w) => w.message.includes("stale"));
@@ -44389,7 +44398,7 @@ function readStatus(repoArg, probes = PROBES) {
     index: inputs.index,
     facts: inputs.facts,
     model: inputs.model,
-    ...report ? { check: { ok: report.ok, errors: report.errors.length, warnings: report.warnings.length, coverage: report.coverage } } : {},
+    ...report ? { check: { ok: report.ok, errors: report.errors.length, warnings: report.warnings.length, coverage: report.coverage, stale: report.stale } } : {},
     ...unrecorded ? { unrecorded } : {}
   };
 }
@@ -44421,7 +44430,8 @@ Commands:
                      examples, externals, view size and coverage, next step.
   status             Where the repo stands and what to do next: no-index,
                      index-stale, no-model, model-incomplete, stale-views or
-                     ready, with a worklist.
+                     ready, with a worklist (stale lenses, conversation
+                     turns, flows).
   check              The gate for what the agent wrote: schema, node ids that
                      resolve, citations that resolve (ultraindex
                      checkCitations), one citation per sentence, coverage
@@ -44528,8 +44538,9 @@ Options:
   --strict       check: stale lenses / flows / turns fail instead of warning
   --budget <n>   dossier / lens new: token budget (default ${DOSSIER_BUDGET} / ${LENS_BUDGET},
                  ~4 characters a token)
-  --id <slug>    lens new: the lens id (default: a slug of the question,
-                 made unique against the saved lenses)
+  --id <slug>    lens new: the lens id (default: a slug of the question, or
+                 of --terms, or lens-<hash> for a question in another
+                 script, made unique against the saved lenses)
   --terms "<w>"  lens new: English code keywords for the question, merged
                  into its reading; required when the question is not in
                  English (its own words then weigh less)

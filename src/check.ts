@@ -38,6 +38,12 @@ export interface CheckIssue {
   message: string;
 }
 
+/** A conversation with stale turns: its id and the turns' 0-based indices (as `chat show --json` gives them). */
+export interface StaleConversation {
+  id: string;
+  turns: number[];
+}
+
 export interface CheckReport {
   repo: string;
   ok: boolean;
@@ -45,7 +51,8 @@ export interface CheckReport {
   warnings: CheckIssue[];
   coverage: ViewCoverage;
   thresholds: ViewCoverage;
-  stale: ViewStale;
+  /** The view's stale lenses / flows / prose, and the conversations whose turns went stale. */
+  stale: ViewStale & { conversations: StaleConversation[] };
 }
 
 export interface CheckMapOptions {
@@ -69,6 +76,7 @@ export function checkMap(repoArg: string, opts: CheckMapOptions = {}): CheckRepo
   const errors: CheckIssue[] = [];
   const warnings: CheckIssue[] = [];
   let view: ReturnType<typeof assembleWithNotes>["view"] | undefined;
+  let staleConversations: StaleConversation[] = [];
   const report = (): CheckReport => ({
     repo,
     ok: errors.length === 0,
@@ -76,7 +84,7 @@ export function checkMap(repoArg: string, opts: CheckMapOptions = {}): CheckRepo
     warnings,
     coverage: view?.coverage ?? { filesInSystems: 0, modulesInCapabilities: 0 },
     thresholds: THRESHOLDS,
-    stale: view?.stale ?? { lenses: [], flows: [], prose: [] },
+    stale: { ...(view?.stale ?? { lenses: [], flows: [], prose: [] }), conversations: staleConversations },
   });
 
   if (!indexExists(paths.index)) {
@@ -196,8 +204,9 @@ export function checkMap(repoArg: string, opts: CheckMapOptions = {}): CheckRepo
       path: "",
       message: "stale: a cited file changed since it was saved; re-check, then `ultraview flow save`",
     });
-  for (const c of chats.conversations)
-    for (const i of staleTurns(repo, c))
+  staleConversations = chats.conversations.map((c) => ({ id: c.id, turns: staleTurns(repo, c) })).filter((c) => c.turns.length);
+  for (const c of staleConversations)
+    for (const i of c.turns)
       staleSink.push({
         file: conversationFile(c.id),
         path: `turns[${i}]`,

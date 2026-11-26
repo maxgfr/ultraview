@@ -12,6 +12,7 @@ import {
   isChatId,
   loadConversation,
   promoteTurn,
+  proposeChatId,
   readConversation,
   resolveContext,
   saveTurn,
@@ -107,6 +108,31 @@ describe("conversation store", () => {
       ["orders-end-to-end-2", 0],
     ]);
     expect(checkMap(repo).errors).toEqual([]);
+  });
+
+  it("names a thread asked in any script by a stable hash, and never lands on an existing one", async () => {
+    const repo = await builtShop(cleanups);
+    const questions = ["注文はどのように作成されますか？", "订单是如何创建的？", "كيف يتم إنشاء الطلب؟", "Как создаётся заказ?"];
+    const ids = questions.map((q) => proposeChatId(repo, q));
+    for (const id of ids) expect(id).toMatch(/^chat-[0-9a-f]{6}$/);
+    expect(new Set(ids).size).toBe(4);
+    expect(proposeChatId(repo, "Orders, end to end")).toBe("orders-end-to-end");
+
+    // A first turn creates the thread under that id; the same question again starts a second thread, suffixed, as for a Latin title.
+    const ja = { ...placeTurn(), question: questions[0]!, lang: "ja" };
+    const first = saveTurn(repo, ja, { now: NOW });
+    expect(first).toMatchObject({ ok: true, created: true, thread: ids[0], file: `.ultraview/conversations/${ids[0]}.json` });
+    expect(saveTurn(repo, ja, { now: NOW })).toMatchObject({ ok: true, created: true, thread: `${ids[0]}-2` });
+    expect(saveTurn(repo, { ...ja, question: questions[1]!, lang: "zh" }, { now: NOW })).toMatchObject({ ok: true, created: true, thread: ids[1] });
+    expect(loadConversation(repo, ids[0]!).turns).toHaveLength(1);
+    // An id already on disk is refused, never overwritten.
+    const taken = saveTurn(repo, ja, { create: { id: ids[0]! }, now: NOW });
+    expect(taken).toMatchObject({ ok: false, errors: [{ path: "id", message: `.ultraview/conversations/${ids[0]}.json already exists` }] });
+    expect(
+      chatList(repo)
+        .conversations.map((c) => c.id)
+        .sort(),
+    ).toEqual([ids[0], `${ids[0]}-2`, ids[1]].sort());
   });
 
   it("refuses a turn that fails a lens's gates or the turn's own, and writes nothing", async () => {

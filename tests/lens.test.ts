@@ -53,7 +53,7 @@ describe("lens new", () => {
   it("de-duplicates the id against saved lenses; the same question keeps its id", async () => {
     const repo = await builtShop(cleanups);
     expect(questionSlug("Comment créer une commande ?")).toBe("comment-creer-une-commande");
-    expect(questionSlug("???")).toBe("lens");
+    expect(questionSlug("???")).toMatch(/^lens-[0-9a-f]{6}$/);
     expect(questionSlug("a ".repeat(40)).length).toBeLessThanOrEqual(48);
     expect(questionTerms("Shipping the orders, cancelled entries")).toEqual(["cancel", "entry", "order", "ship"]);
     const lens = { ...readModelFile("shop.lens.json"), id: "how-does-cancelling-an-order-work", question: "Something else entirely?" };
@@ -66,6 +66,51 @@ describe("lens new", () => {
     expect(forced.conflict).toBe("Something else entirely?");
     expect(forced.text).toContain("save with --force");
     expect(() => lensNew(repo, QUESTION, { id: "Not A Slug" })).toThrow(/--id must be a slug/);
+  });
+
+  it("gives a question in any script a readable, distinct id: its slug, else its --terms, else a hash", async () => {
+    const repo = await builtShop(cleanups);
+    const ja = "注文はどのように取り消されますか？";
+    const zh = "订单是如何取消的？";
+    const ar = "كيف يتم إلغاء الطلب؟";
+    const ru = "Как отменяется заказ?";
+    const ids = [ja, zh, ar, ru].map((q) => questionSlug(q));
+    for (const id of ids) expect(id).toMatch(/^lens-[0-9a-f]{6}$/);
+    expect(new Set(ids).size).toBe(4);
+    // Stable: the same question (up to spacing and width) hashes the same.
+    expect(questionSlug(ja)).toBe(ids[0]);
+    expect(questionSlug(` ${ja.replace("？", "?")}  `)).toBe(ids[0]);
+    // The agent's English terms name it when given.
+    expect(questionSlug(ja, "order cancel")).toBe("order-cancel");
+    expect(questionSlug(ar, "  Order, Cancel!  ")).toBe("order-cancel");
+    expect(questionSlug(ru, "???")).toBe(ids[3]);
+    // A few Latin letters in another script are too little to name it ("api", "2")...
+    expect(questionSlug("APIの使い方は？")).toMatch(/^lens-[0-9a-f]{6}$/);
+    expect(questionSlug("APIの使い方は？", "api usage")).toBe("api-usage");
+    expect(questionSlug("订单 2 是如何取消的？")).toMatch(/^lens-[0-9a-f]{6}$/);
+    // ...while a Latin-script question keeps its slug, terms or not.
+    expect(questionSlug("Comment créer une commande ?", "order create")).toBe("comment-creer-une-commande");
+    expect(questionSlug("Why?")).toBe("why");
+
+    // Two different questions never share an id; the same one keeps its lens.
+    const save = (id: string, question: string) => expect(saveLens(repo, { ...readModelFile("shop.lens.json"), id, question }).ok).toBe(true);
+    const jaId = proposeLensId(repo, ja);
+    expect(jaId).toEqual({ id: ids[0], reask: false });
+    save(jaId.id, ja);
+    expect(proposeLensId(repo, ja)).toEqual({ id: ids[0], reask: true });
+    expect(proposeLensId(repo, zh)).toEqual({ id: ids[1], reask: false });
+    expect(lensNew(repo, ja)).toMatchObject({ id: ids[0], reask: true });
+    // The same terms for another question: suffixed, never the saved lens.
+    expect(proposeLensId(repo, zh, "order cancel")).toEqual({ id: "order-cancel", reask: false });
+    save("order-cancel", zh);
+    expect(proposeLensId(repo, ar, "order cancel")).toEqual({ id: "order-cancel-2", reask: false });
+    expect(proposeLensId(repo, zh, "something else")).toEqual({ id: "order-cancel", reask: true });
+    const pack = lensNew(repo, ru, { terms: "order cancel" });
+    expect(pack).toMatchObject({ id: "order-cancel-2", file: ".ultraview/lenses/order-cancel-2.json", reask: false });
+    expect(pack.template).toMatchObject({ id: "order-cancel-2", question: ru });
+    // A hash taken by another question (a hand-written file) is suffixed too.
+    save(ids[2]!, "Something else entirely?");
+    expect(proposeLensId(repo, ar)).toEqual({ id: `${ids[2]}-2`, reask: false });
   });
 
   it("ranks named nodes by rare terms, the kind, method and cardinality the wording points at", async () => {

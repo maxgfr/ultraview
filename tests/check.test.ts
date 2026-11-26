@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildMap } from "../src/build.js";
 import { checkMap, FILES_IN_SYSTEMS_MIN, MODULES_IN_CAPABILITIES_MIN } from "../src/check.js";
 import { splitSentences, uncitedSentences } from "../src/model/prose.js";
+import { saveTurn } from "../src/chat.js";
+import { main } from "../src/cli.js";
 import { saveFlow, saveLens } from "../src/save.js";
 import { readStatus } from "../src/status.js";
-import { builtShop, readModelFile, touch, writeView } from "./helpers.js";
+import { builtShop, captureIo, readModelFile, touch, writeView } from "./helpers.js";
 
 let cleanups: (() => void)[] = [];
 afterEach(() => {
@@ -101,7 +103,7 @@ describe("checkMap", () => {
     await buildMap({ repo, ast: false });
     const r = checkMap(repo);
     expect(r.ok).toBe(true);
-    expect(r.stale).toEqual({ lenses: ["how-cancel-works"], flows: ["place-order"], prose: [] });
+    expect(r.stale).toEqual({ lenses: ["how-cancel-works"], flows: ["place-order"], prose: [], conversations: [] });
     expect(r.warnings.map((w) => w.file)).toEqual([".ultraview/lenses/how-cancel-works.json", ".ultraview/flows/place-order.json"]);
     const strict = checkMap(repo, { strict: true });
     expect(strict.ok).toBe(false);
@@ -194,5 +196,44 @@ describe("status", () => {
     expect(stale.situation).toBe("stale-views");
     expect(stale.reasons).toEqual(["stale lenses: how-cancel-works"]);
     expect(stale.worklist[0]).toContain(".ultraview/lenses/how-cancel-works.json: stale");
+  });
+
+  it("lists stale conversation turns next to stale lenses, in the worklist and --json", async () => {
+    const repo = await builtShop(cleanups);
+    const turn = {
+      question: "How does placing an order work?",
+      answer: "POST /api/orders hands the request body to placeOrder. [src/routes/orders.ts:10-12]",
+      nodes: ["route:POST /api/orders"],
+      focus: "route:POST /api/orders",
+      followUps: ["a?", "b?", "c?"],
+    };
+    expect(saveTurn(repo, turn, { create: { id: "orders" } }).ok).toBe(true);
+    expect(saveTurn(repo, { ...turn, question: "And who calls it?" }, { thread: "orders" }).ok).toBe(true);
+    saveLens(repo, readModelFile("shop.lens.json"));
+    expect(readStatus(repo).situation).toBe("ready");
+
+    touch(repo, "src/routes/orders.ts");
+    await buildMap({ repo, ast: false });
+    const stale = readStatus(repo);
+    expect(stale.situation).toBe("stale-views");
+    expect(stale.reasons).toEqual(["stale lenses: how-cancel-works", "stale conversation turns: orders (turns 1, 2)"]);
+    expect(stale.worklist).toEqual([
+      expect.stringContaining(".ultraview/lenses/how-cancel-works.json: stale"),
+      expect.stringContaining(".ultraview/conversations/orders.json turns[0]: stale: a cited file changed since turn 1"),
+      expect.stringContaining(".ultraview/conversations/orders.json turns[1]: stale: a cited file changed since turn 2"),
+      "re-ask only what is stale, save it, then `ultraview check`",
+    ]);
+    expect(stale.check?.stale).toEqual({ lenses: ["how-cancel-works"], flows: [], prose: [], conversations: [{ id: "orders", turns: [0, 1] }] });
+
+    // A stale turn alone is enough to route there.
+    saveLens(repo, readModelFile("shop.lens.json"));
+    const cap = captureIo();
+    expect(await main(["status", "--json", "--repo", repo], cap.io)).toBe(0);
+    const json = JSON.parse(cap.out());
+    expect(json).toMatchObject({ situation: "stale-views", reasons: ["stale conversation turns: orders (turns 1, 2)"] });
+    expect(json.check.stale.conversations).toEqual([{ id: "orders", turns: [0, 1] }]);
+    const text = captureIo();
+    await main(["status", "--repo", repo], text.io);
+    expect(text.out()).toContain("  - stale conversation turns: orders (turns 1, 2)");
   });
 });

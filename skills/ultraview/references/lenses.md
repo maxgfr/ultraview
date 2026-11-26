@@ -5,7 +5,9 @@
 `ultraview lens new "<question>"` (read-only, deterministic) prints:
 
 - `id` and `file`: the slug of the question, made unique; the same question
-  asked again keeps its id (`re-ask`). `--id <slug>` picks one.
+  asked again keeps its id (`re-ask`). A question in another script (most of
+  its letters not a–z) is named by the slug of its `--terms`, else by a short
+  stable hash (`lens-3f9a2c`). `--id <slug>` picks one.
 - **Candidates**, named nodes first: routes, screens, entities, jobs,
   symbols and capabilities ranked by the question's rare words, in their names
   first and their definitions, fields or summaries second, with a bonus when
@@ -69,8 +71,9 @@ A conversation (`.ultraview/conversations/<id>.json`, committed) is a thread
 of turns; each turn is a lens answer plus its question's language, the mode
 and 3 follow-up suggestions. Shape: [schema](schema.md).
 
-- `chat new [--title "<t>"] --json` starts one (id: a slug of the title;
-  without a title, the first question names it). `chat list`, `chat show
+- `chat new [--title "<t>"] --json` starts one (id: a slug of the title, or
+  `chat-<hash>` for a title in another script, made unique; without a title,
+  the first question names it). `chat list`, `chat show
   <id>` read them; `chat promote <id> <turn>` saves turn `<turn>` (from 1) as
   a lens.
 - `lens new "<question>" --thread <id>` is the pack for the next turn. It

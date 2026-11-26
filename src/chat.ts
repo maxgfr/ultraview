@@ -22,9 +22,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { answerProblems } from "./gates.js";
-import { codeindex } from "./engine.js";
 import { stableJson, writeFileAtomic } from "./json.js";
-import { guessLang } from "./lens-terms.js";
+import { guessLang, questionId } from "./lens-terms.js";
 import { kindOf, SLUG_RE } from "./model/ids.js";
 import { type FileProblem, fileSha256 } from "./model/load.js";
 import { splitSentences } from "./model/prose.js";
@@ -164,21 +163,18 @@ export function chatList(repoArg: string): { conversations: ChatListEntry[]; inv
   return { conversations: list, invalid: problems };
 }
 
-/** The slug of a title (folded to ASCII, words joined by `-`), de-duplicated against the saved conversations. */
+/** Longest proposed conversation id before its `-2`, `-3`… suffix. */
+const CHAT_SLUG_MAX = 48;
+
+/**
+ * The id a new conversation gets: the slug of its title (lens-terms
+ * `questionId`: folded to ASCII, words joined by `-`; for a title in another
+ * script, `chat-<hash>`), de-duplicated against the saved conversations
+ * (`<id>-2`, `-3`…), so a new thread never lands on an existing one.
+ */
 export function proposeChatId(repoArg: string, title: string): string {
   const taken = new Set(conversationIds(repoArg));
-  const words = codeindex
-    .foldText(title)
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  let base = "";
-  for (const w of words) {
-    const next = base ? `${base}-${w}` : w;
-    if (next.length > 48) break;
-    base = next;
-  }
-  if (!SLUG_RE.test(base)) base = "conversation";
+  const base = questionId(title, { prefix: "chat", max: CHAT_SLUG_MAX });
   for (let n = 1; ; n++) {
     const id = n === 1 ? base : `${base}-${n}`;
     if (!taken.has(id)) return id;

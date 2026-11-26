@@ -14,6 +14,10 @@
 //   methods      HTTP methods the verbs point at (`fetch` → GET, `cancel` →
 //                DELETE, `create` → POST, `update` → PUT / PATCH).
 //   cardinality  `one` (by id, a specific…) or `all` (every, list…).
+//   ids          the id a question proposes for a lens or a conversation
+//                (`questionId`): its ASCII slug, else the slug of the supplied
+//                terms, else a short stable hash, so a question in any script
+//                gets a readable, distinct id.
 //
 // Words are split by the engine's tokenizer (`codeindex.keywords` +
 // `subtokens`), so a word in any script is kept as the engine indexes it.
@@ -593,4 +597,49 @@ export function guessLang(question: string): string {
   const english = englishShare(question);
   if (english >= ENGLISH_SHARE && most < 2) return "en";
   return most ? best : english > 0 ? "en" : "und";
+}
+
+// --- ids ---------------------------------------------------------------------------------
+
+/** Hex digits of a hashed id (`lens-3f9a2c`). */
+export const ID_HASH_DIGITS = 6;
+
+/** The ASCII slug of `text`: folded (`é` → `e`), lowercase, a–z / 0–9 words joined by `-`, cut at a word under `max` (a first word past it is cut); "" when nothing is left. */
+export function asciiSlug(text: string, max: number): string {
+  const ws = codeindex
+    .foldText(text)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  let slug = "";
+  for (const w of ws) {
+    const next = slug ? `${slug}-${w}` : w;
+    if (next.length > max) break;
+    slug = next;
+  }
+  return slug || (ws[0]?.slice(0, max) ?? "");
+}
+
+/**
+ * The id a question proposes, before de-duplication (lens ids, conversation
+ * ids). In order:
+ *   1. its ASCII slug (`asciiSlug`), unless that is empty or too short to name
+ *      it. The threshold: the slug keeps under half of the question's letters,
+ *      i.e. most of them are not a–z once folded (`mostlyNonLatin`, the test
+ *      the reading and `guessLang` use). So a Japanese question about "API" is
+ *      not filed as `api`, nor an Arabic one with a "2" in it as `2`; a
+ *      Latin-script question keeps the slug it always got;
+ *   2. the slug of the English `terms` the agent supplied (`--terms`), when
+ *      they give one;
+ *   3. `<prefix>-<hash>`: ID_HASH_DIGITS hex digits of the engine's
+ *      `shortHash` over the normalized question (NFKC, lowercase, whitespace
+ *      collapsed): stable for the same question, distinct for distinct ones.
+ */
+export function questionId(question: string, opts: { prefix: string; max: number; terms?: string }): string {
+  const own = asciiSlug(question, opts.max);
+  if (own && !mostlyNonLatin(question)) return own;
+  const fromTerms = opts.terms ? asciiSlug(opts.terms, opts.max) : "";
+  if (fromTerms) return fromTerms;
+  const normalized = question.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
+  return `${opts.prefix}-${codeindex.shortHash(normalized, ID_HASH_DIGITS)}`;
 }

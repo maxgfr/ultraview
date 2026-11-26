@@ -59,7 +59,8 @@ Commands:
                      examples, externals, view size and coverage, next step.
   status             Where the repo stands and what to do next: no-index,
                      index-stale, no-model, model-incomplete, stale-views or
-                     ready, with a worklist.
+                     ready, with a worklist (stale lenses, conversation
+                     turns, flows).
   check              The gate for what the agent wrote: schema, node ids that
                      resolve, citations that resolve (ultraindex
                      checkCitations), one citation per sentence, coverage
@@ -166,8 +167,9 @@ Options:
   --strict       check: stale lenses / flows / turns fail instead of warning
   --budget <n>   dossier / lens new: token budget (default ${DOSSIER_BUDGET} / ${LENS_BUDGET},
                  ~4 characters a token)
-  --id <slug>    lens new: the lens id (default: a slug of the question,
-                 made unique against the saved lenses)
+  --id <slug>    lens new: the lens id (default: a slug of the question, or
+                 of --terms, or lens-<hash> for a question in another
+                 script, made unique against the saved lenses)
   --terms "<w>"  lens new: English code keywords for the question, merged
                  into its reading; required when the question is not in
                  English (its own words then weigh less)

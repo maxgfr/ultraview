@@ -2,8 +2,9 @@
 // (docs/design.md §7, §9 step 3).
 //
 //   lens new    the evidence pack the agent reads before answering a question:
-//               a proposed id (slug of the question, de-duplicated against the
-//               saved lenses), the target path, the JSON template, ranked
+//               a proposed id (slug of the question; for one in another
+//               script, of its --terms, else `lens-<hash>`; de-duplicated
+//               against the saved lenses), the target path, the JSON template, ranked
 //               candidate nodes (ultraindex `runFind` over modules, mapped to
 //               view node ids, slices included; before them, the routes /
 //               screens / entities / jobs / symbols / capabilities named like
@@ -34,7 +35,7 @@ import { chatDigest, type ContextView, DIGEST_TURNS, draftFile, inPlay, loadConv
 import { codeindex, gatherEvidence, runFind } from "./engine.js";
 import { extentFinder } from "./extract/extent.js";
 import { stableJson } from "./json.js";
-import { guessLang, type QuestionReading, readQuestion, verbMethods } from "./lens-terms.js";
+import { guessLang, type QuestionReading, questionId, readQuestion, verbMethods } from "./lens-terms.js";
 import { fileOfId, modId, SLUG_RE } from "./model/ids.js";
 import { LENSES_DIR } from "./model/load.js";
 import type { ChatContext, ChatMode, Conversation, ViewEdge, ViewNode } from "./model/types.js";
@@ -168,33 +169,27 @@ function savedQuestions(repo: string): Map<string, string | undefined> {
   return out;
 }
 
-/** The slug of a question: folded to ASCII, lowercase, words joined by `-`, cut at a word under ID_MAX. */
-export function questionSlug(question: string): string {
-  const words = codeindex
-    .foldText(question)
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-  let slug = "";
-  for (const w of words) {
-    const next = slug ? `${slug}-${w}` : w;
-    if (next.length > ID_MAX) break;
-    slug = next;
-  }
-  if (!slug && words.length) slug = words[0]!.slice(0, ID_MAX);
-  return SLUG_RE.test(slug) ? slug : "lens";
+/**
+ * The slug of a question (lens-terms `questionId`): folded to ASCII,
+ * lowercase, words joined by `-`, cut at a word under ID_MAX; for a question
+ * whose slug is empty or too short (another script), the slug of the English
+ * `terms`, else `lens-<hash>`.
+ */
+export function questionSlug(question: string, terms?: string): string {
+  return questionId(question, { prefix: "lens", max: ID_MAX, terms });
 }
 
 /**
- * The id a new lens for `question` gets: its slug; when a saved lens already
- * holds that slug for a DIFFERENT question, `<slug>-2`, `-3`… A question some
- * saved lens already holds keeps that lens's id (asking again replaces the
- * answer, as `lens save` allows).
+ * The id a new lens for `question` gets: its slug (`questionSlug`, with the
+ * `--terms` when given); when a saved lens already holds that slug for a
+ * DIFFERENT question, `<slug>-2`, `-3`… A question some saved lens already
+ * holds keeps that lens's id (asking again replaces the answer, as `lens save`
+ * allows).
  */
-export function proposeLensId(repo: string, question: string): { id: string; reask: boolean } {
+export function proposeLensId(repo: string, question: string, terms?: string): { id: string; reask: boolean } {
   const saved = savedQuestions(resolve(repo));
   for (const [id, q] of saved) if (q === question) return { id, reask: true };
-  const base = questionSlug(question);
+  const base = questionSlug(question, terms);
   for (let n = 1; ; n++) {
     const id = n === 1 ? base : `${base}-${n}`;
     if (!saved.has(id)) return { id, reask: false };
@@ -616,6 +611,7 @@ export function lensNew(repoArg: string, question: string, opts: LensNewOptions 
   }
   const seeds = threadSeeds(conv, context?.nodes ?? [], live.byId);
 
+  const supplied = opts.terms?.trim() || undefined;
   let id: string;
   let reask: boolean;
   let conflict: string | undefined;
@@ -627,10 +623,9 @@ export function lensNew(repoArg: string, question: string, opts: LensNewOptions 
     const saved = savedQuestions(repo);
     reask = saved.has(id) && saved.get(id) === q;
     if (saved.has(id) && !reask) conflict = saved.get(id) ?? "(unreadable file)";
-  } else ({ id, reask } = proposeLensId(repo, q));
+  } else ({ id, reask } = proposeLensId(repo, q, supplied));
   const file = conv ? draftFile(conv.id) : `${LENSES_DIR}/${id}.json`;
 
-  const supplied = opts.terms?.trim() || undefined;
   const reading = readQuestion(q, supplied);
   const terms = reading.terms;
   // ultraindex find reads the terms too; a bridged question's own words would only add noise to it.
