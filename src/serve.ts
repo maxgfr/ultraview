@@ -582,7 +582,9 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
               ? `${who} started`
               : stage === "running"
                 ? `${who} is reading the code${detail.bytes ? ` (${Math.max(1, Math.round(detail.bytes / 1024))} KB of output)` : ""}`
-                : "checking the answer: schema, node ids, citations",
+                : stage === "retrying"
+                  ? `the answer did not pass the gates (${detail.problems ?? 0} problem(s)): asking ${who} once to correct it`
+                  : "checking the answer: schema, node ids, citations",
         }),
       onChild: (child) => {
         current.child = child;

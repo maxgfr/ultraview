@@ -3,7 +3,18 @@ import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { agentEnv, agentInvocation, askPrompt, chatPrompt, extractLensJson, findOnPath, resolveAskAgent } from "../src/ask.js";
+import {
+  agentEnv,
+  agentInvocation,
+  askPrompt,
+  chatPrompt,
+  correctionPrompt,
+  extractLensJson,
+  findOnPath,
+  nodeIdExamples,
+  resolveAskAgent,
+} from "../src/ask.js";
+import { lensNew } from "../src/lens.js";
 import { allowedHostHeader, isLoopbackHost, type ServeHandle, startServe } from "../src/serve.js";
 import { builtShop, readModelFile, writeView } from "./helpers.js";
 
@@ -99,13 +110,23 @@ async function serveShop(opts: Partial<Parameters<typeof startServe>[0]> = {}, s
   return { repo, handle };
 }
 
-/** A fake agent CLI named `claude`: checks it was started read-only, then replies with a lens. */
+/**
+ * A fake agent CLI named `claude`: checks it was started read-only, then replies with a lens. The question picks the reply:
+ * BROKEN fails the gates every round, FIXABLE only the first (the correction round's reply passes), SLOWFIX fails the first
+ * and is slow to correct it, SLOW is slow, BARE writes its node ids without their kind prefix.
+ */
 function fakeAgent(): string {
   // (the prompts it reads are kept next to it, prompt-<time>.txt, for the tests to read)
   const dir = mkdtempSync(join(tmpdir(), "ultraview-fake-agent-"));
   cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
   const lens = readModelFile("shop.lens.json");
   const broken = { ...lens, answer: "This cites a line that does not exist. [src/services/orders.ts:999]" };
+  const bare = {
+    ...lens,
+    nodes: ["DELETE /api/orders/:id", "src/services/orders.ts#cancelOrder", "Order", "src-services"],
+    edges: [{ from: "DELETE /api/orders/:id", to: "Order", kind: "data" }],
+    focus: "DELETE /api/orders/:id",
+  };
   const script = `#!/usr/bin/env node
 const args = process.argv.slice(2);
 const need = ["-p", "--permission-mode", "dontAsk", "--tools", "Bash,Read,Glob,Grep"];
@@ -117,15 +138,18 @@ process.stdin.on("data", (c) => (prompt += c));
 process.stdin.on("end", () => {
   console.error("fake agent read " + prompt.length + " chars");
   require("node:fs").writeFileSync(${JSON.stringify(dir)} + "/prompt-" + Date.now() + ".txt", prompt);
+  const fix = prompt.includes("## Correction round");
+  const failing = prompt.includes("BROKEN") || (!fix && (prompt.includes("FIXABLE") || prompt.includes("SLOWFIX")));
+  const slow = prompt.includes("SLOWFIX") ? fix : prompt.includes("SLOW");
   setTimeout(() => {
-    const lens = prompt.includes("BROKEN") ? ${JSON.stringify(broken)} : ${JSON.stringify(lens)};
+    const lens = failing ? ${JSON.stringify(broken)} : prompt.includes("BARE") ? ${JSON.stringify(bare)} : ${JSON.stringify(lens)};
     if (prompt.includes("one turn of a conversation")) {
       const { schema, id, ...answer } = lens;
       process.stdout.write(JSON.stringify({ ...answer, question: "agent rewrote it", mode: "dev", lang: "en", followUps: ["Who calls it?", "What does it store?", "Can it fail?"] }));
       return;
     }
     process.stdout.write("Here is the lens:\\n\`\`\`json\\n" + JSON.stringify({ ...lens, id: "agent-picked-id", question: "agent rewrote it" }) + "\\n\`\`\`\\n");
-  }, prompt.includes("SLOW") ? 20000 : 300);
+  }, slow ? 20000 : 300);
 });
 `;
   const file = join(dir, "claude");
@@ -543,5 +567,157 @@ describe("ask bridge", () => {
     expect(extractLensJson('{"id":"a"}')).toEqual({ id: "a" });
     expect(extractLensJson('Sure:\n```json\n{"id":"b"}\n```\nDone.')).toEqual({ id: "b" });
     expect(extractLensJson("no json here")).toBeUndefined();
+  });
+});
+
+describe("node ids and the correction round", () => {
+  const json = { "Content-Type": "application/json" };
+  const ask = (handle: ServeHandle, question: string) => http(handle, "/api/ask", { method: "POST", headers: json, body: JSON.stringify({ question }) });
+  const examplesOf = (repo: string, question: string) => nodeIdExamples(lensNew(repo, question).candidates.map((c) => c.id));
+
+  it("picks the prompt's examples from the pack: a module first, then one id of each other kind", () => {
+    expect(nodeIdExamples(["route:GET /a", "sym:a.ts#f", "route:GET /b", "mod:src-a", "entity:A", "not-an-id"])).toEqual([
+      "mod:src-a",
+      "route:GET /a",
+      "sym:a.ts#f",
+    ]);
+    expect(nodeIdExamples(["entity:A", "entity:B"])).toEqual(["entity:A"]);
+    expect(nodeIdExamples([])).toEqual([]);
+    const examples = ["mod:src-services", "route:DELETE /api/orders/:id"];
+    for (const p of [askPrompt("q", "q", "/x/u.mjs", examples), chatPrompt({ question: "q", mode: "dev", examples }, "/x/u.mjs")]) {
+      expect(p).toContain(
+        'A node id is <kind>:<name>, the kind one of cap: sys: mod: file: sym: route: screen: entity: job: ext: infra:, written exactly as the candidates list it (e.g. "mod:src-services", "route:DELETE /api/orders/:id").',
+      );
+      expect(p).toContain("ultraindex module slugs and file paths are not node ids: write mod:<slug> for a module and file:<path> for a file.");
+    }
+    expect(askPrompt("q", "q", "/x/u.mjs")).toContain("written exactly as the candidates list it.");
+    const again = correctionPrompt("PROMPT", { nodes: ["src-x"] }, [{ path: "nodes[0]", message: "bad" }]);
+    expect(again.startsWith("PROMPT\n\n## Correction round\n")).toBe(true);
+    expect(again).toContain('- nodes[0]: bad\n\nYour reply was:\n```json\n{\n  "nodes": [\n    "src-x"\n  ]\n}\n```');
+    expect(again).toContain("Reply with ONLY the corrected JSON object");
+  });
+
+  it("repairs bare node ids before the gates, logs each repair, and shows the pack's ids in the prompt", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { repo, handle } = await serveShop({ ask: "claude", env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` } });
+    const sse = events(handle);
+    cleanups.push(() => sse.close());
+    await sse.opened;
+    const question = "BARE: how does cancelling an order work?";
+    const done = sse.next("ask-done", 10_000);
+    expect((await ask(handle, question)).status).toBe(202);
+    const { file } = await done;
+    const saved = JSON.parse(readFileSync(join(repo, file), "utf8"));
+    expect(saved).toMatchObject({
+      nodes: ["route:DELETE /api/orders/:id", "sym:src/services/orders.ts#cancelOrder", "entity:Order", "mod:src-services"],
+      edges: [{ from: "route:DELETE /api/orders/:id", to: "entity:Order", kind: "data" }],
+      focus: "route:DELETE /api/orders/:id",
+    });
+    const log = readFileSync(join(repo, ".ultraview/ask.log"), "utf8");
+    expect(log).toContain('--- repaired 7 node id(s):\n  nodes[0]: "DELETE /api/orders/:id" -> "route:DELETE /api/orders/:id"\n');
+    expect(log).toContain('  nodes[3]: "src-services" -> "mod:src-services"');
+    expect(log).not.toContain("correction round");
+    // One round only; the prompt shows real ids of this question's pack, a module's among them.
+    const [prompt, ...more] = prompts(fake);
+    expect(more).toEqual([]);
+    const examples = examplesOf(repo, question);
+    expect(examples.length).toBeGreaterThanOrEqual(2);
+    expect(examples[0]).toMatch(/^mod:/);
+    expect(prompt).toContain(`(e.g. ${examples.map((e) => JSON.stringify(e)).join(", ")})`);
+  });
+
+  it("asks once more with the gate messages and the reply, with the same command line, and saves the correction", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { repo, handle } = await serveShop({
+      ask: "claude",
+      askModel: "sonnet",
+      env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` },
+    });
+    const sse = events(handle);
+    cleanups.push(() => sse.close());
+    await sse.opened;
+    const done = sse.next("ask-done", 10_000);
+    expect((await ask(handle, "FIXABLE: how does cancelling work?")).status).toBe(202);
+    expect(await done).toMatchObject({ id: "fixable-how-does-cancelling-work", file: ".ultraview/lenses/fixable-how-does-cancelling-work.json" });
+    expect(sse.seen.filter((e) => e.event === "ask-progress").map((e) => e.data.stage)).toContain("retrying");
+    expect(sse.seen.find((e) => e.event === "ask-progress" && e.data.stage === "retrying")!.data).toMatchObject({ problems: 1 });
+    const [first, second, ...more] = prompts(fake);
+    expect(more).toEqual([]);
+    expect(second!.startsWith(first!.trimEnd())).toBe(true);
+    expect(second).toContain("## Correction round");
+    expect(second).toContain("- answer: dead citation [src/services/orders.ts:999]");
+    expect(second).toContain('"answer": "This cites a line that does not exist. [src/services/orders.ts:999]"');
+    const log = readFileSync(join(repo, ".ultraview/ask.log"), "utf8");
+    expect(log).toContain("--- refused by the gates (1 problem(s)):\n  answer: dead citation [src/services/orders.ts:999]");
+    expect(log).toMatch(/=== correction round \(claude, \d+ s left\)/);
+    // Both rounds logged, with the same read-only command line and model flag.
+    expect(log.match(/^\$ .*--permission-mode dontAsk.*--model sonnet$/gm)).toHaveLength(2);
+    expect(log.match(/\[stderr\] fake agent read/g)).toHaveLength(2);
+    expect(log.trimEnd().endsWith("--- saved .ultraview/lenses/fixable-how-does-cancelling-work.json")).toBe(true);
+  });
+
+  it("fails with the second round's messages when the correction fails the gates too", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { repo, handle } = await serveShop({ ask: "claude", env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` } });
+    const sse = events(handle);
+    cleanups.push(() => sse.close());
+    await sse.opened;
+    const failed = sse.next("ask-error", 10_000);
+    expect((await ask(handle, "BROKEN twice")).status).toBe(202);
+    const err = await failed;
+    expect(err).toMatchObject({ id: "broken-twice", error: "the answer did not pass `lens save`" });
+    expect(err.problems).toEqual([{ path: "answer", message: expect.stringMatching(/^dead citation \[src\/services\/orders\.ts:999\]/) }]);
+    expect(prompts(fake)).toHaveLength(2);
+    expect(existsSync(join(repo, ".ultraview/lenses/broken-twice.json"))).toBe(false);
+    const log = readFileSync(join(repo, ".ultraview/ask.log"), "utf8");
+    expect(log).toContain("=== correction round");
+    expect(log.trimEnd()).toMatch(/--- failed: the answer did not pass `lens save`\n {2}answer: dead citation/);
+  });
+
+  it("keeps the correction round within the same timeout", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { repo, handle } = await serveShop({
+      ask: "claude",
+      askTimeoutMs: 3000,
+      env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` },
+    });
+    const sse = events(handle);
+    cleanups.push(() => sse.close());
+    await sse.opened;
+    const failed = sse.next("ask-error", 8000);
+    const t0 = Date.now();
+    expect((await ask(handle, "SLOWFIX please")).status).toBe(202);
+    const err = await failed;
+    const elapsed = Date.now() - t0;
+    // The whole ask, both rounds, stops at the one deadline; the first round's messages still say why.
+    expect(elapsed).toBeLessThan(3000 + 1500);
+    expect(err).toMatchObject({ id: "slowfix-please", error: "claude did not answer within 3 s" });
+    expect(err.problems[0].message).toMatch(/^dead citation \[src\/services\/orders\.ts:999\]/);
+    expect(prompts(fake)).toHaveLength(2);
+    const log = readFileSync(join(repo, ".ultraview/ask.log"), "utf8");
+    expect(log).toContain("=== correction round");
+    expect(log).toContain("--- timed out after 3 s: stopping claude");
+  });
+
+  it("shows the correction round as a progress event of a conversation turn", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { handle } = await serveShop({ ask: "claude", env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` } });
+    const turn = await http(handle, "/api/chat", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ question: "FIXABLE: who cancels an order?", mode: "dev" }),
+    });
+    const ev = frames(turn.body);
+    expect(ev.map((e) => e.data.text)).toContain("the answer did not pass the gates (1 problem(s)): asking claude once to correct it");
+    expect(ev.at(-1)).toMatchObject({ event: "turn", data: { index: 0, turn: { question: "FIXABLE: who cancels an order?" } } });
+    const [first, second] = prompts(fake);
+    expect(first).toContain("ultraindex module slugs and file paths are not node ids");
+    expect(first).toMatch(/written exactly as the candidates list it \(e\.g\. "mod:/);
+    expect(second).toContain("## Correction round");
   });
 });

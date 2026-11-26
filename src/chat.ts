@@ -21,7 +21,7 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { answerProblems } from "./gates.js";
+import { answerProblems, type IdRepair } from "./gates.js";
 import { stableJson, writeFileAtomic } from "./json.js";
 import { guessLang, questionId } from "./lens-terms.js";
 import { kindOf, SLUG_RE } from "./model/ids.js";
@@ -383,6 +383,8 @@ export interface TurnResult {
   /** The conversation was created by this turn. */
   created: boolean;
   turn?: ChatTurn;
+  /** Node ids rewritten before the gates (src/gates.ts `repairAnswerIds`), saved or not. */
+  repairs: IdRepair[];
   errors: Problem[];
 }
 
@@ -392,7 +394,9 @@ export interface TurnResult {
  * (schema, citations: `prepareLens`) and `check`'s (node ids, every sentence
  * cited: `answerProblems`); then the follow-ups (exactly 3 from an agent, at
  * most 3 from the facts, each one line), the language tag, the mode, the
- * context, the thread's length. Nothing is written when any fails.
+ * context, the thread's length. Nothing is written when any fails. The node
+ * ids are repaired first, against the map (`prepareLens`), and every repair is
+ * reported in `repairs`.
  */
 export function saveTurn(repoArg: string, input: unknown, opts: SaveTurnOptions = {}): TurnResult {
   const repo = resolve(repoArg);
@@ -423,7 +427,8 @@ export function saveTurn(repoArg: string, input: unknown, opts: SaveTurnOptions 
   }
   const file = conversationFile(thread);
   const index = conv?.turns.length ?? 0;
-  const fail = (more: Problem[] = []): TurnResult => ({ ok: false, thread, file, index, created: false, errors: [...errors, ...more] });
+  let repairs: IdRepair[] = [];
+  const fail = (more: Problem[] = []): TurnResult => ({ ok: false, thread, file, index, created: false, repairs, errors: [...errors, ...more] });
   if (!rec)
     return fail([{ path: "", message: typeof input === "string" ? (parseJson(input).problems[0]?.message ?? "not a JSON object") : "must be an object" }]);
 
@@ -436,11 +441,12 @@ export function saveTurn(repoArg: string, input: unknown, opts: SaveTurnOptions 
   const question = opts.question ?? lensPart.question;
   if (typeof question === "string" && question.length > CHAT_QUESTION_MAX)
     errors.push({ path: "question", message: `longer than ${CHAT_QUESTION_MAX} characters` });
-  const prepared = prepareLens(repo, { ...lensPart, schema: 1, id: thread, question });
-  errors.push(...prepared.errors);
-  const lens = prepared.item as Lens | undefined;
   let view = opts.view;
   const mapView = () => (view ??= contextView(repo));
+  const prepared = prepareLens(repo, { ...lensPart, schema: 1, id: thread, question }, () => new Set(mapView().byId.keys()));
+  repairs = prepared.repairs;
+  errors.push(...prepared.errors);
+  const lens = prepared.item as Lens | undefined;
   if (lens && !prepared.errors.length) errors.push(...answerProblems(lens, new Set(mapView().byId.keys())));
 
   const followUps = rec.followUps ?? [];
@@ -502,7 +508,7 @@ export function saveTurn(repoArg: string, input: unknown, opts: SaveTurnOptions 
     : { id: thread, title: typeof title === "string" ? title : DEFAULT_CHAT_TITLE, createdAt: turn.at, turns: [turn] };
   if (created && existsSync(join(repo, file))) return fail([{ path: "id", message: `${file} already exists` }]);
   writeFileAtomic(join(repo, file), stableJson(next));
-  return { ok: true, thread, file, index, created, turn, errors: [] };
+  return { ok: true, thread, file, index, created, turn, repairs, errors: [] };
 }
 
 /** The map as its files stand, for resolving node ids and a context (insights: those the last `build` found). */

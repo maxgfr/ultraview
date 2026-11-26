@@ -454,7 +454,7 @@ absent outside git.
 | `serve [--port 4178] [--host 127.0.0.1] [--ask auto|claude|codex|none] [--ask-model m] [--open]` | local server (node:http, no dependency), live data over SSE on any `.ultraview/` change, `/api/*` for on-demand node / search / callgraph / explain, optional Ask bridge (read-only `claude -p` / `codex exec`, answer saved as a lens, or as a conversation turn through `POST /api/chat`) — contract in §8.1 |
 | `lens new "<question>" [--terms "<english keywords>"] [--budget n] [--id slug]` | evidence pack: proposed id (slug of the question; when that is empty or too short — most of the question's letters are not a–z once folded, the test `guessLang` uses — the slug of `--terms`, else `lens-<hash>`, 6 hex digits of `codeindex.shortHash` over the NFKC-normalized, lowercased question; de-duplicated with `-2`, `-3`…; a saved question keeps its id) + target path + JSON template, ranked candidates (first the routes/screens/entities/jobs/symbols/capabilities named like the question, scored by term rarity, name before definition / fields / summary, plus the kind, HTTP method (a route's, or the leading verb of a verb-noun symbol name: `placeOrder` → POST) and cardinality the wording points at and the score of a matching capability; then ultraindex `runFind` over modules mapped to view ids, slices included), their strongest edges, source excerpts (`gatherEvidence`) within the budget (default 6000 tokens ≈ 24k chars), closing steps (`lens save`, `check`); `--json` for the structured pack (`bridged`, `suppliedTerms` among its fields). The question is read by `src/lens-terms.ts`: its words split by the engine's tokenizer (`codeindex.keywords` + `subtokens`, any script), English words stemmed; `--terms` (English code keywords, required of the agent when the question is not in English) merged at weight 1, stemmed alike, synonyms applied, and read for the kind / method / cardinality hints too. `bridged` (the question is not English) holds when a word is a French marker, when most of its letters are not a–z once folded, or when terms are given and under 20% of its words are English stopwords (the engine's list); with terms, a bridged question's own words weigh 0.25 (they only catch code written in its language) and ultraindex find reads the terms alone; without them, a French question falls back on a lexicon of everyday app words and any other language ranks on its own words. Read-only, deterministic |
 | `lens new "<question>" --thread <id> [--context '<json>']` | the same pack for a conversation's next turn. It opens with the thread's **digest** (`chatDigest`): the last 6 turns, oldest first, each its question (≤ 200 characters), a one-line answer summary (its first sentence, citations stripped, ≤ 160), its node ids (≤ 8) and what it was asked about, then the node ids in play (≤ 12, most recent turn first); oldest turns are left out first to stay within 400 tokens (≈ 1600 characters), whatever the thread's length. The ranking folds in the thread: each node of an earlier turn (answer nodes, focus, context) is a seed weighing 0.5^(d−1) for the turn d back, shared by the square root of that turn's node count; `--context` seeds weigh 2. A pool node relates to a seed as itself (1.5), by an edge or a mention (one's name in the other's definition; an entity also through a relation field of a mentioned one, `order.items` → OrderItem) (1), as a sibling in the same file (0.5), or by a file-level edge between their files (0.4); its thread score, Σ weight × relation × 1.5, is added to its name score, and a node no term matched but the thread points at becomes a candidate (`via: "thread"`) with the kind / method / cardinality bonuses of the wording. So a follow-up with no content words ("and who calls it?") still ranks the previous turn's nodes and their neighbours first, and a topic switch still finds what it names. The template is a turn's (`question, answer, nodes, edges, focus, lang, mode, followUps`), the target `.ultraview/conversations/<id>.draft.json`. `--context` alone (no thread) seeds a lens pack the same way. Without `--thread` / `--context` the pack is byte-identical to a plain one |
-| `lens save <file>` / `flow save <file>` | validate, stamp `sources`, write under `.ultraview/` |
+| `lens save <file>` / `flow save <file>` | validate, stamp `sources`, write under `.ultraview/`; a lens's node ids are repaired first (below) |
 | `lens save <file> --thread <id>` | append one turn: the lens fields through `lens save`'s and `check`'s gates, plus `lang`, `mode` (default: the thread's last), `followUps` (exactly 3), `context`; nothing written on any failure |
 | `chat new [--title] \| list \| show <id> \| promote <id> <turn> [--lens-id] [--force]` | start an empty conversation (id: a slug of the title, `chat-<hash>` for one in another script as for lens ids, de-duplicated; a default title takes the first question), list them (newest first, stale turn counts), print one turn by turn, save turn n (from 1) as a lens through `lens save` |
 | `lens list` | id, question, node count, stale flag (the assembler's, as `check` reports it), stamped or not, file write date |
@@ -627,7 +627,7 @@ a `: ping` comment every 15 s):
 | `hello` | `{version, stale: <stale>, ask: {agent, busy, model?} \| null}` | on connect |
 | `view` | `{version, bytes}` | the view changed: the viewer fetches `/view.json` and swaps it in place (`viewer/ui/live.ts`) |
 | `stale` | `{index, changed, added, removed, files}` (`files`: first 20) | the index freshness flipped or its counts changed (`runCheck`) |
-| `ask-progress` | `{id, question, agent, stage: started\|running\|validating, bytes?}` | the agent started, prints (at most once a second), exited |
+| `ask-progress` | `{id, question, agent, stage: started\|running\|validating\|retrying, bytes?, problems?}` | the agent started, prints (at most once a second), exited; `retrying`: its reply failed the gates and it is asked once to correct it (`problems`: how many messages) |
 | `ask-done` | `{id, question, agent, file, replaced, sources}` | the lens is saved (a `view` event precedes it) |
 | `ask-error` | `{id, question, agent, error, problems?}` | the agent failed, timed out, or its answer did not pass `lens save` (`problems` = save's errors) |
 | `chat` | `{id}` | a conversation file changed (a turn saved from the terminal with `lens save --thread`, or by `/api/chat`): the viewer fetches `/api/chat?id=`; never a `view` event |
@@ -692,6 +692,29 @@ JSON, a fenced block, or the outermost `{…}`); ultraview forces the proposed
 (schema, every citation resolves, sources stamped) — never `--force`, so an
 ask cannot replace another saved question. Everything the agent prints goes
 to `.ultraview/ask.log`.
+
+**Node ids.** Both prompts state the id format (`<kind>:<name>`, the kinds
+listed) with 2-3 real ids from this question's pack (`lens new` run
+in-process for its candidates: a module's first, then one of each other
+kind), and that ultraindex module slugs and file paths are not node ids
+(`mod:<slug>`, `file:<path>`). Before the gates, `lens save`, `lens save
+--thread` and both bridges repair, in one place (`src/gates.ts`
+`repairAnswerIds`, through `src/save.ts` `prepare`), each node id, edge end
+and focus that is not a well-formed id: it becomes the one node id of the
+view equal to `<kind>:<value>` for some kind, or `file:<value>` for a
+repo-relative path (a leading `./` dropped). Ambiguous or unknown values are
+left as they are and fail the gates; nothing else is guessed. Every repair is
+reported: `repaired` lines and the `repairs` field of `--json`, and
+`--- repaired` lines in `ask.log`.
+
+**Correction round.** When the reply still fails the gates, the bridge runs
+the agent once more, with the same command line (same read-only flags, same
+model): the first prompt, the gate messages and its reply, asking for the
+corrected JSON object only. It runs within what is left of the same timeout
+(skipped under 1 s); `ask-progress` (`stage: retrying`) or a chat `progress`
+event says so; both rounds go to `ask.log`. A second refusal fails as before,
+with its messages; a correction that times out or crashes fails with the
+first round's messages.
 
 A **turn** (`POST /api/chat`) runs the same agent, the same way (one at a
 time with the asks, the same command lines, timeout and environment). Its

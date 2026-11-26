@@ -17,7 +17,12 @@
 //   - It writes nothing: its final message is the lens JSON. ultraview takes it
 //     (Claude: stdout; Codex: `--output-last-message` into a private temp dir),
 //     forces the proposed id and the asked question, and runs `saveLens`, which
-//     validates the schema, checks every citation and stamps `sources`.
+//     repairs node ids written without their prefix (src/gates.ts), validates
+//     the schema, checks every citation and stamps `sources`. Both prompts say
+//     how a node id is written, with real ids from the question's pack.
+//   - A reply that fails the gates gets one correction round: the same command
+//     line, the gate messages and the reply on stdin, within what is left of
+//     the timeout; a second refusal fails with its messages.
 //   - Everything the agent prints is appended to `.ultraview/ask.log` (gitignored).
 //
 // Never prints, never exits.
@@ -28,8 +33,10 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CHAT_QUESTION_MAX, type ContextView, chatDigest, resolveContext, saveTurn, type TurnResult } from "./chat.js";
-import { proposeLensId } from "./lens.js";
-import type { ChatContext, ChatMode, ChatTurn, Conversation } from "./model/types.js";
+import { type IdRepair, repairLines } from "./gates.js";
+import { type LensNewOptions, lensNew, proposeLensId } from "./lens.js";
+import { kindOf } from "./model/ids.js";
+import { type ChatContext, type ChatMode, type ChatTurn, type Conversation, NODE_KINDS } from "./model/types.js";
 import type { Problem } from "./model/validate.js";
 import { VIEW_DIR } from "./paths.js";
 import { saveLens } from "./save.js";
@@ -110,8 +117,50 @@ function scriptCommand(script: string): string {
 /** ultraview subcommands the agent may run: all read-only. */
 export const READ_ONLY_COMMANDS = ["lens new", "lens list", "show", "dossier", "explain", "status", "check"];
 
-/** The prompt handed to the agent on stdin. */
-export function askPrompt(question: string, id: string, script: string): string {
+/** Node ids a prompt shows as examples. */
+const ID_EXAMPLES = 3;
+
+/**
+ * Up to ID_EXAMPLES node ids to show the agent how ids are written, from
+ * `ids` (the pack's candidates, best first): a module's first (the slug an
+ * agent most often writes bare), then one of each other kind, in order.
+ */
+export function nodeIdExamples(ids: Iterable<string>, max = ID_EXAMPLES): string[] {
+  const all = [...new Set(ids)].filter((id) => kindOf(id));
+  const out: string[] = [];
+  const mod = all.find((id) => id.startsWith("mod:"));
+  if (mod) out.push(mod);
+  for (const id of all) {
+    if (out.length >= max) break;
+    if (!out.some((o) => kindOf(o) === kindOf(id))) out.push(id);
+  }
+  return out;
+}
+
+/** Resolves on a later turn of the event loop, so a caller's pending writes go out first. */
+const nextTurn = () => new Promise<void>((done) => setImmediate(done));
+
+/** The candidates' ids of the pack `lens new` gives for `question` (what the agent will read), for the prompt's examples; none when it cannot be built. */
+function packCandidates(repo: string, question: string, opts: LensNewOptions = {}): string[] {
+  try {
+    return lensNew(repo, question, { ...opts, budget: 1 }).candidates.map((c) => c.id);
+  } catch {
+    return [];
+  }
+}
+
+/** The prompt lines that say how a node id is written, with `examples` from the pack. */
+function nodeIdRule(examples: readonly string[]): string[] {
+  return [
+    `   - A node id is <kind>:<name>, the kind one of ${NODE_KINDS.map((k) => `${k}:`).join(" ")}, written exactly as the candidates list it${
+      examples.length ? ` (e.g. ${examples.map((e) => JSON.stringify(e)).join(", ")})` : ""
+    }.`,
+    "     ultraindex module slugs and file paths are not node ids: write mod:<slug> for a module and file:<path> for a file.",
+  ];
+}
+
+/** The prompt handed to the agent on stdin; `examples`: node ids of this question's pack (nodeIdExamples). */
+export function askPrompt(question: string, id: string, script: string, examples: readonly string[] = []): string {
   const uv = scriptCommand(script);
   return [
     "You answer one question about the repository in the current directory for ultraview, a cited map of the app.",
@@ -131,6 +180,7 @@ export function askPrompt(question: string, id: string, script: string): string 
     `   {"schema": 1, "id": "${id}", "question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "..."}`,
     "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
+    ...nodeIdRule(examples),
     "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     "",
   ].join("\n");
@@ -146,6 +196,8 @@ export interface ChatPromptInput {
   thread?: Conversation;
   /** What the question was asked about, and the lines saying so. */
   context?: { value: ChatContext; lines: string[] };
+  /** Node ids of this question's pack, shown as examples (nodeIdExamples). */
+  examples?: readonly string[];
 }
 
 /**
@@ -198,6 +250,7 @@ export function chatPrompt(input: ChatPromptInput, script: string): string {
     `   {"question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "...", "lang": "<the question's language: en, fr, ja...>", "followUps": ["...", "...", "..."]}`,
     "   - answer: Markdown, in the question's language; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
+    ...nodeIdRule(input.examples ?? []),
     "   - followUps: exactly 3 short questions the user could ask next about this app, in the question's language.",
     "   - Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     "",
@@ -337,7 +390,7 @@ export function extractLensJson(text: string): Record<string, unknown> | undefin
   return undefined;
 }
 
-export type AskStage = "started" | "running" | "validating";
+export type AskStage = "started" | "running" | "validating" | "retrying";
 
 export interface AskRequest {
   repo: string;
@@ -348,7 +401,8 @@ export interface AskRequest {
   /** The server's environment (filtered by agentEnv). */
   env: NodeJS.ProcessEnv;
   timeoutMs?: number;
-  onProgress?: (stage: AskStage, detail: { bytes?: number }) => void;
+  /** `retrying`: the reply failed the gates and the agent is asked once to correct it (`problems`: how many messages). */
+  onProgress?: (stage: AskStage, detail: { bytes?: number; problems?: number }) => void;
   /** Registers the running child, so a shutdown can stop it. */
   onChild?: (child: ChildProcess | undefined) => void;
 }
@@ -362,6 +416,8 @@ export interface AskOutcome {
   sources?: Record<string, string>;
   error?: string;
   problems?: Problem[];
+  /** Node ids ultraview rewrote before the gates. */
+  repairs?: IdRepair[];
 }
 
 /** The validated question, or the reason it is refused. */
@@ -417,17 +473,54 @@ interface RunOutcome {
   file?: string;
   error?: string;
   problems?: Problem[];
+  /** Node ids ultraview rewrote before the gates (src/gates.ts `repairAnswerIds`). */
+  repairs?: IdRepair[];
+}
+
+/** The least time left that is worth a correction round, in milliseconds. */
+export const RETRY_MIN_MS = 1000;
+/** Gate messages a correction prompt lists at most. */
+const RETRY_PROBLEMS_MAX = 40;
+
+/**
+ * The prompt of the correction round: the first prompt, then why its reply
+ * was refused (the gate messages) and the reply itself, and the request to
+ * send only the corrected JSON object.
+ */
+export function correctionPrompt(prompt: string, previous: Record<string, unknown>, problems: readonly Problem[]): string {
+  const listed = problems.slice(0, RETRY_PROBLEMS_MAX).map((p) => `- ${p.path || "(root)"}: ${p.message}`);
+  if (problems.length > listed.length) listed.push(`- … and ${problems.length - listed.length} more`);
+  return [
+    prompt.trimEnd(),
+    "",
+    "## Correction round",
+    "You already answered this, and ultraview refused your reply for these reasons:",
+    ...listed,
+    "",
+    "Your reply was:",
+    "```json",
+    JSON.stringify(previous, null, 2),
+    "```",
+    "",
+    "Reply with ONLY the corrected JSON object (no prose before or after it). Keep what was right and fix exactly what the reasons name:",
+    "a node id is written as the candidates list it (mod:<slug>, file:<path>, route:<METHOD> <path>…); a sentence without a citation gets one, or goes.",
+    "Do not start over: check an id or a line with the ultraview commands above only when you need to.",
+    "",
+  ].join("\n");
 }
 
 /**
- * Run the agent once: spawn it read-only with `prompt` on stdin, log
- * everything it prints, enforce the timeout, then hand its reply's JSON object
- * to `accept`, which validates and saves it. `label` heads the log entry.
- * Never throws. The one place an agent is started, for an ask and for a
- * conversation turn alike: `req.model` (`serve --ask-model`) reaches
- * `agentInvocation` here.
+ * Run the agent: spawn it read-only with `prompt` on stdin, log everything
+ * it prints, enforce the timeout, then hand its reply's JSON object to
+ * `accept`, which validates and saves it. When the reply fails the gates
+ * (`accept` returns problems), the agent is asked once more, with the gate
+ * messages and its reply (correctionPrompt), within what is left of the same
+ * timeout; a second refusal fails with its messages. `label` heads the log
+ * entry; both rounds go in it. Never throws. The one place an agent is
+ * started, for an ask and for a conversation turn alike: `req.model`
+ * (`serve --ask-model`) reaches `agentInvocation` here.
  */
-function runAgent<O extends RunOutcome>(
+async function runAgent<O extends RunOutcome>(
   req: AskRequest,
   label: string,
   prompt: string,
@@ -440,36 +533,72 @@ function runAgent<O extends RunOutcome>(
   const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir, ...(req.model ? { model: req.model } : {}) });
   mkdirSync(join(repo, VIEW_DIR), { recursive: true });
   const log = openAskLog(join(repo, ASK_LOG));
-  log.write(
-    `=== ${new Date().toISOString()} ${label} (${agent.name})\nquestion: ${req.question}\n$ ${[inv.cmd, ...inv.args].map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")}\n`,
-  );
+  const cmdLine = [inv.cmd, ...inv.args].map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ");
+  log.write(`=== ${new Date().toISOString()} ${label} (${agent.name})\nquestion: ${req.question}\n$ ${cmdLine}\n`);
+  const timeoutMs = req.timeoutMs ?? ASK_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
+  const problemText = (ps: readonly Problem[]) => ps.map((p) => `\n  ${p.path || "(root)"}: ${p.message}`).join("");
 
-  return new Promise<O>((done) => {
+  const first = await runOnce(req, inv, log, prompt, timeoutMs, timeoutMs, fail, accept);
+  let o = first.outcome;
+  if (!o.ok && o.problems?.length && first.reply) {
+    const left = deadline - Date.now();
+    if (left >= RETRY_MIN_MS) {
+      log.write(
+        `--- refused by the gates (${o.problems.length} problem(s)):${problemText(o.problems)}\n=== correction round (${agent.name}, ${Math.round(left / 1000)} s left)\n$ ${cmdLine}\n`,
+      );
+      req.onProgress?.("retrying", { problems: o.problems.length });
+      if (inv.lastMessageFile) rmSync(inv.lastMessageFile, { force: true });
+      const second = await runOnce(req, inv, log, correctionPrompt(prompt, first.reply, o.problems), left, timeoutMs, fail, accept);
+      // A correction that never came back (timeout, crash, no JSON) still says why the first reply was refused.
+      o = second.outcome.ok || second.outcome.problems?.length ? second.outcome : { ...second.outcome, problems: o.problems };
+    } else log.write(`--- no time left for a correction round (${Math.max(0, Math.round(left / 1000))} s)\n`);
+  }
+  // Appended and closed synchronously, so the log is complete before the outcome is announced;
+  // each round stops logging what its agent prints once it is over: this line is the last one.
+  log.write(`--- ${o.ok ? `saved ${o.file}` : `failed: ${o.error}${problemText(o.problems ?? [])}`}\n\n`);
+  log.close();
+  rmSync(tmpDir, { recursive: true, force: true });
+  return o;
+}
+
+/**
+ * One round: spawn the agent with `input` on stdin, stop it after `ms`, and
+ * accept its reply. Resolves with the outcome and the reply's JSON object,
+ * when there was one. `totalMs` is the timeout the user set, for the message.
+ */
+function runOnce<O extends RunOutcome>(
+  req: AskRequest,
+  inv: AgentInvocation,
+  log: ReturnType<typeof openAskLog>,
+  input: string,
+  ms: number,
+  totalMs: number,
+  fail: (error: string, problems?: Problem[]) => O,
+  accept: (reply: Record<string, unknown>) => O,
+): Promise<{ outcome: O; reply?: Record<string, unknown> }> {
+  const { agent } = req;
+  return new Promise((done) => {
     let finished = false;
     let out = "";
     let bytes = 0;
     let lastProgress = 0;
     let timer: NodeJS.Timeout | undefined;
     let killTimer: NodeJS.Timeout | undefined;
-    const finish = (o: O) => {
+    const finish = (outcome: O, reply?: Record<string, unknown>) => {
       if (finished) return;
       finished = true;
       if (timer) clearTimeout(timer);
-      if (killTimer) clearTimeout(killTimer);
+      // The kill timer of a timed-out agent outlives the round: it still stops a child that ignores SIGTERM.
+      if (killTimer) killTimer.unref();
       req.onChild?.(undefined);
-      // Appended and closed synchronously, so the log is complete before the outcome is announced;
-      // `finished` keeps anything the agent prints from now on out of it: this line is the last one.
-      log.write(
-        `--- ${o.ok ? `saved ${o.file}` : `failed: ${o.error}${o.problems?.length ? `\n${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : ""}`}\n\n`,
-      );
-      log.close();
-      rmSync(tmpDir, { recursive: true, force: true });
-      done(o);
+      if (outcome.repairs?.length) log.write(`--- repaired ${outcome.repairs.length} node id(s):\n${repairLines(outcome.repairs).join("\n")}\n`);
+      done({ outcome, ...(reply ? { reply } : {}) });
     };
 
     let child: ChildProcess;
     try {
-      child = spawn(inv.cmd, inv.args, { cwd: repo, env: agentEnv(req.env), stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+      child = spawn(inv.cmd, inv.args, { cwd: resolve(req.repo), env: agentEnv(req.env), stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
     } catch (e) {
       finish(fail(`cannot start ${agent.name}: ${(e as Error).message}`));
       return;
@@ -490,18 +619,18 @@ function runAgent<O extends RunOutcome>(
     child.stdout!.on("data", onData("stdout"));
     child.stderr!.on("data", onData("stderr"));
     child.stdin!.on("error", () => {});
-    child.stdin!.end(prompt);
+    child.stdin!.end(input);
     child.once("error", (e) => finish(fail(`cannot start ${agent.name}: ${e.message}`)));
 
-    const timeoutMs = req.timeoutMs ?? ASK_TIMEOUT_MS;
     timer = setTimeout(() => {
-      log.write(`--- timed out after ${Math.round(timeoutMs / 1000)} s: stopping ${agent.name}\n`);
+      log.write(`--- timed out after ${Math.round(totalMs / 1000)} s: stopping ${agent.name}\n`);
       child.kill("SIGTERM");
       killTimer = setTimeout(() => child.kill("SIGKILL"), 3000);
-      finish(fail(`${agent.name} did not answer within ${Math.round(timeoutMs / 1000)} s`));
-    }, timeoutMs);
+      finish(fail(`${agent.name} did not answer within ${Math.round(totalMs / 1000)} s`));
+    }, ms);
 
     child.once("close", (code, signal) => {
+      if (killTimer) clearTimeout(killTimer);
       if (finished) return;
       log.write(`\n--- exit ${code ?? signal}\n`);
       if (code !== 0) {
@@ -522,27 +651,29 @@ function runAgent<O extends RunOutcome>(
       } catch (e) {
         o = fail((e as Error).message);
       }
-      finish(o);
+      finish(o, json);
     });
   });
 }
 
 /** Run one ask to completion: spawn the agent, read its reply, save the lens. Never throws. */
-export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.question)): Promise<AskOutcome> {
+export async function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.question)): Promise<AskOutcome> {
   const repo = resolve(req.repo);
   const { question } = req;
   const base = { id, question };
+  await nextTurn(); // the pack below is built after the caller has answered its request
   return runAgent<AskOutcome>(
     req,
     `ask ${id}`,
-    askPrompt(question, id, ultraviewScript()),
+    askPrompt(question, id, ultraviewScript(), nodeIdExamples(packCandidates(repo, question))),
     (error, problems) => ({ ...base, ok: false, error, ...(problems ? { problems } : {}) }),
     (lens) => {
       // The id and the question are ultraview's, never the agent's: no overwrite of another saved question.
       const { sources: _ignored, ...rest } = lens;
       const r = saveLens(repo, { schema: 1, ...rest, id, question });
-      if (!r.ok) return { ...base, ok: false, error: "the answer did not pass `lens save`", problems: r.errors };
-      return { ...base, ok: true, file: r.file, replaced: r.replaced, sources: r.sources };
+      const repairs = r.repairs.length ? { repairs: r.repairs } : {};
+      if (!r.ok) return { ...base, ok: false, error: "the answer did not pass `lens save`", problems: r.errors, ...repairs };
+      return { ...base, ok: true, file: r.file, replaced: r.replaced, sources: r.sources, ...repairs };
     },
   );
 }
@@ -565,18 +696,24 @@ export interface ChatOutcome extends RunOutcome {
 }
 
 /** Run one conversation turn to completion: the agent answers with the thread's digest, ultraview validates and appends the turn. Never throws. */
-export function chatAgent(req: ChatRequest): Promise<ChatOutcome> {
+export async function chatAgent(req: ChatRequest): Promise<ChatOutcome> {
   const repo = resolve(req.repo);
   const thread = req.thread?.id ?? req.newThread;
-  if (!thread) return Promise.resolve({ ok: false, thread: "", error: "internal: no thread id" });
+  if (!thread) return { ok: false, thread: "", error: "internal: no thread id" };
   let context: { value: ChatContext; lines: string[] } | undefined;
   if (req.context && Object.keys(req.context).length) {
     const r = resolveContext(req.view, req.context);
-    if ("error" in r) return Promise.resolve({ ok: false, thread, error: r.error });
+    if ("error" in r) return { ok: false, thread, error: r.error };
     context = { value: req.context, lines: r.lines };
   }
   const started = Date.now();
-  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context }, ultraviewScript());
+  await nextTurn(); // the pack below is built after the caller has sent its first progress event
+  const candidates = packCandidates(repo, req.question, {
+    ...(req.thread ? { thread: req.thread.id } : {}),
+    ...(context ? { context: context.value } : {}),
+  });
+  const examples = nodeIdExamples([...candidates, ...(candidates.length ? [] : req.view.byId.keys())]);
+  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context, examples }, ultraviewScript());
   return runAgent<ChatOutcome>(
     req,
     `chat ${thread} turn ${(req.thread?.turns.length ?? 0) + 1}`,
@@ -594,8 +731,9 @@ export function chatAgent(req: ChatRequest): Promise<ChatOutcome> {
         ms: Date.now() - started,
         view: req.view,
       });
-      if (!r.ok) return { ok: false, thread, error: "the answer did not pass the turn's gates (`lens save --thread`)", problems: r.errors };
-      return { ok: true, thread, file: r.file, index: r.index, turn: r.turn };
+      const repairs = r.repairs.length ? { repairs: r.repairs } : {};
+      if (!r.ok) return { ok: false, thread, error: "the answer did not pass the turn's gates (`lens save --thread`)", problems: r.errors, ...repairs };
+      return { ok: true, thread, file: r.file, index: r.index, turn: r.turn, ...repairs };
     },
   );
 }

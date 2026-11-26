@@ -27,7 +27,10 @@ Then:
 2. Answer in 2–5 sentences, each cited (see [writing](writing.md)). Say what
    the code does, including when it surprises ("the order is not deleted").
 3. `nodes`: what the answer is about (3–8 ids); `focus`: the one to centre on;
-   `edges`: only the links the answer relies on.
+   `edges`: only the links the answer relies on. Write ids as the candidates
+   list them (`mod:<slug>`, `file:<path>`, `route:GET /x`): an ultraindex
+   module slug or a bare path is not a node id. `lens save` repairs one that
+   only lacks its prefix, when a single node fits, and says so.
 4. `lens save <file>`, `check`, then answer the user and give `#lens=<id>`.
 
 A lens answers one question. A second question is a second lens.
@@ -108,7 +111,9 @@ agent's CLI read-only (Claude Code in its don't-ask
 permission mode, allowed only Read, Glob, Grep and ultraview's read-only
 commands; Codex in its read-only sandbox), with this same `lens new` pack (the
 prompt asks the agent to add `--terms` when the question is not in English),
-and saves the reply with `lens save`. One ask at a time, 180 s timeout;
+and saves the reply with `lens save`; a reply that fails the gates gets one
+correction round (the messages and the reply sent back) within the same
+timeout. One ask at a time, 180 s timeout;
 nothing is written but the lens; the agent's output goes to `.ultraview/ask.log`. An ask never replaces
 another question's lens.
 

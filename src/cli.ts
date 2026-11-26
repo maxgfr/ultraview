@@ -21,6 +21,7 @@ import { TIMELINE_SOURCES, type TimelineItem, type TimelineSource } from "./mode
 import type { Problem } from "./model/validate.js";
 import { viewPaths } from "./paths.js";
 import { type SaveResult, saveFlow, saveLens } from "./save.js";
+import { type IdRepair, repairLines } from "./gates.js";
 import { openFile, renderMap } from "./render.js";
 // --- serve / lens new / lens list (issue #10) ---
 import { ASK_MODES, type AskMode, askModelProblem } from "./ask.js";
@@ -504,8 +505,11 @@ async function cmdSave(p: Parsed, io: Io, what: "lens" | "flow"): Promise<number
   if (p.bools.has("json")) io.out(json(r));
   else if (r.ok) {
     const n = Object.keys(r.sources).length;
-    io.out(`saved      ${r.file}${r.replaced ? " (replaced)" : ""}; sources: ${n} cited file(s) hashed\nnext step: run \`ultraview check\`\n`);
+    io.out(
+      `${repairedText(r.repairs)}saved      ${r.file}${r.replaced ? " (replaced)" : ""}; sources: ${n} cited file(s) hashed\nnext step: run \`ultraview check\`\n`,
+    );
   } else {
+    if (r.repairs.length) io.out(repairedText(r.repairs));
     io.err(`ultraview: ${what} not saved${r.file ? ` (${r.file})` : ""}:\n${r.errors.map((e) => `  ${e.path || "(root)"}: ${e.message}`).join("\n")}\n`);
   }
   return r.ok ? EXIT_OK : EXIT_FAILURE;
@@ -532,6 +536,8 @@ function usage(io: Io, message: string): number {
 }
 
 const problemLines = (errors: readonly Problem[]) => errors.map((e) => `  ${e.path || "(root)"}: ${e.message}`).join("\n");
+/** What `lens save` repaired before its gates, one line each ("" when nothing was). */
+const repairedText = (repairs: readonly IdRepair[]) => (repairs.length ? `repaired   ${repairs.length} node id(s):\n${repairLines(repairs).join("\n")}\n` : "");
 
 /** `--source`, checked; undefined when absent. */
 function sourceOf(p: Parsed): TimelineSource | undefined | { error: string } {
@@ -784,9 +790,12 @@ async function cmdSaveTurn(p: Parsed, io: Io, file: string, thread: string): Pro
   if (p.bools.has("json")) io.out(json(r));
   else if (r.ok)
     io.out(
-      `saved      turn ${r.index + 1} of ${r.file}; sources: ${Object.keys(r.turn!.sources).length} cited file(s) hashed\nopen       #chat=${r.thread} (live when \`ultraview serve\` runs)\nnext step: run \`ultraview check\`\n`,
+      `${repairedText(r.repairs)}saved      turn ${r.index + 1} of ${r.file}; sources: ${Object.keys(r.turn!.sources).length} cited file(s) hashed\nopen       #chat=${r.thread} (live when \`ultraview serve\` runs)\nnext step: run \`ultraview check\`\n`,
     );
-  else io.err(`ultraview: turn not saved (${r.file}):\n${problemLines(r.errors)}\n`);
+  else {
+    if (r.repairs.length) io.out(repairedText(r.repairs));
+    io.err(`ultraview: turn not saved (${r.file}):\n${problemLines(r.errors)}\n`);
+  }
   return r.ok ? EXIT_OK : EXIT_FAILURE;
 }
 

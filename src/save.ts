@@ -6,15 +6,22 @@
 // `sources` is never trusted from the input: it is recomputed on every save.
 // Saving a DIFFERENT question (lens) or title (flow) under an existing id is
 // refused unless `force` — an id is a deep link (`#lens=<id>`) someone may hold.
+//
+// Before a lens's gates, the node ids it names are repaired (src/gates.ts
+// `repairAnswerIds`: `src-diff` → `mod:src-diff` when exactly one node id
+// fits); every repair is reported in the result's `repairs`. A lens and a
+// conversation turn (`prepareLens`) share this one place.
 
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { checkCitations, fileLineTable, loadGraph, parseCitations } from "./engine.js";
+import { type IdRepair, repairAnswerIds } from "./gates.js";
 import { stableJson } from "./json.js";
 import { FLOWS_DIR, fileSha256, LENSES_DIR } from "./model/load.js";
 import type { Flow, Lens, SourceHashes } from "./model/types.js";
 import { type Problem, parseJson, validateFlow, validateLens } from "./model/validate.js";
 import { viewPaths } from "./paths.js";
+import { liveView } from "./show.js";
 
 export interface SaveOptions {
   /** Overwrite a different question / title saved under the same id. */
@@ -29,8 +36,13 @@ export interface SaveResult {
   sources: SourceHashes;
   /** Whether an existing file was replaced. */
   replaced: boolean;
+  /** Node ids rewritten before the gates (repairAnswerIds), saved or not. */
+  repairs: IdRepair[];
   errors: Problem[];
 }
+
+/** The view's node ids, read when a repair needs them. */
+export type NodeIds = () => ReadonlySet<string>;
 
 interface Kind<T> {
   dir: string;
@@ -40,6 +52,8 @@ interface Kind<T> {
   /** What makes two saves "the same view" (lens question, flow title). */
   identity: (item: T) => string;
   noun: string;
+  /** Repair the node ids it names before the gates (a lens). */
+  repair: boolean;
 }
 
 const LENS: Kind<Lens> = {
@@ -48,6 +62,7 @@ const LENS: Kind<Lens> = {
   prose: (l) => [{ path: "answer", text: l.answer }],
   identity: (l) => l.question,
   noun: "question",
+  repair: true,
 };
 
 const FLOW: Kind<Flow> = {
@@ -56,30 +71,50 @@ const FLOW: Kind<Flow> = {
   prose: (f) => f.steps.map((s, i) => ({ path: `steps[${i}].note`, text: s.note })),
   identity: (f) => f.title,
   noun: "title",
+  repair: false,
 };
 
 /** What `prepare` found: the parsed item and its stamped sources, or the problems. */
 export interface Prepared<T> {
   item?: T;
   sources: SourceHashes;
+  /** Node ids rewritten before the gates. */
+  repairs: IdRepair[];
   errors: Problem[];
 }
 
+/** The node ids of the live view of `repo` (assembled once, on first use; none when there is no map to read). */
+function liveIds(repo: string): NodeIds {
+  let ids: ReadonlySet<string> | undefined;
+  return () => {
+    if (ids) return ids;
+    try {
+      ids = new Set(liveView(repo).byId.keys());
+    } catch {
+      ids = new Set();
+    }
+    return ids;
+  };
+}
+
 /**
- * The gates before a write: the schema, then every citation of every prose
- * string — each cited file must exist inside the repo and, with an index,
- * every citation must resolve. Returns the `sources` to stamp (the sha256 of
- * each cited file). Writes nothing.
+ * The gates before a write: the node ids repaired (a lens: `ids`, the view's
+ * node ids, read only when a repair needs them), the schema, then every
+ * citation of every prose string — each cited file must exist inside the repo
+ * and, with an index, every citation must resolve. Returns the `sources` to
+ * stamp (the sha256 of each cited file). Writes nothing.
  */
-function prepare<T>(kind: Pick<Kind<T>, "validate" | "prose">, repo: string, input: unknown): Prepared<T> {
+function prepare<T>(kind: Pick<Kind<T>, "validate" | "prose" | "repair">, repo: string, input: unknown, ids: NodeIds = liveIds(repo)): Prepared<T> {
   let value = input;
   if (typeof input === "string") {
     const parsed = parseJson(input);
-    if (parsed.problems.length) return { sources: {}, errors: parsed.problems };
+    if (parsed.problems.length) return { sources: {}, repairs: [], errors: parsed.problems };
     value = parsed.value;
   }
+  let repairs: IdRepair[] = [];
+  if (kind.repair) ({ value, repairs } = repairAnswerIds(value, ids));
   const schemaErrors = kind.validate(value);
-  if (schemaErrors.length) return { sources: {}, errors: schemaErrors };
+  if (schemaErrors.length) return { sources: {}, repairs, errors: schemaErrors };
   const item = value as T;
 
   const errors: Problem[] = [];
@@ -99,26 +134,29 @@ function prepare<T>(kind: Pick<Kind<T>, "validate" | "prose">, repo: string, inp
       cited.add(relative(repo, abs).split(sep).join("/"));
     }
   }
-  if (errors.length) return { item, sources: {}, errors };
+  if (errors.length) return { item, sources: {}, repairs, errors };
   const sources: SourceHashes = {};
   for (const rel of [...cited].sort()) sources[rel] = fileSha256(join(repo, rel))!;
-  return { item, sources, errors: [] };
+  return { item, sources, repairs, errors: [] };
 }
 
 /**
  * `lens save`'s gates without the write (schema, citations, `sources`), for
  * answers stored elsewhere: a conversation turn (src/chat.ts) is a lens
- * answer and passes exactly these.
+ * answer and passes exactly these, its node ids repaired against `ids`
+ * (default: the live view's).
  */
-export function prepareLens(repoArg: string, input: unknown): Prepared<Lens> {
-  return prepare(LENS, resolve(repoArg), input);
+export function prepareLens(repoArg: string, input: unknown, ids?: NodeIds): Prepared<Lens> {
+  const repo = resolve(repoArg);
+  return prepare(LENS, repo, input, ids ?? liveIds(repo));
 }
 
 function save<T extends { id: string; sources?: SourceHashes }>(kind: Kind<T>, repoArg: string, input: unknown, opts: SaveOptions): SaveResult {
   const repo = resolve(repoArg);
-  const fail = (errors: Problem[], extra: Partial<SaveResult> = {}): SaveResult => ({ ok: false, sources: {}, replaced: false, errors, ...extra });
-
   const prepared = prepare(kind, repo, input);
+  const { repairs } = prepared;
+  const fail = (errors: Problem[], extra: Partial<SaveResult> = {}): SaveResult => ({ ok: false, sources: {}, replaced: false, repairs, errors, ...extra });
+
   const item = prepared.item;
   if (!item) return fail(prepared.errors);
   const file = `${kind.dir}/${item.id}.json`;
@@ -141,7 +179,7 @@ function save<T extends { id: string; sources?: SourceHashes }>(kind: Kind<T>, r
 
   mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, stableJson({ ...item, sources }));
-  return { ok: true, file, id: item.id, sources, replaced, errors: [] };
+  return { ok: true, file, id: item.id, sources, replaced, repairs, errors: [] };
 }
 
 /** Validate a lens (JSON text or object), stamp its `sources`, write `.ultraview/lenses/<id>.json`. */
