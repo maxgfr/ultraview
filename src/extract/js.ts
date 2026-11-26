@@ -18,7 +18,7 @@ export interface Arg {
 }
 
 /** Skip a quoted string or template literal starting at `i`; returns the index after it. */
-function skipString(text: string, i: number): number {
+export function skipString(text: string, i: number): number {
   const quote = text[i];
   let j = i + 1;
   let braces = 0;

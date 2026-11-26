@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { tableNameTemplate } from "../src/extract/drizzle.js";
 import { factsOfFiles } from "./helpers.js";
 
 const pkg = (deps: Record<string, string>) => JSON.stringify({ dependencies: deps });
@@ -79,6 +80,161 @@ describe("drizzle", () => {
       ).toEqual([]);
       expect(entitiesOf({ "package.json": pkg({}), "src/schema.ts": schema })).toEqual([]);
       expect(entitiesOf({ ...drizzle, "src/schema.ts": 'const pgTable = (n, c) => c;\nexport const fake = pgTable("fake", { id: 1 });\n' })).toEqual([]);
+    });
+  });
+
+  describe("table creators", () => {
+    const creatorSchema = [
+      'import { index, pgTableCreator } from "drizzle-orm/pg-core";',
+      'import { relations } from "drizzle-orm";',
+      "export const createTable = pgTableCreator((name) => `app_${name}`);",
+      'export const users = createTable("user", (d) => ({ id: d.varchar({ length: 255 }).notNull().primaryKey(), age: d.integer() }));',
+      "export const posts = createTable(",
+      '  "post",',
+      "  (d) => ({",
+      "    authorId: d",
+      "      .varchar({ length: 255 })",
+      "      .notNull()",
+      "      .references(() => users.id),",
+      "    title: d.text(),",
+      "  }),",
+      '  (t) => [index("post_author_idx").on(t.authorId)],',
+      ");",
+      "export const usersRelations = relations(users, ({ many }) => ({ posts: many(posts) }));",
+      "export const postsRelations = relations(posts, ({ one }) => ({ author: one(users, { fields: [posts.authorId], references: [users.id] }) }));",
+    ].join("\n");
+
+    it("same-file creator: builder-method types, multi-line chained references, relations()", () => {
+      expect(entitiesOf({ ...drizzle, "src/server/db/schema.ts": creatorSchema })).toEqual([
+        "users drizzle src/server/db/schema.ts:4 id:varchar,age:integer,posts:posts[]->posts",
+        "posts drizzle src/server/db/schema.ts:5 authorId:varchar->users,title:text,author:users->users",
+      ]);
+    });
+
+    it("namespace-imported and aliased creators", () => {
+      const ns = [
+        'import * as pg from "drizzle-orm/pg-core";',
+        "const table = pg.pgTableCreator((name) => name);",
+        'export const tags = table("tag", { id: pg.serial("id") });',
+      ].join("\n");
+      const aliased = [
+        'import { sqliteTableCreator as creator } from "drizzle-orm/sqlite-core";',
+        "const t = creator((name) => `x_${name}`);",
+        'export const notes = t("note", (d) => ({ body: d.text() }));',
+      ].join("\n");
+      expect(entitiesOf({ ...drizzle, "src/a.ts": ns, "src/b.ts": aliased })).toEqual([
+        "tags drizzle src/a.ts:3 id:serial",
+        "notes drizzle src/b.ts:3 body:text",
+      ]);
+    });
+
+    it("imported creator: tables declared in other files, references and uses across them", () => {
+      const files = {
+        ...drizzle,
+        "src/server/db/table.ts":
+          'import { pgTableCreator } from "drizzle-orm/pg-core";\nexport const createTable = pgTableCreator((name) => `app_${name}`);\n',
+        "src/server/db/schema/users.ts": [
+          'import { createTable } from "../table";',
+          'export const users = createTable("user", (d) => ({ id: d.varchar({ length: 255 }).primaryKey() }));',
+        ].join("\n"),
+        "src/server/db/schema/posts.ts": [
+          'import { relations } from "drizzle-orm";',
+          'import { createTable as make } from "~/server/db/table";',
+          'import { users } from "./users";',
+          'export const posts = make("post", (d) => ({ authorId: d.varchar({ length: 255 }).references(() => users.id) }));',
+          "export const postsRelations = relations(posts, ({ one }) => ({ author: one(users) }));",
+          "export async function latest() { return db.select().from(posts); }",
+        ].join("\n"),
+      };
+      expect(entitiesOf(files)).toEqual([
+        "posts drizzle src/server/db/schema/posts.ts:4 authorId:varchar->users,author:users->users",
+        "users drizzle src/server/db/schema/users.ts:2 id:varchar",
+      ]);
+      expect(usesOf(files)).toEqual(["posts read src/server/db/schema/posts.ts:6"]);
+    });
+
+    it("ignores calls to imported functions that are not table creators, and creators outside drizzle-orm", () => {
+      const files = {
+        ...drizzle,
+        "src/util.ts":
+          "export const make = (name, cols) => ({ name, cols });\nconst pgTableCreator = (f) => f;\nexport const fake = pgTableCreator((n) => n);\n",
+        "src/schema.ts": [
+          'import { fake, make } from "./util";',
+          'export const things = make("thing", (d) => ({ id: d.integer() }));',
+          'export const others = fake("other", (d) => ({ id: d.integer() }));',
+        ].join("\n"),
+      };
+      expect(entitiesOf(files)).toEqual([]);
+    });
+
+    describe("physical table name", () => {
+      const consts = new Map([["PREFIX", "acme"]]);
+      it.each([
+        ["(name) => `app_${name}`", "app_", ""],
+        ["name => `${name}_v2`", "", "_v2"],
+        ["(name: string) => `${PREFIX}_${name}`", "acme_", ""],
+        ['(name) => "app_" + name + "_t"', "app_", "_t"],
+        ["(name) => PREFIX + '_' + name", "acme_", ""],
+        ["(name) => name", "", ""],
+        ["(name) => { return `app_${name}`; }", "app_", ""],
+        ["(name) => (`app_${name}`)", "app_", ""],
+      ])("%s", (raw, prefix, suffix) => {
+        expect(tableNameTemplate(raw, consts)).toEqual({ prefix, suffix });
+      });
+      it.each([["(name) => name.toUpperCase()"], ["(name) => `${UNKNOWN}_${name}`"], ["(name) => `${name}_${name}`"], ["(name) => 'static'"], ["makeName"]])(
+        "not computable: %s",
+        (raw) => {
+          expect(tableNameTemplate(raw, consts)).toBeUndefined();
+        },
+      );
+    });
+
+    it("unifies a Drizzle table with the SQL-migration table of its physical name", () => {
+      const migration = [
+        "CREATE TABLE app_user (id varchar(255) PRIMARY KEY);",
+        "CREATE TABLE app_post (author_id varchar(255) REFERENCES app_user(id), title text);",
+        "CREATE TABLE audit_log (user_id varchar(255) REFERENCES app_user(id));",
+      ].join("\n");
+      const files = {
+        ...drizzle,
+        "drizzle/0000_init.sql": migration,
+        "src/server/db/schema.ts": creatorSchema,
+        "src/server/db/report.ts": "export const count = () => sql`SELECT count(*) FROM app_user`;\nexport const audit = () => sql`DELETE FROM audit_log`;\n",
+      };
+      expect(entitiesOf(files)).toEqual([
+        "audit_log sql drizzle/0000_init.sql:3 user_id:varchar(255)->users",
+        "users drizzle src/server/db/schema.ts:4 id:varchar,age:integer,posts:posts[]->posts",
+        "posts drizzle src/server/db/schema.ts:5 authorId:varchar->users,title:text,author:users->users",
+      ]);
+      expect(usesOf(files)).toEqual(["users read src/server/db/report.ts:1", "audit_log write src/server/db/report.ts:2"]);
+    });
+
+    it("unifies tables of an imported creator, and plain pgTable tables, with their SQL tables", () => {
+      const files = {
+        ...drizzle,
+        "drizzle/0000_init.sql": "CREATE TABLE app_user (id varchar(255));\nCREATE TABLE order_items (id serial);\nCREATE TABLE user (id int);\n",
+        "src/db/table.ts": 'import { pgTableCreator } from "drizzle-orm/pg-core";\nexport const createTable = pgTableCreator((name) => `app_${name}`);\n',
+        "src/db/users.ts": 'import { createTable } from "./table";\nexport const users = createTable("user", (d) => ({ id: d.varchar({ length: 255 }) }));\n',
+        "src/db/items.ts": 'import { pgTable, serial } from "drizzle-orm/pg-core";\nexport const orderItems = pgTable("order_items", { id: serial("id") });\n',
+      };
+      expect(entitiesOf(files)).toEqual([
+        "user sql drizzle/0000_init.sql:3 id:int",
+        "orderItems drizzle src/db/items.ts:2 id:serial",
+        "users drizzle src/db/users.ts:2 id:varchar",
+      ]);
+    });
+
+    it("keeps the SQL table when the creator's name template is not computable", () => {
+      const files = {
+        ...drizzle,
+        "drizzle/0000_init.sql": "CREATE TABLE app_user (id varchar(255));\n",
+        "src/db/schema.ts": [
+          'import { pgTableCreator } from "drizzle-orm/pg-core";',
+          "const createTable = pgTableCreator((name) => prefixed(name));",
+          'export const users = createTable("user", (d) => ({ id: d.varchar() }));',
+        ].join("\n"),
+      };
+      expect(entitiesOf(files)).toEqual(["app_user sql drizzle/0000_init.sql:1 id:varchar(255)", "users drizzle src/db/schema.ts:3 id:varchar"]);
     });
   });
 });

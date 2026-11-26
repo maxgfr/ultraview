@@ -143,3 +143,22 @@ describe("nest-typeorm fixture", () => {
     expect(facts.screens).toEqual([]);
   });
 });
+
+describe("drizzle-table-creator fixture", () => {
+  it("tables of an imported, prefixed pgTableCreator, unified with their SQL-migration tables", async () => {
+    const { facts } = await buildTwice("drizzle-table-creator");
+    expect(entities(facts)).toEqual([
+      "audit_log sql drizzle/0000_init.sql:18 id:serial,user_id:varchar(255)->users",
+      "posts drizzle src/server/db/schema/posts.ts:5 id:serial,authorId:varchar->users,title:text,author:users->users,comments:comments[]->comments",
+      "comments drizzle src/server/db/schema/posts.ts:18 id:serial,postId:integer->posts,body:text",
+      "users drizzle src/server/db/schema/users.ts:3 id:varchar,email:varchar,posts:posts[]->posts",
+    ]);
+    expect(uses(facts)).toEqual([
+      "posts read src/server/api/posts.ts:7",
+      "users read src/server/api/posts.ts:7",
+      "posts write src/server/api/posts.ts:11",
+      "users read src/server/api/posts.ts:15",
+      "audit_log write src/server/api/posts.ts:19",
+    ]);
+  });
+});

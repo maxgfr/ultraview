@@ -35522,6 +35522,79 @@ function relationFields(text2, raw, start2) {
   return fields;
 }
 var TABLE_CALL = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*(?:(?:pg|mysql|sqlite|singlestore)Table|[A-Za-z_$][\w$]*\s*\.\s*table)\s*\(/g;
+var CREATOR = /^(?:pg|mysql|sqlite|singlestore)TableCreator$/;
+var escapeName = (n) => n.replace(/\$/g, "\\$");
+function assignedCalls(callees) {
+  const alt = [...callees].sort().map(escapeName).join("|");
+  return alt ? new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*(?::[^=;]+)?=\\s*(${alt})\\s*\\(`, "g") : void 0;
+}
+function plusTerms(raw) {
+  const out2 = [];
+  let depth = 0;
+  let from = 0;
+  for (let i2 = 0; i2 < raw.length; i2++) {
+    const ch = raw[i2];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      i2 = skipString(raw, i2) - 1;
+      continue;
+    }
+    if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") depth--;
+    else if (ch === "+" && depth === 0) {
+      out2.push(raw.slice(from, i2).trim());
+      from = i2 + 1;
+    }
+  }
+  out2.push(raw.slice(from).trim());
+  return out2;
+}
+function tableNameTemplate(raw, consts) {
+  const fn = /^(?:\(\s*([A-Za-z_$][\w$]*)\s*(?::\s*string\s*)?\)|([A-Za-z_$][\w$]*))\s*(?::\s*string\s*)?=>\s*([\s\S]+)$/.exec(raw.trim());
+  if (!fn) return void 0;
+  const param = fn[1] ?? fn[2];
+  let body2 = fn[3].trim();
+  const block = /^\{\s*return\s+([\s\S]+?)\s*;?\s*\}$/.exec(body2);
+  if (block) body2 = block[1].trim();
+  while (body2.startsWith("(") && readArgs(body2, 0)?.end === body2.length) body2 = body2.slice(1, -1).trim();
+  const parts2 = [];
+  const operand = (expr) => {
+    if (expr === param) parts2.push(null);
+    else if (consts.has(expr)) parts2.push(consts.get(expr));
+    else return false;
+    return true;
+  };
+  for (const term of plusTerms(body2)) {
+    if (/^[A-Za-z_$][\w$]*$/.test(term)) {
+      if (!operand(term)) return void 0;
+      continue;
+    }
+    const lit = stringLiteral(term);
+    if (lit !== void 0) {
+      if (lit.includes("\\")) return void 0;
+      parts2.push(lit);
+      continue;
+    }
+    if (!term.startsWith("`") || !term.endsWith("`") || term.includes("\\")) return void 0;
+    const inner = term.slice(1, -1);
+    let pos = 0;
+    for (const m of inner.matchAll(/\$\{\s*([^{}]*?)\s*\}/g)) {
+      parts2.push(inner.slice(pos, m.index));
+      if (!operand(m[1])) return void 0;
+      pos = m.index + m[0].length;
+    }
+    const tail = inner.slice(pos);
+    if (tail.includes("${")) return void 0;
+    parts2.push(tail);
+  }
+  const at = parts2.indexOf(null);
+  if (at === -1 || parts2.lastIndexOf(null) !== at) return void 0;
+  return { prefix: parts2.slice(0, at).join(""), suffix: parts2.slice(at + 1).join("") };
+}
+function tableFields(text2, cols) {
+  if (!cols) return [];
+  const open = objectOpen(cols.raw, cols.start);
+  return open === void 0 ? [] : columnFields(text2, open);
+}
 function tableArg(raw, declared2, bindings) {
   const m = /^([A-Za-z_$][\w$]*)(?:\s*\.\s*([A-Za-z_$][\w$]*))?$/.exec(raw.trim());
   if (!m) return void 0;
@@ -35531,25 +35604,82 @@ function tableArg(raw, declared2, bindings) {
   if (declared2.has(head)) return head;
   return b && isLocalSpecifier(b.spec) && b.imported !== "*" ? head : void 0;
 }
-function extractDrizzle(input) {
+function tableCalls(text2, skeleton, re) {
+  const out2 = [];
+  for (const m of re ? skeleton.matchAll(re) : []) {
+    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    const table = call2 && call2.args.length >= 2 ? stringLiteral(call2.args[0].raw) : void 0;
+    if (!call2 || table === void 0) continue;
+    out2.push({ entity: m[1], callee: (m[2] ?? "").replace(/\s+/g, ""), table, fields: tableFields(text2, call2.args[1]), at: m.index });
+  }
+  return out2;
+}
+function extractDrizzle(input, ctx) {
   const { text: text2, skeleton, lineOf } = sourceViews(input);
   const declaresSchema = importsModule(text2, "drizzle-orm");
   const bindings = importBindings(text2);
   const entities = [];
   const hints = [];
   const uses = [];
+  const tableHint = (entity, table, at) => ({ kind: "table", orm: ORM2, entity, table, file: input.rel, line: lineOf(at) });
   for (const m of declaresSchema ? skeleton.matchAll(TABLE_CALL) : []) {
     const call2 = readArgs(text2, m.index + m[0].length - 1);
-    if (!call2 || call2.args.length < 2 || stringLiteral(call2.args[0].raw) === void 0) continue;
-    const cols = call2.args[1];
-    const open = objectOpen(cols.raw, cols.start);
-    entities.push({
-      name: m[1],
+    const table = call2 && call2.args.length >= 2 ? stringLiteral(call2.args[0].raw) : void 0;
+    if (!call2 || table === void 0) continue;
+    const at = m.index;
+    entities.push({ name: m[1], orm: ORM2, file: input.rel, line: lineOf(at), fields: tableFields(text2, call2.args[1]) });
+    hints.push(tableHint(m[1], table, at));
+  }
+  const creators = /* @__PURE__ */ new Map();
+  if (declaresSchema) {
+    const callees = ["(?:[A-Za-z_$][\\w$]*\\s*\\.\\s*)?(?:pg|mysql|sqlite|singlestore)TableCreator"];
+    for (const [local, b] of bindings)
+      if (CREATOR.test(b.imported) && (b.spec === "drizzle-orm" || b.spec.startsWith("drizzle-orm/"))) callees.push(escapeName(local));
+    const re = new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*(?::[^=;]+)?=\\s*(?:${callees.join("|")})\\s*\\(`, "g");
+    const consts = stringConstants(text2);
+    for (const m of skeleton.matchAll(re)) {
+      const call2 = readArgs(text2, m.index + m[0].length - 1);
+      const fn = call2?.args[0];
+      creators.set(m[1], fn ? tableNameTemplate(fn.raw, consts) : void 0);
+    }
+  }
+  for (const t of tableCalls(text2, skeleton, assignedCalls(creators.keys()))) {
+    entities.push({ name: t.entity, orm: ORM2, file: input.rel, line: lineOf(t.at), fields: t.fields });
+    const template = creators.get(t.callee);
+    if (template) hints.push(tableHint(t.entity, `${template.prefix}${t.table}${template.suffix}`, t.at));
+  }
+  const exportedCreator = (name2, local, at) => {
+    if (!creators.has(local)) return;
+    const template = creators.get(local);
+    const hint = { kind: "table-factory", orm: ORM2, file: input.rel, line: lineOf(at), name: name2 };
+    if (template) hint.template = template;
+    hints.push(hint);
+  };
+  if (creators.size) {
+    for (const e of exportedNames(skeleton)) exportedCreator(e.name, e.local, e.offset);
+    const def = defaultExportName(skeleton);
+    if (def) exportedCreator("default", def, skeleton.search(/\bexport\s+default\b/));
+  }
+  const imported = [];
+  for (const [local, b] of bindings) if (b.imported !== "*" && isLocalSpecifier(b.spec) && !creators.has(local)) imported.push(local);
+  const candidates = /* @__PURE__ */ new Set();
+  for (const t of tableCalls(text2, skeleton, assignedCalls(imported))) {
+    const b = bindings.get(t.callee);
+    const module2 = resolveLocalModule(ctx, input.rel, b.spec);
+    if (!module2) continue;
+    const hint = {
+      kind: "table-call",
       orm: ORM2,
       file: input.rel,
-      line: lineOf(m.index),
-      fields: open === void 0 ? [] : columnFields(text2, open)
-    });
+      line: lineOf(t.at),
+      module: module2,
+      name: b.imported,
+      entity: t.entity,
+      table: t.table,
+      fields: t.fields
+    };
+    hints.push(hint);
+    candidates.add(t.entity);
   }
   for (const m of declaresSchema ? skeleton.matchAll(/(?<![\w$.])relations\s*\(\s*([A-Za-z_$][\w$]*)\s*,/g) : []) {
     const call2 = readArgs(text2, skeleton.indexOf("(", m.index));
@@ -35558,7 +35688,7 @@ function extractDrizzle(input) {
     const fields = relationFields(text2, second.raw, second.start);
     if (fields.length) hints.push({ kind: "fields", orm: ORM2, entity: m[1], file: input.rel, line: lineOf(m.index), fields });
   }
-  const declared2 = new Set(entities.map((e) => e.name));
+  const declared2 = /* @__PURE__ */ new Set([...entities.map((e) => e.name), ...candidates]);
   const clients = ["db", "tx", "trx", "database"];
   for (const m of skeleton.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]+)?=\s*(?:await\s+)?drizzle\s*\(/g)) clients.push(m[1]);
   const recv = `(?<![\\w$.])(?:(?:this|ctx|context)\\s*\\.\\s*)?(?:${[...new Set(clients)].map((c2) => c2.replace(/\$/g, "\\$")).join("|")})\\s*\\.\\s*`;
@@ -35593,6 +35723,60 @@ var drizzleExtractor = {
     return isScriptFile(input.rel) && declares(ctx, input.rel, ["drizzle-orm"]);
   },
   extract: extractDrizzle
+};
+function importedTables(hints) {
+  const factories = /* @__PURE__ */ new Map();
+  for (const h of hints) if (h.kind === "table-factory" && !factories.has(`${h.file}\0${h.name}`)) factories.set(`${h.file}\0${h.name}`, h);
+  const out2 = [];
+  for (const h of hints) {
+    if (h.kind !== "table-call") continue;
+    const factory = factories.get(`${h.module}\0${h.name}`);
+    if (factory && factory.orm === h.orm) out2.push({ call: h, factory });
+  }
+  return out2;
+}
+var drizzleTablesLinker = {
+  id: "drizzle-tables",
+  link(facts, ctx) {
+    const found = importedTables(ctx.hints);
+    if (!found.length) return facts;
+    const added = found.map(({ call: call2 }) => ({
+      name: call2.entity,
+      orm: call2.orm,
+      file: call2.file,
+      line: call2.line,
+      fields: call2.fields.map((f) => ({ ...f }))
+    }));
+    return { ...facts, entities: [...facts.entities, ...added] };
+  }
+};
+var drizzleSqlLinker = {
+  id: "drizzle-sql",
+  link(facts, ctx) {
+    const drizzle = new Set(facts.entities.filter((e) => e.orm === ORM2).map((e) => e.name));
+    if (!drizzle.size || !facts.entities.some((e) => e.orm === "sql")) return facts;
+    const physical = [];
+    for (const h of ctx.hints) if (h.kind === "table" && h.orm === ORM2) physical.push(h);
+    for (const { call: call2, factory } of importedTables(ctx.hints)) {
+      if (factory.template)
+        physical.push({ entity: call2.entity, table: `${factory.template.prefix}${call2.table}${factory.template.suffix}`, file: call2.file, line: call2.line });
+    }
+    physical.sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line);
+    const tables = /* @__PURE__ */ new Map();
+    for (const p of physical) if (drizzle.has(p.entity) && !tables.has(p.table.toLowerCase())) tables.set(p.table.toLowerCase(), p.entity);
+    const renamed = /* @__PURE__ */ new Map();
+    const kept = facts.entities.filter((e) => {
+      const to = e.orm === "sql" ? tables.get(e.name.toLowerCase()) : void 0;
+      if (to) renamed.set(e.name, to);
+      return !to;
+    });
+    if (!renamed.size) return facts;
+    const entities = kept.map(
+      (e) => e.orm === "sql" && e.fields.some((f) => f.relation && renamed.has(f.relation)) ? { ...e, fields: e.fields.map((f) => f.relation && renamed.has(f.relation) ? { ...f, relation: renamed.get(f.relation) } : f) } : e
+    );
+    const entityUses = facts.entityUses.map((u) => renamed.has(u.entity) ? { ...u, entity: renamed.get(u.entity) } : u);
+    return { ...facts, entities, entityUses };
+  }
 };
 
 // src/extract/fs-routes.ts
@@ -37467,7 +37651,7 @@ var JS_WEB_EXTRACTORS = [
   mongooseExtractor,
   sequelizeExtractor
 ];
-var JS_WEB_LINKERS = [jsMountLinker, ormFieldsLinker];
+var JS_WEB_LINKERS = [jsMountLinker, drizzleTablesLinker, ormFieldsLinker];
 var JS_WEB_CALL_LINKERS = [httpCallLinker];
 var RPC_EXTRACTORS = [trpcExtractor, nextActionsExtractor];
 var RPC_LINKERS = [rpcLinker];
@@ -37485,6 +37669,8 @@ var LINKERS = [
   ...JS_WEB_LINKERS,
   prismaLinker,
   ...PY_OPS_LINKERS,
+  // Drizzle tables absorb the SQL tables of their physical names, once SQL relations and literals are settled.
+  drizzleSqlLinker,
   ...RPC_LINKERS,
   ...JS_WEB_CALL_LINKERS,
   entityUseLinker,

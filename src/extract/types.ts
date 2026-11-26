@@ -205,6 +205,44 @@ export interface TableHint {
   line: number;
 }
 
+/**
+ * A Drizzle table creator a module exports
+ * (`export const createTable = pgTableCreator((name) => \`app_${name}\`)`):
+ * calls to it from other files declare tables.
+ */
+export interface TableFactoryHint {
+  kind: "table-factory";
+  orm: string;
+  /** The module declaring the creator. */
+  file: string;
+  line: number;
+  /** The exported name (`createTable`, or `default`). */
+  name: string;
+  /** How the creator maps a table name to its physical name; absent when not a simple template. */
+  template?: { prefix: string; suffix: string };
+}
+
+/**
+ * A table declared through a creator imported from a repo module
+ * (`export const users = createTable("user", (d) => ({ … }))`). Becomes an
+ * entity only when `module` exports a table creator by that name.
+ */
+export interface TableCallHint {
+  kind: "table-call";
+  orm: string;
+  file: string;
+  line: number;
+  /** The resolved file of the imported module. */
+  module: string;
+  /** The imported name (`createTable`, or `default`). */
+  name: string;
+  /** The declared entity: the const the table is bound to (`users`). */
+  entity: string;
+  /** The table name as written (`user`), before the creator's template. */
+  table: string;
+  fields: EntityField[];
+}
+
 /** A SQL statement literal naming a table (`"SELECT … FROM orders"`), kept only when the table is declared. */
 export interface SqlUseHint {
   kind: "sql-use";
@@ -368,6 +406,8 @@ export interface ActionCallHint {
 export type LinkHint =
   | MountHint
   | TableHint
+  | TableFactoryHint
+  | TableCallHint
   | SqlUseHint
   | SqlDdlHint
   | ViewsetHint

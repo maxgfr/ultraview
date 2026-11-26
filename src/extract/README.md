@@ -56,7 +56,7 @@ false-positive guards (comments, strings, test files, docs).
 | `http-calls`              | calls                | `fetch`, axios (verbs, config, instances with `baseURL`), ky (`prefixUrl`), `ofetch` / `$fetch`, Nuxt `useFetch`; URL normalisation; `.vue` / `.svelte` scripts                                                                                                                                  |
 | `react-router`            | screens              | `createBrowserRouter`/`useRoutes` literal tables, `RouteObject[]`, JSX `<Route>` trees; nested paths joined, `<Navigate>` redirects skipped                                                                                                                                                      |
 | `vue-router`              | screens              | `createRouter({ routes })` literal tables and `RouteRecordRaw[]`; children joined, redirects skipped                                                                                                                                                                                             |
-| `drizzle`                 | entities, entityUses | `pgTable`/`mysqlTable`/`sqliteTable` consts (fields = column builders, `.references()`, `relations()`); `db.select().from(t)` / joins / `db.query.t` → read, `insert`/`update`/`delete` → write                                                                                                  |
+| `drizzle`                 | entities, entityUses | `pgTable`/`mysqlTable`/`sqliteTable` consts and `pgTableCreator` factories, same-file or imported (fields = column builders, `d.varchar()` builder methods, `.references()`, `relations()`); `db.select().from(t)` / joins / `db.query.t` → read, `insert`/`update`/`delete` → write             |
 | `typeorm`                 | entities, entityUses | `@Entity` classes, column and relation decorators; repositories (`getRepository`, `@InjectRepository`, `Repository<T>`), `manager.op(Entity)`, Active Record statics                                                                                                                             |
 | `mongoose`                | entities, entityUses | `model("Name", schema)` with same-file or inline schemas, `ref` relations; model statics on reachable names                                                                                                                                                                                      |
 | `sequelize`               | entities, entityUses | `define()`, `class extends Model` + `init()`, sequelize-typescript `@Table`; associations (cross-file); statics and `models.X` registries                                                                                                                                                        |
@@ -64,13 +64,18 @@ false-positive guards (comments, strings, test files, docs).
 Linkers: `express-mounts`, `js-mounts` (Hono / Fastify cross-file prefixes),
 `python-mounts` (FastAPI / Flask / Django cross-file prefixes) — all three on
 the shared `mounts.ts`; `orm-fields` (fields declared away from their entity,
-JS ORM relations settled), `prisma-relations`, `drf-viewsets`,
+JS ORM relations settled), `drizzle-tables` (tables declared through a
+`pgTableCreator` imported from another module), `prisma-relations`, `drf-viewsets`,
 `sql-migrations` (every `*.sql` file's `CREATE` / `ALTER` / `DROP TABLE` replayed
 in migration order into one entity per table: latest `CREATE TABLE` wins and
 is cited, later `ADD` / `DROP` / `RENAME COLUMN`, type changes, `ADD … FOREIGN
 KEY` / `DROP CONSTRAINT` and `RENAME TO` applied, a dropped table removed;
 before `orm-relations`), `orm-relations` (SQLAlchemy / Django / SQL relations and foreign-key tables),
-`sql-uses` (a SQL literal must name a declared table), `http-calls` (client
+`sql-uses` (a SQL literal must name a declared table),
+`drizzle-sql` (after the SQL linkers: a SQL `CREATE TABLE` whose name is a
+Drizzle table's physical name — the creator's `prefix_${name}` template
+applied — folds into that Drizzle entity, its relations and SQL-literal uses
+renamed), `http-calls` (client
 calls through imported instances; every call, JS or Python, matched to a route
 by method + path pattern, most specific route wins, a call's `:p` never
 matches a literal segment; runs after every linker that moves routes),
@@ -88,9 +93,10 @@ set of rules in `urls.ts`.
 Known gaps (JS/TS web): NestJS `setGlobalPrefix` and URI versioning; Fastify
 autoload; React Router v7 `app/routes.ts` config routing; SvelteKit form
 actions; Next `basePath`; calls through Angular `HttpClient`, SWR / React Query
-keys, or clients passed around as values; Drizzle tables built with a custom
-`pgTableCreator`. RPC: tRPC v9 string paths, routers or actions
-re-exported through barrels, procedures built by helper functions, actions
+keys, or clients passed around as values; Drizzle table creators re-exported
+through barrels, and creators whose name callback is more than a prefix /
+suffix template (their tables are extracted, but not unified with their SQL
+tables). RPC: tRPC v9 string paths, routers or actions re-exported through barrels, procedures built by helper functions, actions
 passed around as props; aliases resolve `@/`, `~/`, `#`, `$lib` against the
 workspace root, `src/` and `app/` (tsconfig `paths` are not read).
 

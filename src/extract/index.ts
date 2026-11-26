@@ -52,7 +52,7 @@ const PY_OPS_LINKERS: readonly Linker[] = [pythonMountLinker, drfViewsetLinker, 
 // --- end issue #2 ---
 
 // --- issue #1: JS/TS web ---
-import { drizzleExtractor } from "./drizzle.js";
+import { drizzleExtractor, drizzleSqlLinker, drizzleTablesLinker } from "./drizzle.js";
 import { nextAppExtractor, nextPagesExtractor, nuxtPagesExtractor, nuxtServerExtractor, remixExtractor, svelteKitExtractor } from "./fs-routes.js";
 import { httpCallLinker, httpCallsExtractor } from "./http-calls.js";
 import { mongooseExtractor } from "./mongoose.js";
@@ -83,8 +83,8 @@ const JS_WEB_EXTRACTORS: readonly Extractor[] = [
   sequelizeExtractor,
 ];
 
-/** Structure first (cross-file prefixes, entity fields), before any name resolution. */
-const JS_WEB_LINKERS: readonly Linker[] = [jsMountLinker, ormFieldsLinker];
+/** Structure first (cross-file prefixes, tables of imported Drizzle creators, entity fields), before any name resolution. */
+const JS_WEB_LINKERS: readonly Linker[] = [jsMountLinker, drizzleTablesLinker, ormFieldsLinker];
 
 /** Calls → routes: after every linker that moves or adds routes. */
 const JS_WEB_CALL_LINKERS: readonly Linker[] = [httpCallLinker];
@@ -124,6 +124,8 @@ export const LINKERS: readonly Linker[] = [
   ...JS_WEB_LINKERS,
   prismaLinker,
   ...PY_OPS_LINKERS,
+  // Drizzle tables absorb the SQL tables of their physical names, once SQL relations and literals are settled.
+  drizzleSqlLinker,
   ...RPC_LINKERS,
   ...JS_WEB_CALL_LINKERS,
   entityUseLinker,

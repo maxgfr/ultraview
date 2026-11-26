@@ -1,0 +1,145 @@
+{
+  "calls": [],
+  "entities": [
+    {
+      "end": 21,
+      "fields": [
+        {
+          "name": "id",
+          "type": "serial"
+        },
+        {
+          "name": "user_id",
+          "relation": "users",
+          "type": "varchar(255)"
+        }
+      ],
+      "file": "drizzle/0000_init.sql",
+      "line": 18,
+      "name": "audit_log",
+      "orm": "sql"
+    },
+    {
+      "end": 16,
+      "fields": [
+        {
+          "name": "id",
+          "type": "serial"
+        },
+        {
+          "name": "authorId",
+          "relation": "users",
+          "type": "varchar"
+        },
+        {
+          "name": "title",
+          "type": "text"
+        },
+        {
+          "name": "author",
+          "relation": "users",
+          "type": "users"
+        },
+        {
+          "name": "comments",
+          "relation": "comments",
+          "type": "comments[]"
+        }
+      ],
+      "file": "src/server/db/schema/posts.ts",
+      "line": 5,
+      "name": "posts",
+      "orm": "drizzle"
+    },
+    {
+      "end": 22,
+      "fields": [
+        {
+          "name": "id",
+          "type": "serial"
+        },
+        {
+          "name": "postId",
+          "relation": "posts",
+          "type": "integer"
+        },
+        {
+          "name": "body",
+          "type": "text"
+        }
+      ],
+      "file": "src/server/db/schema/posts.ts",
+      "line": 18,
+      "name": "comments",
+      "orm": "drizzle"
+    },
+    {
+      "end": 6,
+      "fields": [
+        {
+          "name": "id",
+          "type": "varchar"
+        },
+        {
+          "name": "email",
+          "type": "varchar"
+        },
+        {
+          "name": "posts",
+          "relation": "posts",
+          "type": "posts[]"
+        }
+      ],
+      "file": "src/server/db/schema/users.ts",
+      "line": 3,
+      "name": "users",
+      "orm": "drizzle"
+    }
+  ],
+  "entityUses": [
+    {
+      "entity": "posts",
+      "file": "src/server/api/posts.ts",
+      "line": 7,
+      "op": "read"
+    },
+    {
+      "entity": "users",
+      "file": "src/server/api/posts.ts",
+      "line": 7,
+      "op": "read"
+    },
+    {
+      "entity": "posts",
+      "file": "src/server/api/posts.ts",
+      "line": 11,
+      "op": "write"
+    },
+    {
+      "entity": "users",
+      "file": "src/server/api/posts.ts",
+      "line": 15,
+      "op": "read"
+    },
+    {
+      "entity": "audit_log",
+      "file": "src/server/api/posts.ts",
+      "line": 19,
+      "op": "write"
+    }
+  ],
+  "externals": [
+    {
+      "file": "src/server/db/index.ts",
+      "id": "postgres",
+      "line": 2,
+      "via": "sdk"
+    }
+  ],
+  "infra": [],
+  "jobs": [],
+  "links": [],
+  "routes": [],
+  "schema": 2,
+  "screens": []
+}
