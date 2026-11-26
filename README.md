@@ -77,8 +77,9 @@ your repo
    evidence (≥ 70% of modules), then 1–3 flows and a tour. `check` gates it.
 3. `render` or `serve` draws it: Business → Systems → Modules → Files →
    Symbols, the data models, flows, saved questions, changes and insights.
-4. A question becomes a **lens**: `lens new` gives the evidence, the agent
-   writes a cited answer, `lens save` stamps the hash of every cited file, and
+4. A question becomes a **lens**, in any language: `lens new` gives the
+   evidence (the agent adds English code keywords with `--terms` when the
+   question is not in English), the agent writes a cited answer, `lens save` stamps the hash of every cited file, and
    the answer is a view anyone can reopen at `#lens=<id>`, greyed when the code
    under it changes.
 5. A change becomes a **change set** and a **timeline** entry: `diff
@@ -119,11 +120,13 @@ once into a shared cache (`--no-ast` skips them).
 `pnpm run eval` runs the offline suite in [evals/](evals/README.md) against
 fixture repositories, in temp copies, through the committed bundle:
 
-- **Ranking.** 6 questions about the shop fixture, each in 5 English and 5
-  French paraphrases: `lens new` must put the key nodes in its top 10
-  candidates. 29/30 English, 29/30 French (14/30 and 3/30 before the ranking
-  this release ships). A held-out set on another fixture (Next.js + Drizzle,
-  no model, generated after the tuning): 24/30 English, 26/30 French.
+- **Ranking.** 6 questions about the shop fixture and 6 held-out ones about
+  another fixture (Next.js + Drizzle, no model, generated after the tuning),
+  each in 5 paraphrases in 11 languages (en, fr, es, de, it, pt, nl, ja, zh,
+  ar, ru): `lens new` must put the key nodes in its top 10 candidates. With
+  the agent's English `--terms`, every language reaches 57–59/60 (95–98%);
+  English without terms, 54/60 (30/30 shop, 24/30 held out). The gate: with
+  terms, no language more than 2 points below English without terms.
 - **Gates.** For each question, a good answer must pass `lens save` and
   `check`, hold the key nodes and cite the right files; a bad one must fail
   with the expected reason: an uncited sentence, a citation past the end of a
@@ -184,8 +187,11 @@ Nothing committed holds a machine-local path. Outside `.ultraview/`, only
 - **No prose per file.** Files and symbols show engine data (size, tests,
   churn, edges), not a written description; the model writes at the system,
   capability, flow and question level.
-- **French questions** are bridged by a small lexicon of everyday app words;
-  other languages rank on their own words only.
+- **Questions in other languages** need the agent's English keywords
+  (`--terms`); without them, French falls back on a small lexicon of everyday
+  app words and other languages rank on their own words only, which rarely
+  match English code. CJK questions are split as the engine splits them
+  (whole runs until its CJK bigrams land).
 - `render` and `serve` redraw saved model, flow and lens edits without
   re-indexing, but code changes need `build`: until then the map shows the
   code as of the last build, and both say the index is stale.

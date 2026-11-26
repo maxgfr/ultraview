@@ -1,16 +1,22 @@
 // Reading a question for `lens new` (docs/design.md §7): the words to look
 // for, and what the wording points at.
 //
-//   terms        the question's own words, stemmed (`cancelling` → `cancel`);
-//                for a French question, their English translations from a
-//                small lexicon of everyday app vocabulary (`commande` → `order`),
-//                since code is mostly written in English; plus a few one-way
-//                synonyms (`buy` → `order`) at a lower weight.
+//   terms        the question's own words, stemmed (`cancelling` → `cancel`),
+//                and the English keywords the agent supplied (`--terms`), since
+//                code is mostly written in English; for a French question
+//                without them, the English translations of its words from a
+//                small lexicon of everyday app vocabulary (`commande` → `order`);
+//                plus a few one-way synonyms (`buy` → `order`) at a lower weight.
+//   bridged      the question is not English (see `isBridged`): its words were
+//                bridged to English, by the supplied terms or the lexicon.
 //   kinds        node kinds the wording points at: data words (`fields`,
 //                `stored`, `données`) → entity, endpoint words → route, …
 //   methods      HTTP methods the verbs point at (`fetch` → GET, `cancel` →
 //                DELETE, `create` → POST, `update` → PUT / PATCH).
 //   cardinality  `one` (by id, a specific…) or `all` (every, list…).
+//
+// Words are split by the engine's tokenizer (`codeindex.keywords` +
+// `subtokens`), so a word in any script is kept as the engine indexes it.
 //
 // Pure and deterministic: the same question always reads the same. The
 // lexicons are generic on purpose (no repository's own names): what a
@@ -19,21 +25,37 @@
 import { codeindex } from "./engine.js";
 import type { NodeKind } from "./model/types.js";
 
-/** Weight of a synonym next to a word of the question (or its translation), which weighs 1. */
+/** Weight of a synonym next to a word of the question (or its translation, or a supplied term), which weighs 1. */
 export const SYNONYM_WEIGHT = 0.6;
+
+/**
+ * Weight of a bridged question's own words when the agent supplied English
+ * terms: the terms say what to look for, the question's words only catch code
+ * written in its language. Below SYNONYM_WEIGHT, so short words of another
+ * language that prefix English identifiers (`con` → `config`, `per` →
+ * `persist`) never outrank a term.
+ */
+export const OWN_WORD_WEIGHT = 0.25;
+
+/**
+ * Share of a question's words that must be English stopwords (the engine's
+ * list: `the`, `does`, `what`…) for it to read as English. Every English
+ * question of the evals is above it, every other language below.
+ */
+export const ENGLISH_SHARE = 0.2;
 
 export interface QuestionReading {
   /** Search terms, sorted. */
   terms: string[];
-  /** Each term's weight: 1, or SYNONYM_WEIGHT for a synonym. */
+  /** Each term's weight: 1, SYNONYM_WEIGHT for a synonym, OWN_WORD_WEIGHT for a bridged question's own word next to supplied terms. */
   weight: Map<string, number>;
   /** Node kinds the wording points at. */
   kinds: Set<NodeKind>;
   /** HTTP methods the verbs point at. */
   methods: Set<string>;
   cardinality?: "one" | "all";
-  /** The question reads as French: its words were bridged to English. */
-  french: boolean;
+  /** The question is not English (`isBridged`): its words were bridged to English. */
+  bridged: boolean;
 }
 
 /** Words only French uses (none is an English word): one of them makes the question French. */
@@ -354,14 +376,58 @@ function englishStem(raw: string): string {
 /** French plural: `commandes` → `commande`, `articles` → `article`. */
 const frenchSingular = (t: string) => (t.length > 4 && (t.endsWith("s") || t.endsWith("x")) && !t.endsWith("ss") ? t.slice(0, -1) : t);
 
-/** Folded, lowercased words of the question, stopwords included. */
-function words(question: string): string[] {
-  return codeindex
-    .foldText(question)
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
+/** French multi-word terms the lexicon reads as one word (`mot de passe`, `mise à jour`, `tableau de bord`). */
+const joinPhrases = (folded: string) =>
+  folded
+    .replace(/\bmot[\s'-]+de[\s'-]+passe\b/g, "motdepasse")
+    .replace(/\bmise[\s'-]+a[\s'-]+jour\b/g, "miseajour")
+    .replace(/\btableau[\s'-]+de[\s'-]+bord\b/g, "tableaudebord");
+
+/**
+ * Folded, lowercased words of `text`, stopwords included, split by the
+ * engine's tokenizer: `keywords` (Unicode letters, marks and digits, any
+ * script) and `subtokens` (`orderItems` → `orderitems`, `order`, `items`).
+ */
+function words(text: string): string[] {
+  const out: string[] = [];
+  for (const raw of codeindex.keywords(joinPhrases(codeindex.foldText(text).toLowerCase()), () => true))
+    for (const t of codeindex.subtokens(raw)) if (!out.includes(t)) out.push(t);
+  return out;
 }
+
+const ASCII_WORD = /^[a-z0-9]+$/;
+const LETTER = /\p{L}/gu;
+const ASCII_LETTER = /[a-z]/i;
+
+/** Most of the letters of `text`, once folded (`é` → `e`), are not a–z: Cyrillic, Arabic, CJK… */
+function mostlyNonLatin(text: string): boolean {
+  const letters = codeindex.foldText(text).match(LETTER) ?? [];
+  return letters.length > 0 && letters.filter((c) => !ASCII_LETTER.test(c)).length * 2 > letters.length;
+}
+
+/** The share of the words of `text` that are English stopwords, by the engine's own list (what `keywords` drops). */
+function englishShare(text: string): number {
+  const all = codeindex.keywords(text, () => true).length;
+  return all ? (all - codeindex.keywords(text).length) / all : 0;
+}
+
+/**
+ * The question is not English when any of these holds:
+ *   1. one of its words is a French marker (FRENCH_MARKERS: `le`, `est`, `quand`…);
+ *   2. most of its letters are not Latin (`mostlyNonLatin`);
+ *   3. terms were supplied and under ENGLISH_SHARE of its words are English
+ *      stopwords (a Spanish, German… question: Latin letters, no French marker).
+ * Without terms, a Latin-script question with no French marker reads as
+ * English: there is nothing to bridge it with.
+ */
+export function isBridged(question: string, terms = ""): boolean {
+  if (words(question).some((w) => FRENCH_MARKERS.has(w))) return true;
+  if (mostlyNonLatin(question)) return true;
+  return terms.trim() !== "" && englishShare(question) < ENGLISH_SHARE;
+}
+
+/** A word long enough to search for: 3 letters for a Latin word (`id` aside), 2 characters in another script (a CJK bigram). */
+const searchable = (t: string) => (ASCII_WORD.test(t) ? t.length >= 3 || t === "id" : t.length >= 2);
 
 function longestPrefix<T>(word: string, table: Record<string, T>): T | undefined {
   let best: string | undefined;
@@ -371,24 +437,49 @@ function longestPrefix<T>(word: string, table: Record<string, T>): T | undefined
 
 const hinted = (ws: string[], prefixes: string[]) => ws.some((w) => prefixes.some((p) => w.startsWith(p)));
 
-/** Read `question`: the terms to search for, and the kinds, methods and cardinality its wording points at. */
-export function readQuestion(question: string): QuestionReading {
-  const all = words(question);
-  // `mot de passe`, `mise à jour`, `tableau de bord`: one word for the lexicon.
-  const joined = all
-    .join(" ")
-    .replace(/\bmot de passe\b/g, "motdepasse")
-    .replace(/\bmise a jour\b/g, "miseajour")
-    .replace(/\btableau de bord\b/g, "tableaudebord");
-  const ws = joined.split(" ").filter(Boolean);
+/**
+ * The HTTP methods the leading verb of a verb-noun code name points at
+ * (`placeOrder` → POST, `cancelOrder` → DELETE). A one-word name has none: a
+ * Next handler named `GET` is its route's twin, which earns the method bonus.
+ */
+export function verbMethods(name: string): string[] {
+  // subtokens: the run-together name first, then its parts (`placeorder`, `place`, `order`).
+  const parts = codeindex.subtokens(name);
+  const verb = parts.length > 2 ? parts[1]! : "";
+  const out: string[] = [];
+  if (verb.length >= 3) for (const [ms, prefixes] of METHOD_HINTS) if (prefixes.some((p) => verb.startsWith(p))) out.push(...ms);
+  return out;
+}
+
+/**
+ * Read `question`: the terms to search for, and the kinds, methods and
+ * cardinality its wording points at. `terms` are English code keywords the
+ * agent supplied (`lens new --terms`): each weighs 1, stemmed like an English
+ * word. With them, a bridged question's own words weigh OWN_WORD_WEIGHT and the
+ * French lexicon is not used (it is the fallback when no terms are given); an
+ * English question's words keep weighing 1 next to them. The hints (kinds,
+ * methods, cardinality) read the question and the terms together.
+ */
+export function readQuestion(question: string, terms = ""): QuestionReading {
+  const ws = words(question);
+  const supplied = words(terms);
+  const bridged = isBridged(question, terms);
   const french = ws.some((w) => FRENCH_MARKERS.has(w));
   const weight = new Map<string, number>();
   const add = (t: string, w: number) => {
-    if ((t.length < 3 && t !== "id") || KIND_WORDS.has(t)) return;
+    if (!searchable(t) || KIND_WORDS.has(t)) return;
     if (w > (weight.get(t) ?? 0)) weight.set(t, w);
   };
+  const stem = (t: string) => (ASCII_WORD.test(t) ? englishStem(t) : t);
 
-  if (french) {
+  for (const t of supplied) if (!ENGLISH_FILLER.has(t)) add(stem(t), 1);
+  if (supplied.length && bridged) {
+    // The terms carry the search; the question's own words only catch code written in its language.
+    for (const raw of ws) {
+      if (FRENCH_STOPWORDS.has(raw) || raw.length < 4) continue;
+      add(french ? frenchSingular(raw) : raw, OWN_WORD_WEIGHT);
+    }
+  } else if (french) {
     for (const raw of ws) {
       if (FRENCH_STOPWORDS.has(raw)) continue;
       const w = frenchSingular(raw);
@@ -399,19 +490,21 @@ export function readQuestion(question: string): QuestionReading {
     }
   } else {
     for (const raw of codeindex.keywords(question)) {
-      const lower = codeindex.foldText(raw).toLowerCase();
-      if (!/^[a-z0-9]+$/.test(lower) || ENGLISH_FILLER.has(lower)) continue;
-      add(englishStem(lower), 1);
+      for (const lower of codeindex.subtokens(raw)) {
+        if (ENGLISH_FILLER.has(lower)) continue;
+        add(stem(lower), 1);
+      }
     }
   }
   for (const t of [...weight.keys()]) for (const s of SYNONYMS[t] ?? []) add(englishStem(s), SYNONYM_WEIGHT);
 
+  const hintWords = [...ws, ...supplied];
   const kinds = new Set<NodeKind>();
-  for (const [kind, prefixes] of KIND_HINTS) if (hinted(ws, prefixes)) kinds.add(kind);
+  for (const [kind, prefixes] of KIND_HINTS) if (hinted(hintWords, prefixes)) kinds.add(kind);
   const methods = new Set<string>();
-  for (const [ms, prefixes] of METHOD_HINTS) if (hinted(ws, prefixes)) for (const m of ms) methods.add(m);
-  const one = ws.some((w) => ONE_HINTS.some((p) => (p === "id" ? w === "id" || w === "ids" : w.startsWith(p))));
-  const many = hinted(ws, ALL_HINTS);
+  for (const [ms, prefixes] of METHOD_HINTS) if (hinted(hintWords, prefixes)) for (const m of ms) methods.add(m);
+  const one = hintWords.some((w) => ONE_HINTS.some((p) => (p === "id" ? w === "id" || w === "ids" : w.startsWith(p))));
+  const many = hinted(hintWords, ALL_HINTS);
   const cardinality = one && !many ? "one" : many && !one ? "all" : undefined;
 
   return {
@@ -420,6 +513,6 @@ export function readQuestion(question: string): QuestionReading {
     kinds,
     methods,
     ...(cardinality ? { cardinality } : {}),
-    french,
+    bridged,
   };
 }

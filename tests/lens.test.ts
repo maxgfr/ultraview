@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../src/cli.js";
 import { lensList, lensNew, proposeLensId, questionSlug, questionTerms } from "../src/lens.js";
-import { readQuestion, SYNONYM_WEIGHT } from "../src/lens-terms.js";
+import { isBridged, OWN_WORD_WEIGHT, readQuestion, SYNONYM_WEIGHT, verbMethods } from "../src/lens-terms.js";
 import { saveLens } from "../src/save.js";
 import { builtShop, captureIo, readModelFile, touch } from "./helpers.js";
 
@@ -89,7 +89,7 @@ describe("lens new", () => {
 
   it("reads a French question through the lexicon of everyday app words", async () => {
     const r = readQuestion("Que devient une commande quand elle est annulée ?");
-    expect(r.french).toBe(true);
+    expect(r.bridged).toBe(true);
     expect(r.terms).toEqual(expect.arrayContaining(["cancel", "order"]));
     expect(r.terms).not.toContain("est");
     expect([...r.methods]).toEqual(["DELETE"]);
@@ -97,7 +97,7 @@ describe("lens new", () => {
     expect(readQuestion("Que se passe-t-il si je me trompe de mot de passe ?").terms).toContain("password");
     // English stays English: `command` is not `commande`, and kind words are hints, never terms.
     const en = readQuestion("Which route runs the build command?");
-    expect(en.french).toBe(false);
+    expect(en.bridged).toBe(false);
     expect(en.terms).toEqual(["build", "command", "run"]);
     expect(en.kinds.has("route")).toBe(true);
     expect(readQuestion("Can I buy it?").weight.get("order")).toBe(SYNONYM_WEIGHT);
@@ -116,6 +116,99 @@ describe("lens new", () => {
     ]);
     expect(top("Que renvoie exactement le endpoint de santé ?", 1)).toEqual(["route:GET /health"]);
     expect(top("Comment récupérer une commande précise à partir de son identifiant ?", 1)).toEqual(["route:GET /api/orders/:id"]);
+  });
+
+  it("merges the supplied English terms into the reading of a question in any language", () => {
+    // Terms weigh 1 and are stemmed like English words; synonyms apply to them as to the question's words.
+    const es = readQuestion("¿Qué pasa con un pedido cuando se cancela?", "order cancel purchases");
+    expect(es.bridged).toBe(true);
+    expect(es.weight.get("order")).toBe(1);
+    expect(es.weight.get("cancel")).toBe(1);
+    expect(es.weight.get("purchase")).toBe(1);
+    // The question's own words stay, below the terms; short ones (`con`, `que`) are left out.
+    expect(es.weight.get("pedido")).toBe(OWN_WORD_WEIGHT);
+    expect(es.terms).not.toContain("con");
+    expect(es.terms).not.toContain("que");
+    // The hints read the terms too: `cancel` points at DELETE, `purchases` at POST.
+    expect([...es.methods].sort()).toEqual(["DELETE", "POST"]);
+    // An English question keeps its own words at weight 1 next to the terms.
+    const en = readQuestion("What happens when an order is cancelled?", "refund");
+    expect(en.bridged).toBe(false);
+    expect(en.weight.get("order")).toBe(1);
+    expect(en.weight.get("refund")).toBe(1);
+    // With terms, a French question is read through them, not the lexicon.
+    const fr = readQuestion("Que devient une commande quand elle est annulée ?", "order cancel");
+    expect(fr.bridged).toBe(true);
+    expect(fr.terms).toEqual(["annulee", "cancel", "commande", "order"]);
+    expect(fr.weight.get("commande")).toBe(OWN_WORD_WEIGHT);
+    expect(questionTerms("Как отменить заказ?", "cancel order")).toEqual(expect.arrayContaining(["cancel", "order"]));
+  });
+
+  it("calls a question bridged when it is not English", () => {
+    // A French marker, with or without terms.
+    expect(isBridged("Comment annuler une commande ?")).toBe(true);
+    // Mostly non-Latin letters: Cyrillic, Arabic, CJK.
+    expect(isBridged("Как отменить заказ?")).toBe(true);
+    expect(isBridged("كيف يتم إلغاء الطلب؟")).toBe(true);
+    expect(isBridged("注文をキャンセルするとどうなりますか？")).toBe(true);
+    expect(isBridged("取消订单 API 会返回什么？")).toBe(true);
+    // A Latin-script question without French markers: bridged only once terms say so and few of its words are English stopwords.
+    expect(isBridged("¿Dónde pueden los clientes ver sus pedidos?")).toBe(false);
+    expect(isBridged("¿Dónde pueden los clientes ver sus pedidos?", "customer order list")).toBe(true);
+    expect(isBridged("Wie wird eine Bestellung storniert?", "order cancel")).toBe(true);
+    // English stays English, terms or not.
+    expect(isBridged("How does cancelling an order work?")).toBe(false);
+    expect(isBridged("How does cancelling an order work?", "cancel order")).toBe(false);
+    expect(isBridged("Which route returns the API status?", "health")).toBe(false);
+  });
+
+  it("reads the verb of a verb-noun symbol name as the method it points at", async () => {
+    expect(verbMethods("placeOrder")).toEqual(["POST"]);
+    expect(verbMethods("cancelOrder")).toEqual(["DELETE"]);
+    expect(verbMethods("listOrders")).toEqual(["GET"]);
+    // A one-word name (a Next handler named GET) is its route's twin: no bonus of its own.
+    expect(verbMethods("GET")).toEqual([]);
+    expect(verbMethods("orderTotal")).toEqual([]);
+    // `buy` points at POST, so placeOrder rises above the other order symbols.
+    const repo = await builtShop(cleanups);
+    const ids = lensNew(repo, "Was passiert, wenn ein Kunde etwas kauft?", { terms: "customer buy order" }).candidates.map((c) => c.id);
+    expect(ids.indexOf("sym:src/services/orders.ts#placeOrder")).toBeLessThan(ids.indexOf("sym:src/services/orders.ts#listOrders"));
+    expect(ids.slice(0, 3)).toContain("route:POST /api/orders");
+  });
+
+  it("keeps words in any script, as the engine splits them", () => {
+    expect(readQuestion("Как отменить заказ?").terms).toEqual(expect.arrayContaining(["заказ", "отменить"]));
+    expect(readQuestion("ما هي حالة الطلب؟").terms).toEqual(expect.arrayContaining(["الطلب", "حالة"]));
+    expect(readQuestion("购物车 页面").terms).toEqual(["购物车", "页面"]);
+    // Still no one-letter Latin words, and English stems are not applied to other scripts.
+    expect(readQuestion("Заказы и товары").terms).toEqual(expect.arrayContaining(["заказы", "товары"]));
+    // A run-together identifier in the question is split like code.
+    expect(readQuestion("Where is cancelOrder called?").terms).toEqual(expect.arrayContaining(["cancel", "order"]));
+  });
+
+  it("lens new --terms ranks a question in another language like its English twin", async () => {
+    const repo = await builtShop(cleanups);
+    const top = (q: string, terms: string | undefined, n: number) =>
+      lensNew(repo, q, terms === undefined ? {} : { terms })
+        .candidates.slice(0, n)
+        .map((c) => c.id);
+    const ru = "Что происходит с заказом, когда его отменяют?";
+    const without = lensNew(repo, ru);
+    expect(without.bridged).toBe(true);
+    expect(without.text).toContain('reading   not English and no --terms: pass --terms "<English code keywords>"');
+    const pack = lensNew(repo, ru, { terms: "order cancel delete" });
+    expect(pack).toMatchObject({ bridged: true, suppliedTerms: "order cancel delete" });
+    expect(pack.text).toContain("reading   not English: read through --terms");
+    expect(top(ru, "order cancel delete", 2).sort()).toEqual(["route:DELETE /api/orders/:id", "sym:src/services/orders.ts#cancelOrder"]);
+    expect(top("¿Cómo se obtiene un pedido concreto por su identificador?", "get order by id", 1)).toEqual(["route:GET /api/orders/:id"]);
+    // An English question reads the same with no --terms: nothing new in its pack.
+    const en = lensNew(repo, QUESTION);
+    expect(en.bridged).toBe(false);
+    expect(en.suppliedTerms).toBeUndefined();
+    expect(en.text).not.toContain("reading ");
+    const r = await run(["lens", "new", ru, "--terms", "order cancel", "--repo", repo, "--json"]);
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.out)).toMatchObject({ bridged: true, suppliedTerms: "order cancel" });
   });
 
   it("lens new --json returns the structured pack; usage errors exit 2", async () => {

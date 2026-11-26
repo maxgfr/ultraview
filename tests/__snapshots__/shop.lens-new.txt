@@ -6,7 +6,7 @@ terms     cancel, order
 
 ## Candidate nodes
 Named like the question (routes, screens, entities, jobs, symbols, capabilities):
-- sym:src/services/orders.ts#cancelOrder  (cancelOrder)  [src/services/orders.ts:24]  score 3.817: cancel, order
+- sym:src/services/orders.ts#cancelOrder  (cancelOrder)  [src/services/orders.ts:24]  score 4.567: cancel, order
 - route:DELETE /api/orders/:id  (DELETE /api/orders/:id)  [src/routes/orders.ts:19]  score 3.549: cancel, order
 - cap:order-tracking  (Following orders)  score 1.866: cancel, order
 - route:GET /api/orders  (GET /api/orders)  [src/routes/orders.ts:6]  score 1.78: order

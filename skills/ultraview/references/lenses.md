@@ -10,9 +10,11 @@
   symbols and capabilities ranked by the question's rare words, in their names
   first and their definitions, fields or summaries second, with a bonus when
   the wording points at their kind ("fields", "stored" → entities), method
-  ("fetch" → GET, "cancel" → DELETE) or shape ("by its id" → `/:id`). Then the
-  modules ultraindex `find` ranks. A French question is read through a small
-  lexicon of everyday app words (`commande` → `order`).
+  ("fetch" → GET, "cancel" → DELETE: a route's, or a symbol's leading verb,
+  `cancelOrder`) or shape ("by its id" → `/:id`). Then the
+  modules ultraindex `find` ranks.
+- `reading`, when the question is not in English: whether it was read
+  through `--terms` (see below).
 - The strongest edges around them, source excerpts within `--budget` tokens
   (default 6000), the JSON template and the steps.
 
@@ -28,6 +30,31 @@ Then:
 
 A lens answers one question. A second question is a second lens.
 
+## A question in any language
+
+Code is mostly written in English, so a question asked in another language
+finds little on its own words. Whenever the question is not in English, pass
+`--terms "<English code keywords>"`: 3–8 words the code would use for what is
+asked (`order cancel delete`, `cart quantity update`), plus the repo's own
+names when you know them (`checkout`, `OrderItem`, `sku`). Keep the question
+in the user's words; it is saved as asked.
+
+- Each term weighs as much as an English question's word, stemmed the same
+  way (`cancelled` → `cancel`); the one-way synonyms apply (`buy` → `order`).
+- The question's own words still count, at a quarter of a term's weight, so
+  code written in that language is found too, but they never outrank a term.
+- The kind, method and cardinality hints read the terms too (`delete` →
+  DELETE, `fields` → entities).
+- The question counts as not English (`bridged` in `--json`) when it holds a
+  French marker word (`le`, `est`, `quand`…), when most of its letters are not
+  Latin (Cyrillic, Arabic, CJK…), or when terms are given and under a fifth of
+  its words are English stopwords.
+- Without terms, a French question falls back on a small lexicon of everyday
+  app words (`commande` → `order`); any other language ranks on its own words
+  only, which rarely match. The pack then says so on its `reading` line.
+
+An English question can take `--terms` too: they are added to its words.
+
 ## Stale lenses and re-asking
 
 `lens save` stamps the sha256 of every cited file. When one changes (the whole
@@ -42,7 +69,8 @@ delete a stale lens to silence the warning.
 installed) adds `POST /api/ask`: the viewer's Ask box sends a question, the
 server runs that agent's CLI read-only (Claude Code in its don't-ask
 permission mode, allowed only Read, Glob, Grep and ultraview's read-only
-commands; Codex in its read-only sandbox), with this same `lens new` pack, and saves the reply
-with `lens save`. One ask at a time, 180 s timeout; nothing is written but the
-lens; the agent's output goes to `.ultraview/ask.log`. An ask never replaces
+commands; Codex in its read-only sandbox), with this same `lens new` pack (the
+prompt asks the agent to add `--terms` when the question is not in English),
+and saves the reply with `lens save`. One ask at a time, 180 s timeout;
+nothing is written but the lens; the agent's output goes to `.ultraview/ask.log`. An ask never replaces
 another question's lens.

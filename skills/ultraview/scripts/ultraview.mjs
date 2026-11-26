@@ -40940,6 +40940,8 @@ import { join as join49, resolve as resolve28 } from "path";
 
 // src/lens-terms.ts
 var SYNONYM_WEIGHT = 0.6;
+var OWN_WORD_WEIGHT = 0.25;
+var ENGLISH_SHARE = 0.2;
 var FRENCH_MARKERS = new Set(
   "le la les des du une est sont que qui quoi comment quel quelle quels quelles pour dans avec sur cette ces quand elle elles ils pas ou aux au je tu nous vous leur leurs sa ses son mon ma mes ton ta tes cela ceci ca etre fait faut peut peux doit entre chaque tout tous toute toutes quelqu quelque se ne qu jusqu lorsqu puis donc alors aussi tres plus moins".split(" ")
 );
@@ -41219,26 +41221,63 @@ function englishStem(raw) {
   return t;
 }
 var frenchSingular = (t) => t.length > 4 && (t.endsWith("s") || t.endsWith("x")) && !t.endsWith("ss") ? t.slice(0, -1) : t;
-function words(question) {
-  return codeindex_engine_exports.foldText(question).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+var joinPhrases = (folded) => folded.replace(/\bmot[\s'-]+de[\s'-]+passe\b/g, "motdepasse").replace(/\bmise[\s'-]+a[\s'-]+jour\b/g, "miseajour").replace(/\btableau[\s'-]+de[\s'-]+bord\b/g, "tableaudebord");
+function words(text2) {
+  const out2 = [];
+  for (const raw of codeindex_engine_exports.keywords(joinPhrases(codeindex_engine_exports.foldText(text2).toLowerCase()), () => true))
+    for (const t of codeindex_engine_exports.subtokens(raw)) if (!out2.includes(t)) out2.push(t);
+  return out2;
 }
+var ASCII_WORD = /^[a-z0-9]+$/;
+var LETTER = new RegExp("\\p{L}", "gu");
+var ASCII_LETTER = /[a-z]/i;
+function mostlyNonLatin(text2) {
+  const letters = codeindex_engine_exports.foldText(text2).match(LETTER) ?? [];
+  return letters.length > 0 && letters.filter((c2) => !ASCII_LETTER.test(c2)).length * 2 > letters.length;
+}
+function englishShare(text2) {
+  const all = codeindex_engine_exports.keywords(text2, () => true).length;
+  return all ? (all - codeindex_engine_exports.keywords(text2).length) / all : 0;
+}
+function isBridged(question, terms = "") {
+  if (words(question).some((w) => FRENCH_MARKERS.has(w))) return true;
+  if (mostlyNonLatin(question)) return true;
+  return terms.trim() !== "" && englishShare(question) < ENGLISH_SHARE;
+}
+var searchable = (t) => ASCII_WORD.test(t) ? t.length >= 3 || t === "id" : t.length >= 2;
 function longestPrefix(word, table) {
   let best;
   for (const k of Object.keys(table)) if (word.startsWith(k) && (!best || k.length > best.length)) best = k;
   return best === void 0 ? void 0 : table[best];
 }
 var hinted = (ws, prefixes) => ws.some((w) => prefixes.some((p) => w.startsWith(p)));
-function readQuestion(question) {
-  const all = words(question);
-  const joined = all.join(" ").replace(/\bmot de passe\b/g, "motdepasse").replace(/\bmise a jour\b/g, "miseajour").replace(/\btableau de bord\b/g, "tableaudebord");
-  const ws = joined.split(" ").filter(Boolean);
+function verbMethods(name2) {
+  const parts2 = codeindex_engine_exports.subtokens(name2);
+  const verb = parts2.length > 2 ? parts2[1] : "";
+  const out2 = [];
+  if (verb.length >= 3) {
+    for (const [ms, prefixes] of METHOD_HINTS) if (prefixes.some((p) => verb.startsWith(p))) out2.push(...ms);
+  }
+  return out2;
+}
+function readQuestion(question, terms = "") {
+  const ws = words(question);
+  const supplied = words(terms);
+  const bridged = isBridged(question, terms);
   const french = ws.some((w) => FRENCH_MARKERS.has(w));
   const weight = /* @__PURE__ */ new Map();
   const add = (t, w) => {
-    if (t.length < 3 && t !== "id" || KIND_WORDS2.has(t)) return;
+    if (!searchable(t) || KIND_WORDS2.has(t)) return;
     if (w > (weight.get(t) ?? 0)) weight.set(t, w);
   };
-  if (french) {
+  const stem4 = (t) => ASCII_WORD.test(t) ? englishStem(t) : t;
+  for (const t of supplied) if (!ENGLISH_FILLER.has(t)) add(stem4(t), 1);
+  if (supplied.length && bridged) {
+    for (const raw of ws) {
+      if (FRENCH_STOPWORDS.has(raw) || raw.length < 4) continue;
+      add(french ? frenchSingular(raw) : raw, OWN_WORD_WEIGHT);
+    }
+  } else if (french) {
     for (const raw of ws) {
       if (FRENCH_STOPWORDS.has(raw)) continue;
       const w = frenchSingular(raw);
@@ -41248,18 +41287,20 @@ function readQuestion(question) {
     }
   } else {
     for (const raw of codeindex_engine_exports.keywords(question)) {
-      const lower2 = codeindex_engine_exports.foldText(raw).toLowerCase();
-      if (!/^[a-z0-9]+$/.test(lower2) || ENGLISH_FILLER.has(lower2)) continue;
-      add(englishStem(lower2), 1);
+      for (const lower2 of codeindex_engine_exports.subtokens(raw)) {
+        if (ENGLISH_FILLER.has(lower2)) continue;
+        add(stem4(lower2), 1);
+      }
     }
   }
   for (const t of [...weight.keys()]) for (const s of SYNONYMS[t] ?? []) add(englishStem(s), SYNONYM_WEIGHT);
+  const hintWords = [...ws, ...supplied];
   const kinds2 = /* @__PURE__ */ new Set();
-  for (const [kind, prefixes] of KIND_HINTS) if (hinted(ws, prefixes)) kinds2.add(kind);
+  for (const [kind, prefixes] of KIND_HINTS) if (hinted(hintWords, prefixes)) kinds2.add(kind);
   const methods = /* @__PURE__ */ new Set();
-  for (const [ms, prefixes] of METHOD_HINTS) if (hinted(ws, prefixes)) for (const m of ms) methods.add(m);
-  const one = ws.some((w) => ONE_HINTS.some((p) => p === "id" ? w === "id" || w === "ids" : w.startsWith(p)));
-  const many = hinted(ws, ALL_HINTS);
+  for (const [ms, prefixes] of METHOD_HINTS) if (hinted(hintWords, prefixes)) for (const m of ms) methods.add(m);
+  const one = hintWords.some((w) => ONE_HINTS.some((p) => p === "id" ? w === "id" || w === "ids" : w.startsWith(p)));
+  const many = hinted(hintWords, ALL_HINTS);
   const cardinality = one && !many ? "one" : many && !one ? "all" : void 0;
   return {
     terms: [...weight.keys()].sort(),
@@ -41267,7 +41308,7 @@ function readQuestion(question) {
     kinds: kinds2,
     methods,
     ...cardinality ? { cardinality } : {},
-    french
+    bridged
   };
 }
 
@@ -41327,10 +41368,10 @@ var CAP_SHARE = 0.5;
 var BODY_LINES = 40;
 var lowerTokens = (text2) => {
   const out2 = /* @__PURE__ */ new Set();
-  for (const raw of text2.split(/[^A-Za-z0-9_$]+/)) if (raw) for (const t of codeindex_engine_exports.subtokens(raw)) out2.add(codeindex_engine_exports.foldText(t).toLowerCase());
+  for (const raw of codeindex_engine_exports.keywords(text2, () => true)) for (const t of codeindex_engine_exports.subtokens(raw)) out2.add(codeindex_engine_exports.foldText(t).toLowerCase());
   return [...out2];
 };
-var hay = (text2) => ({ tokens: lowerTokens(text2), whole: text2.toLowerCase() });
+var hay = (text2) => ({ tokens: lowerTokens(text2), whole: codeindex_engine_exports.foldText(text2).toLowerCase() });
 function has(h, term) {
   if (term === "id") return h.tokens.includes("id") || h.tokens.includes("ids");
   return h.tokens.some((t) => t.startsWith(term)) || term.length >= 5 && h.whole.includes(term);
@@ -41390,6 +41431,7 @@ function nameMatches(repo, view, q) {
     if (!b) continue;
     let score = b.score;
     if (q.kinds.has(n.kind)) score += KIND_BONUS;
+    if (n.kind === "sym" && verbMethods(n.label).some((m) => q.methods.has(m))) score += METHOD_BONUS;
     if (n.kind === "route") {
       const sp = n.id.indexOf(" ");
       const method = n.id.slice("route:".length, sp);
@@ -41531,9 +41573,10 @@ function lensNew(repoArg, question, opts = {}) {
     if (saved.has(id) && !reask) conflict = saved.get(id) ?? "(unreadable file)";
   } else ({ id, reask } = proposeLensId(repo, q));
   const file = `${LENSES_DIR}/${id}.json`;
-  const reading = readQuestion(q);
+  const supplied = opts.terms?.trim() || void 0;
+  const reading = readQuestion(q, supplied);
   const terms = reading.terms;
-  const found = findMatches(live, viewPaths(repo).index, q);
+  const found = findMatches(live, viewPaths(repo).index, supplied ? reading.bridged ? supplied : `${q} ${supplied}` : q);
   const named = nameMatches(repo, live.view, reading);
   const candidates = [...named, ...found.candidates.filter((f) => !named.some((n) => n.id === f.id))];
   const capIds = /* @__PURE__ */ new Set();
@@ -41560,7 +41603,10 @@ function lensNew(repoArg, question, opts = {}) {
     `id        ${id}${reask ? "  (re-ask: a saved lens holds this question)" : ""}`,
     `file      ${file}`,
     ...conflict !== void 0 ? [`conflict  ${file} holds a different question ("${conflict}"): pick another --id, or save with --force`] : [],
-    `terms     ${terms.join(", ") || "(none)"}`
+    `terms     ${terms.join(", ") || "(none)"}`,
+    ...reading.bridged ? [
+      supplied ? "reading   not English: read through --terms (the question's own words weigh less)" : 'reading   not English and no --terms: pass --terms "<English code keywords>" (the words the code would use) and run lens new again'
+    ] : []
   ].join("\n");
   const cand = ["## Candidate nodes"];
   const fromFind = candidates.filter((c2) => c2.via === "find");
@@ -41597,6 +41643,8 @@ function lensNew(repoArg, question, opts = {}) {
     reask,
     ...conflict !== void 0 ? { conflict } : {},
     terms,
+    bridged: reading.bridged,
+    ...supplied ? { suppliedTerms: supplied } : {},
     template,
     candidates,
     capabilities,
@@ -41692,6 +41740,9 @@ function askPrompt(question, id, script) {
     "Steps:",
     `1. Gather the evidence with ultraview: ${uv} lens new ${JSON.stringify(question)} --id ${id}`,
     "   It prints candidate nodes, their edges, source excerpts and the JSON template to fill.",
+    '   If the question is not in English, you MUST add --terms "<English code keywords>" to that command: 3-8 words the code',
+    "   would use for what is asked (e.g. order cancel delete), plus this repository's own names when you know them. Keep the",
+    "   question exactly as asked; the terms carry the search.",
     `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
     "3. Reply with ONLY the lens JSON object (no prose before or after it), filled in from the template:",
     `   {"schema": 1, "id": "${id}", "question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "..."}`,
@@ -42723,6 +42774,9 @@ Options:
                  ~4 characters a token)
   --id <slug>    lens new: the lens id (default: a slug of the question,
                  made unique against the saved lenses)
+  --terms "<w>"  lens new: English code keywords for the question, merged
+                 into its reading; required when the question is not in
+                 English (its own words then weigh less)
   --force        lens save / flow save: replace a different question / title
                  saved under the same id
   --open         render / serve: open the page with the OS opener afterwards
@@ -42792,6 +42846,7 @@ var VALUE_FLAGS2 = [
   "flow",
   "out",
   "id",
+  "terms",
   "port",
   "host",
   "ask"
@@ -43201,7 +43256,7 @@ async function cmdLens(p, io) {
     }
     const budget = positiveInt(p, io, "budget");
     if (budget === null) return EXIT_USAGE;
-    const pack = lensNew(repo, arg, { budget, id: p.values.id });
+    const pack = lensNew(repo, arg, { budget, id: p.values.id, terms: p.values.terms });
     io.out(p.bools.has("json") ? json(pack) : pack.text);
     return EXIT_OK;
   }

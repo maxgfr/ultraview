@@ -7,8 +7,10 @@
 //               candidate nodes (ultraindex `runFind` over modules, mapped to
 //               view node ids, slices included; before them, the routes /
 //               screens / entities / jobs / symbols / capabilities named like
-//               the question, ranked by `nameMatches`; a French question is
-//               read through `lens-terms.ts`), their strongest edges, source excerpts (ultraindex
+//               the question, ranked by `nameMatches`; the question is read
+//               through `lens-terms.ts`, with the English `--terms` the agent
+//               supplies for a question in another language), their
+//               strongest edges, source excerpts (ultraindex
 //               `gatherEvidence`) cut to a budget, and the closing instructions.
 //   lens list   every saved lens: id, question, node count, stale flag (the
 //               assembler's own staleness: a cited file's hash changed), and
@@ -22,7 +24,7 @@ import { join, resolve } from "node:path";
 import { codeindex, gatherEvidence, runFind } from "./engine.js";
 import { extentFinder } from "./extract/extent.js";
 import { stableJson } from "./json.js";
-import { type QuestionReading, readQuestion } from "./lens-terms.js";
+import { type QuestionReading, readQuestion, verbMethods } from "./lens-terms.js";
 import { fileOfId, modId, SLUG_RE } from "./model/ids.js";
 import { LENSES_DIR } from "./model/load.js";
 import type { ViewEdge, ViewNode } from "./model/types.js";
@@ -53,6 +55,8 @@ export interface LensNewOptions {
   budget?: number;
   /** Use this id instead of the proposed one (must be a slug). */
   id?: string;
+  /** English code keywords for the question (`--terms`): required of the agent when the question is not in English. */
+  terms?: string;
 }
 
 export interface LensCandidate {
@@ -96,6 +100,10 @@ export interface LensPack {
   /** `--id` names a lens holding a different question: saving needs `--force`. */
   conflict?: string;
   terms: string[];
+  /** The question is not English (lens-terms `isBridged`): its words were bridged to English, by `--terms` or, without them, the French lexicon. */
+  bridged: boolean;
+  /** The `--terms` given, trimmed (absent without them). */
+  suppliedTerms?: string;
   template: LensTemplate;
   candidates: LensCandidate[];
   /** Capabilities the candidates serve. */
@@ -160,9 +168,9 @@ export function proposeLensId(repo: string, question: string): { id: string; rea
   }
 }
 
-/** Question terms, stemmed (`cancelling` → `cancel`, `orders` → `order`); a French question's words bridged to English (`commande` → `order`). */
-export function questionTerms(question: string): string[] {
-  return readQuestion(question).terms;
+/** Question terms, stemmed (`cancelling` → `cancel`, `orders` → `order`), merged with the supplied English `terms`; a French question's words bridged to English (`commande` → `order`) when no terms are given. */
+export function questionTerms(question: string, terms?: string): string[] {
+  return readQuestion(question, terms).terms;
 }
 
 const NAME_KINDS: ReadonlySet<string> = new Set(["cap", "route", "screen", "entity", "job", "sym"]);
@@ -178,9 +186,10 @@ const CAP_SHARE = 0.5;
 /** Lines of a definition read for its words. */
 const BODY_LINES = 40;
 
+/** The words of `text` as the engine splits them (any script; `orderItems` → `orderitems`, `order`, `items`), folded and lowercased. */
 const lowerTokens = (text: string): string[] => {
   const out = new Set<string>();
-  for (const raw of text.split(/[^A-Za-z0-9_$]+/)) if (raw) for (const t of codeindex.subtokens(raw)) out.add(codeindex.foldText(t).toLowerCase());
+  for (const raw of codeindex.keywords(text, () => true)) for (const t of codeindex.subtokens(raw)) out.add(codeindex.foldText(t).toLowerCase());
   return [...out];
 };
 
@@ -189,7 +198,7 @@ interface Hay {
   whole: string;
 }
 
-const hay = (text: string): Hay => ({ tokens: lowerTokens(text), whole: text.toLowerCase() });
+const hay = (text: string): Hay => ({ tokens: lowerTokens(text), whole: codeindex.foldText(text).toLowerCase() });
 
 /** A stem matches a word it starts (`order` ⊂ `orders`), or, from 5 letters, any part of a run-together name (`item` ⊂ `orderitems`). */
 function has(h: Hay, term: string): boolean {
@@ -270,6 +279,8 @@ function nameMatches(repo: string, view: LiveView["view"], q: QuestionReading): 
     if (!b) continue;
     let score = b.score;
     if (q.kinds.has(n.kind)) score += KIND_BONUS;
+    // A symbol whose name starts with the verb the wording points at (`buy` → POST → `placeOrder`).
+    if (n.kind === "sym" && verbMethods(n.label).some((m) => q.methods.has(m))) score += METHOD_BONUS;
     if (n.kind === "route") {
       const sp = n.id.indexOf(" ");
       const method = n.id.slice("route:".length, sp);
@@ -424,9 +435,11 @@ export function lensNew(repoArg: string, question: string, opts: LensNewOptions 
   } else ({ id, reask } = proposeLensId(repo, q));
   const file = `${LENSES_DIR}/${id}.json`;
 
-  const reading = readQuestion(q);
+  const supplied = opts.terms?.trim() || undefined;
+  const reading = readQuestion(q, supplied);
   const terms = reading.terms;
-  const found = findMatches(live, viewPaths(repo).index, q);
+  // ultraindex find reads the terms too; a bridged question's own words would only add noise to it.
+  const found = findMatches(live, viewPaths(repo).index, supplied ? (reading.bridged ? supplied : `${q} ${supplied}`) : q);
   const named = nameMatches(repo, live.view, reading);
   // Named nodes first, by rank: they are what an answer is about; the modules ultraindex finds frame them.
   const candidates = [...named, ...found.candidates.filter((f) => !named.some((n) => n.id === f.id))];
@@ -458,6 +471,13 @@ export function lensNew(repoArg: string, question: string, opts: LensNewOptions 
     `file      ${file}`,
     ...(conflict !== undefined ? [`conflict  ${file} holds a different question ("${conflict}"): pick another --id, or save with --force`] : []),
     `terms     ${terms.join(", ") || "(none)"}`,
+    ...(reading.bridged
+      ? [
+          supplied
+            ? "reading   not English: read through --terms (the question's own words weigh less)"
+            : 'reading   not English and no --terms: pass --terms "<English code keywords>" (the words the code would use) and run lens new again',
+        ]
+      : []),
   ].join("\n");
   const cand = ["## Candidate nodes"];
   const fromFind = candidates.filter((c) => c.via === "find");
@@ -498,6 +518,8 @@ export function lensNew(repoArg: string, question: string, opts: LensNewOptions 
     reask,
     ...(conflict !== undefined ? { conflict } : {}),
     terms,
+    bridged: reading.bridged,
+    ...(supplied ? { suppliedTerms: supplied } : {}),
     template,
     candidates,
     capabilities,

@@ -3,7 +3,7 @@ import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { agentEnv, agentInvocation, extractLensJson, findOnPath, resolveAskAgent } from "../src/ask.js";
+import { agentEnv, agentInvocation, askPrompt, extractLensJson, findOnPath, resolveAskAgent } from "../src/ask.js";
 import { allowedHostHeader, isLoopbackHost, type ServeHandle, startServe } from "../src/serve.js";
 import { builtShop, readModelFile, writeView } from "./helpers.js";
 
@@ -307,6 +307,12 @@ describe("ask timeout", () => {
 });
 
 describe("ask bridge", () => {
+  it("asks the agent for English --terms when the question is not in English", () => {
+    const prompt = askPrompt("¿Cómo se cancela un pedido?", "como-se-cancela-un-pedido", "/x/ultraview.mjs");
+    expect(prompt).toContain('node /x/ultraview.mjs lens new "¿Cómo se cancela un pedido?" --id como-se-cancela-un-pedido');
+    expect(prompt).toContain('If the question is not in English, you MUST add --terms "<English code keywords>"');
+  });
+
   it("finds agents on PATH and builds read-only command lines", () => {
     const fake = fakeAgent();
     expect(findOnPath("claude", fake)).toBe(join(fake, "claude"));

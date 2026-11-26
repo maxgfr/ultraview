@@ -138,6 +138,9 @@ Options:
                  ~4 characters a token)
   --id <slug>    lens new: the lens id (default: a slug of the question,
                  made unique against the saved lenses)
+  --terms "<w>"  lens new: English code keywords for the question, merged
+                 into its reading; required when the question is not in
+                 English (its own words then weigh less)
   --force        lens save / flow save: replace a different question / title
                  saved under the same id
   --open         render / serve: open the page with the OS opener afterwards
@@ -208,6 +211,7 @@ export const VALUE_FLAGS = [
   "flow",
   "out",
   "id",
+  "terms",
   "port",
   "host",
   "ask",
@@ -643,7 +647,7 @@ async function cmdLens(p: Parsed, io: Io): Promise<number> {
     }
     const budget = positiveInt(p, io, "budget");
     if (budget === null) return EXIT_USAGE;
-    const pack = lensNew(repo, arg, { budget, id: p.values.id });
+    const pack = lensNew(repo, arg, { budget, id: p.values.id, terms: p.values.terms });
     io.out(p.bools.has("json") ? json(pack) : pack.text);
     return EXIT_OK;
   }

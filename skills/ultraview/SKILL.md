@@ -117,7 +117,12 @@ A question answered once is saved as a lens: a view anyone can reopen at
 
 1. `ultraview lens new "<question>"` prints the proposed id and file, ranked
    candidate nodes, their strongest edges, source excerpts and a JSON template.
-   A French question is matched through English code words.
+   Whenever the question is not in English, you MUST add `--terms "<English
+   code keywords>"`: the words the code would use for it (`order cancel
+   delete`), and the repo's own names when you know them (`checkout`,
+   `OrderItem`). Keep the question as the user asked it; the terms carry the
+   search. Without them the pack says `reading   not English and no --terms`:
+   run it again with them.
 2. Open more source if the excerpts do not settle it (`show` / `dossier` on a
    candidate). Answer only what the code shows.
 3. Write the lens JSON to the printed path: `answer` (every sentence cited),
@@ -176,7 +181,7 @@ Details: [writing](references/writing.md).
 - `check [--strict]` — the gate: schema, ids, citations, coverage; `--strict` fails stale lenses / flows too.
 - `show <node-id>` — one node's card: kind, parent, capabilities, summary, cites, metrics, edges.
 - `dossier <node-id> [--budget <n>]` — the evidence to write about one node.
-- `lens new "<question>" [--id <slug>] [--budget <n>]` — the evidence pack for a question.
+- `lens new "<question>" [--terms "<English keywords>"] [--id <slug>] [--budget <n>]` — the evidence pack for a question; `--terms` whenever it is not in English.
 - `lens save <file> [--force]` / `flow save <file> [--force]` — validate, stamp `sources`, store.
 - `lens list` — saved questions, with their stale flag.
 - `render [--out <file>] [--open]` — the offline page, `.ultraview/index.html`, from the current agent files; notes a stale index.

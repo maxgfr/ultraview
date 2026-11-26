@@ -3,9 +3,14 @@
 // repos of tests/fixtures, each built in a temp copy (never in place).
 //
 //   ranking  every paraphrase in case.json `questions` goes through `lens new
-//            --json`; a paraphrase is a hit when every `expect.nodes` id is
-//            among the first `expect.top` candidates of the pack. The hit rate
-//            of each language must reach `expect.minRecall`.
+//            --json`, once as asked and once with its `--terms` (case.json
+//            `terms.<lang>[i]`, the English keywords an agent would pass); a
+//            paraphrase is a hit when every `expect.nodes` id is among the
+//            first `expect.top` candidates of the pack. Without terms, the
+//            English and French hit rates of each case must reach
+//            `expect.minRecall`; with terms, every language's recall over
+//            all the cases must reach English's recall without terms, less
+//            TERMS_MARGIN points.
 //   good     answer.good.json (a lens, a flow or a model) must pass `lens save`
 //            / `flow save` and `check`, hold every `expect.nodes` id (node
 //            recall 1) and cite every file of `expect.cites`.
@@ -27,6 +32,20 @@ const args = process.argv.slice(2);
 const only = args.includes("--case") ? args[args.indexOf("--case") + 1] : undefined;
 const verbose = args.includes("--verbose");
 const env = { ...process.env, CODEINDEX_NO_GRAMMARS_PULL: "1" };
+process.env.CODEINDEX_NO_GRAMMARS_PULL = "1";
+/** Languages whose recall without terms is gated per case (the others need `--terms`). */
+const PLAIN_GATED = ["en", "fr"];
+/** With terms, a language may trail English without terms by this many points at most. */
+const TERMS_MARGIN = 2;
+const LANGS = ["en", "fr", "es", "de", "it", "pt", "nl", "ja", "zh", "ar", "ru"];
+// `lens new` runs in this process, through the committed bundle's own `main`: 1300-odd packs, one node start.
+const { main } = await import(bundle);
+
+async function lensNew(argv) {
+  let out = "";
+  const code = await main(argv, { out: (s) => (out += s), err: (s) => (out += s) });
+  return { code, out };
+}
 
 function cli(argv) {
   try {
@@ -103,21 +122,29 @@ for (const name of names) {
   const { tmp, repo } = builtRepo(c, name);
   try {
     for (const [lang, questions] of Object.entries(c.questions ?? {})) {
-      let hits = 0;
-      for (const q of questions) {
-        const pack = json(cli(["lens", "new", q, "--repo", repo, "--json"]));
-        const top = (pack?.candidates ?? []).slice(0, c.expect.top).map((x) => x.id);
-        const hit = c.expect.nodes.every((n) => top.includes(n));
-        if (hit) hits++;
-        else if (verbose) process.stdout.write(`      miss (${lang}): ${q}\n        top: ${top.join(" | ")}\n`);
+      const terms = c.terms?.[lang];
+      if (terms && terms.length !== questions.length) throw new Error(`${name}: terms.${lang} holds ${terms.length} entries for ${questions.length} questions`);
+      for (const mode of terms ? ["plain", "terms"] : ["plain"]) {
+        let hits = 0;
+        for (const [i, q] of questions.entries()) {
+          const argv = ["lens", "new", q, "--repo", repo, "--json", ...(mode === "terms" ? ["--terms", terms[i]] : [])];
+          const pack = json(await lensNew(argv));
+          const top = (pack?.candidates ?? []).slice(0, c.expect.top).map((x) => x.id);
+          const hit = c.expect.nodes.every((n) => top.includes(n));
+          if (hit) hits++;
+          else if (verbose)
+            process.stdout.write(
+              `      miss (${lang}${mode === "terms" ? " + terms" : ""}): ${q}${mode === "terms" ? ` [${terms[i]}]` : ""}\n        top: ${top.join(" | ")}\n`,
+            );
+        }
+        recall.push({ case: name, heldOut: !!c.heldOut, lang, mode, hits, total: questions.length });
+        if (mode === "plain" && PLAIN_GATED.includes(lang))
+          record(
+            `${name}: ${lang} pack ranks ${c.expect.nodes.join(", ")} in its top ${c.expect.top} (${hits}/${questions.length})`,
+            hits / questions.length >= c.expect.minRecall,
+            `${hits}/${questions.length} below ${c.expect.minRecall}`,
+          );
       }
-      const rate = hits / questions.length;
-      recall.push({ case: name, heldOut: !!c.heldOut, lang, hits, total: questions.length });
-      record(
-        `${name}: ${lang} pack ranks ${c.expect.nodes.join(", ")} in its top ${c.expect.top} (${hits}/${questions.length})`,
-        rate >= c.expect.minRecall,
-        `${hits}/${questions.length} below ${c.expect.minRecall}`,
-      );
     }
     const good = join(dir, "answer.good.json");
     if (existsSync(good)) {
@@ -143,18 +170,41 @@ for (const name of names) {
   }
 }
 
-// Recall per language, tuned set and held-out set apart.
+// Recall per language, without and with terms: tuned set, held-out set, all cases.
 const sum = (rows) => rows.reduce((a, r) => ({ hits: a.hits + r.hits, total: a.total + r.total }), { hits: 0, total: 0 });
-const lines = [];
-for (const heldOut of [false, true]) {
-  for (const lang of ["en", "fr"]) {
-    const rows = recall.filter((r) => r.heldOut === heldOut && r.lang === lang);
+const pct = (s) => (s.total ? (100 * s.hits) / s.total : Number.NaN);
+const cell = (s) => (s.total ? `${s.hits}/${s.total} (${Math.round(pct(s))}%)` : "-");
+const sets = [
+  ["tuned", (r) => !r.heldOut],
+  ["held-out", (r) => r.heldOut],
+  ["all", () => true],
+];
+const lines = [`${"set".padEnd(9)} ${"lang".padEnd(4)} ${"without terms".padEnd(15)} with terms`];
+for (const [set, inSet] of sets) {
+  for (const lang of LANGS) {
+    const rows = recall.filter((r) => inSet(r) && r.lang === lang);
     if (!rows.length) continue;
-    const s = sum(rows);
-    lines.push(`${heldOut ? "held-out" : "tuned   "}  ${lang}  ${s.hits}/${s.total} (${Math.round((100 * s.hits) / s.total)}%)`);
+    const plain = sum(rows.filter((r) => r.mode === "plain"));
+    const terms = sum(rows.filter((r) => r.mode === "terms"));
+    lines.push(`${set.padEnd(9)} ${lang.padEnd(4)} ${cell(plain).padEnd(15)} ${cell(terms)}`);
+  }
+}
+process.stdout.write(`\nlens new recall (key nodes in the top candidates)\n${lines.map((l) => `  ${l}`).join("\n")}\n\n`);
+
+// The bridge gate: with terms, no language trails English without terms by more than TERMS_MARGIN points (over every case run).
+const english = sum(recall.filter((r) => r.lang === "en" && r.mode === "plain"));
+if (english.total) {
+  const floor = pct(english) - TERMS_MARGIN;
+  for (const lang of LANGS) {
+    const s = sum(recall.filter((r) => r.lang === lang && r.mode === "terms"));
+    if (!s.total) continue;
+    record(
+      `${lang} with --terms: ${cell(s)} >= English without terms ${cell(english)} - ${TERMS_MARGIN} points`,
+      pct(s) >= floor,
+      `${pct(s).toFixed(1)}% below ${floor.toFixed(1)}%`,
+    );
   }
 }
 const failed = results.filter((r) => !r.ok).length;
-process.stdout.write(`\nlens new recall (key nodes in the top candidates)\n${lines.map((l) => `  ${l}`).join("\n")}\n`);
 process.stdout.write(`\n${results.length - failed}/${results.length} passed\n`);
 process.exit(failed ? 1 : 0);
