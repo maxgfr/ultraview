@@ -1,0 +1,25 @@
+cap:ordering  (cap)  Placing an order
+summary   A customer orders a list of products, and an order naming an unknown product is refused. [src/services/orders.ts:12-15] The order is stored with one line per product. [src/services/orders.ts:16-21]
+cites     src/services/orders.ts:12-15, src/services/orders.ts:16-21
+parent    (top level)
+actors    customer
+metrics   loc 107 · pagerank 3.5859 · tests 0 · churn 0
+members   13 (3 entity, 3 file, 3 mod, 1 route, 1 sym, 2 sys)
+  entity:Order
+  entity:OrderItem
+  entity:Product
+  mod:prisma
+  mod:src-routes
+  mod:src-services
+  route:POST /api/orders
+  sys:api
+  sys:database
+out       4 edge(s)
+  -> cap:order-tracking  call w3
+  -> entity:Order  data w3
+  -> cap:order-tracking  import w1
+  -> entity:Product  data w1
+in        3 edge(s)
+  <- cap:order-tracking  call w3
+  <- cap:health  import w1
+  <- cap:order-tracking  import w1

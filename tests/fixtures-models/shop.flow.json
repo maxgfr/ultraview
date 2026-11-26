@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "place-order",
+  "title": "What happens when someone places an order",
+  "trigger": "route:POST /api/orders",
+  "steps": [
+    {
+      "node": "route:POST /api/orders",
+      "note": "The server mounts the order routes under /api. [src/server.ts:7] A POST to /api/orders answers 201 with the new order. [src/routes/orders.ts:10-12]"
+    },
+    { "node": "sym:src/services/orders.ts#placeOrder", "note": "placeOrder first checks that every product exists. [src/services/orders.ts:14-15]" },
+    { "node": "entity:Order", "note": "The order and its items are written in one create call. [src/services/orders.ts:16-21]" }
+  ]
+}

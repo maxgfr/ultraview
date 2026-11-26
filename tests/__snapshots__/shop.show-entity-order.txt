@@ -1,0 +1,18 @@
+entity:Order  (entity)  Order
+at        prisma/schema.prisma:36
+parent    file:prisma/schema.prisma
+caps      cap:ordering
+tags      prisma
+metrics   loc 0 · pagerank 0 · tests 0 · churn 0
+fields    id: Int, user: User -> User, userId: Int, status: OrderStatus, items: OrderItem[] -> OrderItem, createdAt: DateTime
+out       2 edge(s)
+  -> entity:OrderItem  data w1  "items"
+  -> entity:User  data w1  "user"
+in        7 edge(s)
+  <- cap:order-tracking  data w3
+  <- cap:ordering  data w3
+  <- file:src/services/orders.ts  data w3  "read+write"
+  <- mod:src-services  data w3
+  <- sys:api  data w3
+  <- entity:OrderItem  data w1  "order"
+  <- entity:User  data w1  "orders"

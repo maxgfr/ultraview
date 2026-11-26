@@ -55,6 +55,7 @@ describe("cli", () => {
     expect(r.out).toContain("GET /api/orders  [src/routes/orders.ts:6]");
     expect(r.out).toContain("top modules by PageRank");
     expect(r.out).toContain("next step:");
+    expect(r.out).toMatch(/^view {7}\d+ nodes, \d+ edges/m);
     expect(r.out.split("\n").length).toBeLessThanOrEqual(150);
   });
 
@@ -67,10 +68,11 @@ describe("cli", () => {
     const obj = JSON.parse(r.out);
     expect(obj.facts.routes).toHaveLength(5);
     expect(obj.index.files).toBeGreaterThan(5);
-    expect(obj.written).toEqual([".ultraview/facts.json", ".ultraview/.gitignore"]);
+    expect(obj.written).toEqual([".ultraview/facts.json", ".ultraview/view.json", ".ultraview/.gitignore"]);
+    expect(obj.view).toMatchObject({ problems: [], oversize: false });
   });
 
-  it("status routes: no-index -> no-model -> index-stale -> no-model -> ready", async () => {
+  it("status routes: no-index -> no-model -> index-stale -> no-model -> model-incomplete", async () => {
     const repo = shop();
     expect(readStatus(repo).situation).toBe("no-index");
     const json = JSON.parse((await run(["status", "--repo", repo, "--json"])).out);
@@ -89,10 +91,11 @@ describe("cli", () => {
     expect(readStatus(repo).situation).toBe("no-model");
 
     // The model lives under .ultraview/, which the index excludes: writing it
-    // must not make the index stale.
+    // must not make the index stale. An empty model is incomplete.
     writeFileSync(join(repo, ".ultraview", "model.json"), '{ "schema": 1 }\n');
-    const ready = await run(["status", "--repo", repo]);
-    expect(ready.out).toContain("situation  ready");
+    const incomplete = await run(["status", "--repo", repo]);
+    expect(incomplete.out).toContain("situation  model-incomplete");
+    expect(incomplete.out).toContain(".ultraview/model.json app: is required");
   });
 
   it("status says index-stale when the index exists but facts.json does not", async () => {

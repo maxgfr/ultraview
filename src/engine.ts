@@ -22,16 +22,27 @@ export type {
   Graph,
   Manifest,
   ModuleNode,
+  SymbolIndex,
   WarmGrammarsResult,
 } from "./vendor/ultraindex-engine.mjs";
 
 export {
   VERSION as ULTRAINDEX_VERSION,
+  checkCitations,
+  citationlessClaims,
   codeindex,
+  fileLineTable,
+  gatherEvidence,
   indexExists,
+  indexPaths,
+  loadEnrichedProse,
   loadGraph,
   loadManifest,
+  loadSymbols,
+  parseCitations,
   prepareGrammars,
+  renderModuleDossier,
   runBuild,
   runCheck,
+  runStatus,
 } from "./vendor/ultraindex-engine.mjs";

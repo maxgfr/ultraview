@@ -1,0 +1,76 @@
+# Dossier — entity:Order  "Order"
+
+Task: explain what `entity:Order` does and who relies on it, from the evidence below (a flow step, a lens answer or a capability summary). Every sentence you write cites the file it rests on as `[path:line]` (or `[path:start-end]`); `ultraview check` fails a dead citation and an uncited sentence.
+
+parent file:prisma/schema.prisma · caps cap:ordering · defined at prisma/schema.prisma:36
+
+## Definition [prisma/schema.prisma:36]
+```
+33  }
+34  
+35  /// An order placed by a user.
+36  model Order {
+37    id        Int         @id @default(autoincrement())
+38    user      User        @relation(fields: [userId], references: [id])
+39    userId    Int
+40    status    OrderStatus @default(PENDING)
+41    items     OrderItem[]
+42    createdAt DateTime    @default(now())
+43  
+44    @@index([userId])
+45  }
+46  
+47  model OrderItem {
+48    id        Int     @id @default(autoincrement())
+49    order     Order   @relation(fields: [orderId], references: [id])
+50    orderId   Int
+51    product   Product @relation(fields: [productId], references: [id])
+52    productId Int
+53    quantity  Int
+```
+
+## Fields
+- id: Int
+- user: User -> entity:User
+- userId: Int
+- status: OrderStatus
+- items: OrderItem[] -> entity:OrderItem
+- createdAt: DateTime
+
+## Neighbours
+- -> entity:OrderItem (OrderItem)  data w1
+- -> entity:User (User)  data w1
+- <- file:src/services/orders.ts (orders.ts)  data w3
+- <- entity:OrderItem (OrderItem)  data w1
+- <- entity:User (User)  data w1
+
+## Used at (3 site(s))
+
+### [src/services/orders.ts:9] read
+```
+ 7  
+ 8  export async function listOrders(userId: number) {
+ 9    return prisma.order.findMany({ where: { userId }, include: { items: true } });
+10  }
+11  
+12  export async function placeOrder(input: NewOrder) {
+```
+
+### [src/services/orders.ts:16] write
+```
+14    const products = await prisma.product.findMany({ where: { id: { in: input.items.map((i) => i.productId) } } });
+15    if (products.length !== input.items.length) throw new Error("unknown product");
+16    return prisma.order.create({
+17      data: {
+18        userId: input.userId,
+19        items: { create: input.items },
+```
+
+### [src/services/orders.ts:26] write
+```
+24  export async function cancelOrder(id: number) {
+25    console.log("cancelling via prisma.order.delete(...)");
+26    return prisma.order.update({ where: { id }, data: { status: "PENDING" } });
+27  }
+28  
+```

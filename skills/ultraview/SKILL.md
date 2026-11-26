@@ -9,7 +9,11 @@ metadata:
 # ultraview (under construction)
 
 This skill is being built. Today `node scripts/ultraview.mjs build` refreshes the
-ultraindex index and extracts the repository's routes and data models into
-`.ultraview/facts.json`, and `node scripts/ultraview.mjs status` says what to do
-next; the map itself, the viewer and the full agent loop arrive in later
-releases. Run `node scripts/ultraview.mjs --help` for the current surface.
+ultraindex index, extracts the repository's routes and data models into
+`.ultraview/facts.json` and merges everything into `.ultraview/view.json`;
+`status` says what to do next; `check` gates what the agent writes into
+`.ultraview/model.json`, flows and lenses (ids, citations, coverage, staleness);
+`dossier <node-id>` and `show <node-id>` give the evidence and a card for one
+node; `lens save` / `flow save` stamp and store a saved question or flow. The
+viewer and the full agent loop arrive in later releases. Run
+`node scripts/ultraview.mjs --help` for the current surface.

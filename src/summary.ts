@@ -2,7 +2,7 @@
 // (at most SUMMARY_MAX_LINES lines), deterministic for a given build, and
 // ending with the next step.
 
-import type { MapBuildResult } from "./build.js";
+import { type MapBuildResult, VIEW_SIZE_WARN_BYTES } from "./build.js";
 import { FACT_KINDS, type FactKind, type Facts } from "./extract/index.js";
 
 export const SUMMARY_MAX_LINES = 150;
@@ -85,10 +85,21 @@ export function formatBuildSummary(r: MapBuildResult): string {
   }
 
   push();
+  const cov = r.view.coverage;
+  push(
+    `view       ${r.view.nodes} nodes, ${r.view.edges} edges, ${(r.view.bytes / 1024).toFixed(0)} KB; coverage: files in systems ${(cov.filesInSystems * 100).toFixed(1)}%, modules in capabilities ${(cov.modulesInCapabilities * 100).toFixed(1)}%`,
+  );
+  if (r.view.oversize) push(`WARNING    view.json is over ${VIEW_SIZE_WARN_BYTES / 1024 / 1024} MB: the viewer will be slow (narrow the index with --exclude)`);
+  if (r.view.problems.length) {
+    const files = [...new Set(r.view.problems.map((p) => p.file))];
+    push(`WARNING    ${r.view.problems.length} problem(s) in ${files.join(", ")}: left out of the view; run \`ultraview check\``);
+  }
+
+  push();
   push(`written    ${r.written.join(", ")}`);
   push(
     r.hasModel
-      ? "next step: run `ultraview status` to see what is stale, then re-describe only that."
+      ? "next step: run `ultraview check` and fix what it reports; `ultraview status` says what is stale."
       : "next step: read README, manifests and entrypoints, then write .ultraview/model.json (systems covering >= 90% of code files, then capabilities; every sentence cites [path:line]).",
   );
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import { realpathSync as realpathSync8 } from "fs";
+import { readFileSync as readFileSync27, realpathSync as realpathSync8 } from "fs";
+import { resolve as resolve20 } from "path";
 import { pathToFileURL as pathToFileURL4 } from "url";
 
 // src/build.ts
-import { existsSync as existsSync17, mkdirSync as mkdirSync6, statSync as statSync15, writeFileSync as writeFileSync9 } from "fs";
-import { basename as basename9, resolve as resolve14 } from "path";
+import { existsSync as existsSync18, mkdirSync as mkdirSync6, statSync as statSync15, writeFileSync as writeFileSync9 } from "fs";
+import { basename as basename10, resolve as resolve14 } from "path";
 
 // src/vendor/ultraindex-engine.mjs
 import { spawnSync } from "child_process";
@@ -472,8 +473,8 @@ function rrf(lists, keyOf2, k = 60) {
 }
 function subtokens(raw) {
   const ascii = !NON_ASCII.test(raw);
-  const text = ascii ? raw : foldText(raw);
-  const folded = ascii ? text.replace(ASCII_CASE_1, "$1 $2").replace(ASCII_CASE_2, "$1 $2") : text.replace(UNICODE_CASE_1, "$1 $2").replace(UNICODE_CASE_2, "$1 $2");
+  const text2 = ascii ? raw : foldText(raw);
+  const folded = ascii ? text2.replace(ASCII_CASE_1, "$1 $2").replace(ASCII_CASE_2, "$1 $2") : text2.replace(UNICODE_CASE_1, "$1 $2").replace(UNICODE_CASE_2, "$1 $2");
   const out2 = [];
   const seen = /* @__PURE__ */ new Set();
   const push = (t) => {
@@ -481,7 +482,7 @@ function subtokens(raw) {
     seen.add(t);
     out2.push(t);
   };
-  if (!/\s/.test(raw.trim())) push(text.toLowerCase().replace(ascii ? ASCII_GLUE : UNICODE_GLUE, ""));
+  if (!/\s/.test(raw.trim())) push(text2.toLowerCase().replace(ascii ? ASCII_GLUE : UNICODE_GLUE, ""));
   for (const part of folded.split(ascii ? ASCII_SPLIT : UNICODE_SPLIT)) push(part.toLowerCase());
   return out2;
 }
@@ -965,8 +966,8 @@ function readTextEx(abs) {
   const bytes = buf.length;
   const base = { buf, bytes, ok: true, binary: false };
   if (bytes >= 2 && buf[0] === 255 && buf[1] === 254) {
-    const text2 = buf.subarray(2, 2 + (bytes - 2 & ~1)).toString("utf16le");
-    return { ...base, text: text2, encoding: "utf16le", byteAddressable: false, bodyStart: 2 };
+    const text22 = buf.subarray(2, 2 + (bytes - 2 & ~1)).toString("utf16le");
+    return { ...base, text: text22, encoding: "utf16le", byteAddressable: false, bodyStart: 2 };
   }
   if (bytes >= 2 && buf[0] === 254 && buf[1] === 255) {
     const swapped = Buffer.from(buf.subarray(2, 2 + (bytes - 2 & ~1)));
@@ -991,8 +992,8 @@ function readTextEx(abs) {
   if (buf.includes(0)) {
     return { ...base, text: "", encoding: null, binary: true, byteAddressable: false, bodyStart: 0 };
   }
-  const text = buf.toString("utf8");
-  if (text.includes("\uFFFD") && !isUtf8(buf)) {
+  const text2 = buf.toString("utf8");
+  if (text2.includes("\uFFFD") && !isUtf8(buf)) {
     return {
       ...base,
       text: buf.toString("latin1"),
@@ -1001,7 +1002,7 @@ function readTextEx(abs) {
       bodyStart: 0
     };
   }
-  return { ...base, text, encoding: "utf8", byteAddressable: true, bodyStart: 0 };
+  return { ...base, text: text2, encoding: "utf8", byteAddressable: true, bodyStart: 0 };
 }
 function isUtf8(buf) {
   try {
@@ -1011,27 +1012,27 @@ function isUtf8(buf) {
     return false;
   }
 }
-function buildCharToByte(text) {
-  const table = new Int32Array(text.length + 1);
+function buildCharToByte(text2) {
+  const table = new Int32Array(text2.length + 1);
   let byte = 0;
-  for (let i2 = 0; i2 < text.length; i2++) {
+  for (let i2 = 0; i2 < text2.length; i2++) {
     table[i2] = byte;
-    const code = text.charCodeAt(i2);
+    const code = text2.charCodeAt(i2);
     if (code < 128) byte += 1;
     else if (code < 2048) byte += 2;
-    else if (code >= 55296 && code <= 56319 && i2 + 1 < text.length) {
+    else if (code >= 55296 && code <= 56319 && i2 + 1 < text2.length) {
       table[i2 + 1] = byte;
       byte += 4;
       i2++;
     } else byte += 3;
   }
-  table[text.length] = byte;
+  table[text2.length] = byte;
   return table;
 }
-function buildLineStarts(text) {
+function buildLineStarts(text2) {
   const starts = [0];
-  for (let i2 = 0; i2 < text.length; i2++) {
-    if (text.charCodeAt(i2) === 10) starts.push(i2 + 1);
+  for (let i2 = 0; i2 < text2.length; i2++) {
+    if (text2.charCodeAt(i2) === 10) starts.push(i2 + 1);
   }
   return Int32Array.from(starts);
 }
@@ -1057,10 +1058,10 @@ var init_text = __esm({
       /** charToByteTable[i] = byte offset of char index i. Length = text.length + 1. */
       table;
       lineStarts;
-      constructor(text) {
-        this.ascii = !/[^\x00-\x7F]/.test(text);
-        this.table = this.ascii ? null : buildCharToByte(text);
-        this.lineStarts = buildLineStarts(text);
+      constructor(text2) {
+        this.ascii = !/[^\x00-\x7F]/.test(text2);
+        this.table = this.ascii ? null : buildCharToByte(text2);
+        this.lineStarts = buildLineStarts(text2);
       }
       /** UTF-8 byte offset of a JS string index. */
       byteOf(charIndex) {
@@ -1685,8 +1686,8 @@ function diffHunks(dir, spec) {
   }
   return map;
 }
-function newSidePath(header) {
-  let p = header.endsWith("	") ? header.slice(0, -1) : header;
+function newSidePath(header2) {
+  let p = header2.endsWith("	") ? header2.slice(0, -1) : header2;
   if (p.startsWith('"') && p.endsWith('"') && p.length >= 2) p = cUnquote(p);
   if (p === "/dev/null") return void 0;
   return p.startsWith("b/") ? p.slice(2) : p;
@@ -1836,8 +1837,8 @@ function historyStatus(res) {
     ...res.shallow ? { shallow: true, note: "shallow clone: history stops at the clone depth, so counts are lower bounds (git fetch --unshallow for all of it)" } : {}
   };
 }
-function firstLine(text) {
-  return text.trim().split("\n")[0].replace(/^fatal: /, "").trim();
+function firstLine(text2) {
+  return text2.trim().split("\n")[0].replace(/^fatal: /, "").trim();
 }
 function changedSince(dir, ref2) {
   const out2 = /* @__PURE__ */ new Set();
@@ -1929,8 +1930,8 @@ function isLicense(line2) {
 function stripCommentMarkers(raw) {
   return raw.replace(/\*+\/\s*$/, "").replace(/^\s*\/\*+!?/, "").replace(/^\s*\/\/[/!]?/, "").replace(/^\s*--+/, "").replace(/^\s*#+/, "").replace(/^\s*\*+/, "").replace(/^\s*(?:"""|''')/, "").replace(/(?:"""|''')\s*$/, "").replace(/[-=~_]{3,}|\/{3,}|\*{3,}|#{3,}/g, " ").trim();
 }
-function stripDocMarkup(text) {
-  return text.replace(/<\/?[A-Za-z][^>]*>/g, " ").replace(/\s+/g, " ").trim();
+function stripDocMarkup(text2) {
+  return text2.replace(/<\/?[A-Za-z][^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 function summarizeDocLines(lines, maxLen = MAX_DOC, minLen = 3) {
   const kept = [];
@@ -1951,10 +1952,10 @@ function summarizeDocLines(lines, maxLen = MAX_DOC, minLen = 3) {
     if (/^@[a-z]/i.test(t)) break;
     kept.push(t);
   }
-  const text = stripDocMarkup(kept.join(" "));
-  if (text.length < minLen) return void 0;
-  const sentence = /^(.*?[.!?])(\s|$)/.exec(text);
-  return (sentence ? sentence[1] : text).slice(0, maxLen);
+  const text2 = stripDocMarkup(kept.join(" "));
+  if (text2.length < minLen) return void 0;
+  const sentence = /^(.*?[.!?])(\s|$)/.exec(text2);
+  return (sentence ? sentence[1] : text2).slice(0, maxLen);
 }
 function proseOf(line2) {
   if (/^\/\/\s*#(?:end)?region\b/.test(line2)) return "";
@@ -2157,9 +2158,9 @@ function braceOwners(masked) {
   }
   return owners;
 }
-function countLines(text) {
+function countLines(text2) {
   let n = 1;
-  for (let i2 = 0; i2 < text.length; i2++) if (text.charCodeAt(i2) === 10) n++;
+  for (let i2 = 0; i2 < text2.length; i2++) if (text2.charCodeAt(i2) === 10) n++;
   return n;
 }
 function annotate(symbols, content, lexis, masked) {
@@ -2442,8 +2443,8 @@ var init_common = __esm({
       // body until its next line is seen.
       continued(line2) {
         for (let k = line2 + 1; k < this.lineStarts.length; k++) {
-          const text = this.masked.slice(this.lineStarts[k], this.lineStarts[k + 1] ?? this.masked.length).trim();
-          if (text) return /^(?:[?:|&.]|=>)/.test(text);
+          const text2 = this.masked.slice(this.lineStarts[k], this.lineStarts[k + 1] ?? this.masked.length).trim();
+          if (text2) return /^(?:[?:|&.]|=>)/.test(text2);
         }
         return false;
       }
@@ -4073,14 +4074,14 @@ var init_classify = __esm({
     ]);
   }
 });
-function globTokens(glob) {
+function globTokens(glob2) {
   const tokens = [];
-  for (let i2 = 0; i2 < glob.length; i2++) {
-    const c2 = glob[i2];
+  for (let i2 = 0; i2 < glob2.length; i2++) {
+    const c2 = glob2[i2];
     if (c2 === "*") {
-      if (glob[i2 + 1] === "*") {
+      if (glob2[i2 + 1] === "*") {
         i2++;
-        if (glob[i2 + 1] === "/") {
+        if (glob2[i2 + 1] === "/") {
           i2++;
           tokens.push({ kind: "prefix" });
         } else {
@@ -4134,7 +4135,7 @@ var init_glob = __esm({
   "src/glob.ts"() {
     "use strict";
     init_wildcard();
-    globMatcher = (glob) => wildcardMatcher(globTokens(glob));
+    globMatcher = (glob2) => wildcardMatcher(globTokens(glob2));
   }
 });
 function stripCode(content) {
@@ -4198,14 +4199,14 @@ function isParagraphLine(line2) {
   const t = line2.trim();
   return !!t && !/^ {4}|^\t/.test(line2) && !/^([-*+]|\d+[.)])(\s|$)/.test(t) && !/^[>|<]/.test(t);
 }
-function linkDestination(text, from) {
+function linkDestination(text2, from) {
   let depth = 1;
-  for (let i2 = from; i2 < text.length; i2++) {
-    const c2 = text[i2];
+  for (let i2 = from; i2 < text2.length; i2++) {
+    const c2 = text2[i2];
     if (c2 === "\\") i2++;
     else if (c2 === "\n") return void 0;
     else if (c2 === "(") depth++;
-    else if (c2 === ")" && --depth === 0) return i2 > from ? text.slice(from, i2) : void 0;
+    else if (c2 === ")" && --depth === 0) return i2 > from ? text2.slice(from, i2) : void 0;
   }
   return void 0;
 }
@@ -4225,9 +4226,9 @@ function extractMarkdown(content) {
   let summary;
   let summaryClosed = false;
   const heading = (level, raw) => {
-    const text = cleanProse(raw);
-    headings.push(text);
-    if (!title && level === 1) title = text;
+    const text2 = cleanProse(raw);
+    headings.push(text2);
+    if (!title && level === 1) title = text2;
     if (!summary && level >= 2) summaryClosed = true;
   };
   for (let i2 = 0; i2 < lines.length; i2++) {
@@ -4287,13 +4288,13 @@ var init_markdown = __esm({
     ALERT = /^>\s*\[!(?:note|tip|important|warning|caution)\]\s*$/i;
   }
 });
-function underlines(under, text) {
+function underlines(under, text2) {
   if (!ADORNMENT.test(under)) return false;
   const width = under.trimEnd().length;
-  return width >= [...text.trim()].length || width >= 4;
+  return width >= [...text2.trim()].length || width >= 4;
 }
-function cleanInline(text) {
-  return text.replace(/``([^`]+)``/g, "$1").replace(/:[\w:.+-]+:`([^`<]*?)\s*<[^`>]*>`/g, "$1").replace(/:doc:`([^`]*)`/g, (_m, t) => t.slice(t.lastIndexOf("/") + 1)).replace(/:[\w:.+-]+:`!?~?([^`]*)`/g, (_m, t) => t.startsWith("~") ? t.slice(t.lastIndexOf(".") + 1) : t).replace(/`([^`<]*?)\s*<[^`>]*>`__?/g, "$1").replace(/`([^`]+)`__?/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/\|([^|\s][^|]*)\|/g, "$1").replace(/\s+/g, " ").trim();
+function cleanInline(text2) {
+  return text2.replace(/``([^`]+)``/g, "$1").replace(/:[\w:.+-]+:`([^`<]*?)\s*<[^`>]*>`/g, "$1").replace(/:doc:`([^`]*)`/g, (_m, t) => t.slice(t.lastIndexOf("/") + 1)).replace(/:[\w:.+-]+:`!?~?([^`]*)`/g, (_m, t) => t.startsWith("~") ? t.slice(t.lastIndexOf(".") + 1) : t).replace(/`([^`<]*?)\s*<[^`>]*>`__?/g, "$1").replace(/`([^`]+)`__?/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/\|([^|\s][^|]*)\|/g, "$1").replace(/\s+/g, " ").trim();
 }
 function docnameRefs(rel2, name2, ext, out2) {
   const target = name2.trim();
@@ -4322,10 +4323,10 @@ function extractRst(rel2, content) {
     seen.add(key);
     refs.push(ref2);
   };
-  const heading = (style, text) => {
+  const heading = (style, text2) => {
     let level = styles.indexOf(style);
     if (level === -1) level = styles.push(style) - 1;
-    const clean = cleanInline(text);
+    const clean = cleanInline(text2);
     headings.push(clean);
     if (!title) title = clean;
     if (level > 0 && !summary) summaryClosed = true;
@@ -4379,8 +4380,8 @@ function extractRst(rel2, content) {
     if (/::\s*$/.test(line2)) i2 = skipBlock(i2);
   }
   return { title, summary, headings, refs };
-  function docRoles(text) {
-    for (const m of text.matchAll(DOC_ROLE)) docnameRefs(rel2, m[1] ?? m[2], ".rst", addRef);
+  function docRoles(text2) {
+    for (const m of text2.matchAll(DOC_ROLE)) docnameRefs(rel2, m[1] ?? m[2], ".rst", addRef);
   }
   function skipBlock(i2) {
     const indent = indentOf(lines[i2]);
@@ -4395,8 +4396,8 @@ function extractRst(rel2, content) {
     if (/^(?:[-*+•]\s|#\.\s|\d+[.)]\s|\(?[a-z0-9]\)\s|[+=|]|:[^:\s][^:]*:(?:\s|$))/i.test(lines[i2])) return void 0;
     const para = [];
     for (let j = i2; j < lines.length && !blank22(j) && !/^\s/.test(lines[j]); j++) para.push(lines[j].trim());
-    const text = cleanInline(para.join(" "));
-    const sentence = /^(.*?[.!?])(?:\s|$)/.exec(text)?.[1] ?? (text.endsWith(":") ? "" : text);
+    const text2 = cleanInline(para.join(" "));
+    const sentence = /^(.*?[.!?])(?:\s|$)/.exec(text2)?.[1] ?? (text2.endsWith(":") ? "" : text2);
     if (sentence.length < 8 || !/[A-Za-zÀ-ɏ]{3,}/.test(sentence)) return void 0;
     return sentence.slice(0, 200);
   }
@@ -4443,8 +4444,8 @@ function isInterestingNumber(raw) {
   if (TRIVIAL_NUMBERS.has(v)) return false;
   return Number.isFinite(Number(v));
 }
-function unquote(text) {
-  let s = text;
+function unquote(text2) {
+  let s = text2;
   const raw = /^(?:[rRbBuUfF]{1,2}|@|\$)?(?:#*)?(['"`])/.exec(s);
   if (raw) {
     const q = raw[1];
@@ -4486,8 +4487,8 @@ var init_literals = __esm({
         this.seen.add(key);
         this.out.push({ value, line: line2, kind });
       }
-      addString(text, line2) {
-        this.add("string", unquote(text), line2);
+      addString(text2, line2) {
+        this.add("string", unquote(text2), line2);
       }
       result() {
         if (!this.out.length) return void 0;
@@ -4938,7 +4939,7 @@ async function Module2(moduleArg = {}) {
   var GOT = {};
   var currentModuleWeakSymbols = /* @__PURE__ */ new Set([]);
   var GOTHandler = {
-    get(obj, symName) {
+    get(obj2, symName) {
       var rtn = GOT[symName];
       if (!rtn) {
         rtn = GOT[symName] = new WebAssembly.Global({
@@ -4986,16 +4987,16 @@ async function Module2(moduleArg = {}) {
     if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
       return UTF8Decoder.decode(heapOrArray.subarray(idx, endPtr));
     }
-    var str2 = "";
+    var str22 = "";
     while (idx < endPtr) {
       var u0 = heapOrArray[idx++];
       if (!(u0 & 128)) {
-        str2 += String.fromCharCode(u0);
+        str22 += String.fromCharCode(u0);
         continue;
       }
       var u1 = heapOrArray[idx++] & 63;
       if ((u0 & 224) == 192) {
-        str2 += String.fromCharCode((u0 & 31) << 6 | u1);
+        str22 += String.fromCharCode((u0 & 31) << 6 | u1);
         continue;
       }
       var u2 = heapOrArray[idx++] & 63;
@@ -5005,13 +5006,13 @@ async function Module2(moduleArg = {}) {
         u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | heapOrArray[idx++] & 63;
       }
       if (u0 < 65536) {
-        str2 += String.fromCharCode(u0);
+        str22 += String.fromCharCode(u0);
       } else {
         var ch = u0 - 65536;
-        str2 += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
+        str22 += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
       }
     }
-    return str2;
+    return str22;
   }, "UTF8ArrayToString");
   var getDylinkMetadata = /* @__PURE__ */ __name((binary2) => {
     var offset = 0;
@@ -5173,9 +5174,9 @@ async function Module2(moduleArg = {}) {
     return ret;
   }, "getMemory");
   var isInternalSym = /* @__PURE__ */ __name((symName) => ["__cpp_exception", "__c_longjmp", "__wasm_apply_data_relocs", "__dso_handle", "__tls_size", "__tls_align", "__set_stack_limits", "_emscripten_tls_init", "__wasm_init_tls", "__wasm_call_ctors", "__start_em_asm", "__stop_em_asm", "__start_em_js", "__stop_em_js"].includes(symName) || symName.startsWith("__em_js__"), "isInternalSym");
-  var uleb128EncodeWithLen = /* @__PURE__ */ __name((arr) => {
-    const n = arr.length;
-    return [n % 128 | 128, n >> 7, ...arr];
+  var uleb128EncodeWithLen = /* @__PURE__ */ __name((arr2) => {
+    const n = arr2.length;
+    return [n % 128 | 128, n >> 7, ...arr2];
   }, "uleb128EncodeWithLen");
   var wasmTypeCodes = {
     "i": 127,
@@ -5870,10 +5871,10 @@ async function Module2(moduleArg = {}) {
     }
     quit_(1, e);
   }, "handleException");
-  var lengthBytesUTF8 = /* @__PURE__ */ __name((str2) => {
+  var lengthBytesUTF8 = /* @__PURE__ */ __name((str22) => {
     var len = 0;
-    for (var i2 = 0; i2 < str2.length; ++i2) {
-      var c2 = str2.charCodeAt(i2);
+    for (var i2 = 0; i2 < str22.length; ++i2) {
+      var c2 = str22.charCodeAt(i2);
       if (c2 <= 127) {
         len++;
       } else if (c2 <= 2047) {
@@ -5887,12 +5888,12 @@ async function Module2(moduleArg = {}) {
     }
     return len;
   }, "lengthBytesUTF8");
-  var stringToUTF8Array = /* @__PURE__ */ __name((str2, heap, outIdx, maxBytesToWrite) => {
+  var stringToUTF8Array = /* @__PURE__ */ __name((str22, heap, outIdx, maxBytesToWrite) => {
     if (!(maxBytesToWrite > 0)) return 0;
     var startIdx = outIdx;
     var endIdx = outIdx + maxBytesToWrite - 1;
-    for (var i2 = 0; i2 < str2.length; ++i2) {
-      var u = str2.codePointAt(i2);
+    for (var i2 = 0; i2 < str22.length; ++i2) {
+      var u = str22.codePointAt(i2);
       if (u <= 127) {
         if (outIdx >= endIdx) break;
         heap[outIdx++] = u;
@@ -5917,30 +5918,30 @@ async function Module2(moduleArg = {}) {
     heap[outIdx] = 0;
     return outIdx - startIdx;
   }, "stringToUTF8Array");
-  var stringToUTF8 = /* @__PURE__ */ __name((str2, outPtr, maxBytesToWrite) => stringToUTF8Array(str2, HEAPU8, outPtr, maxBytesToWrite), "stringToUTF8");
+  var stringToUTF8 = /* @__PURE__ */ __name((str22, outPtr, maxBytesToWrite) => stringToUTF8Array(str22, HEAPU8, outPtr, maxBytesToWrite), "stringToUTF8");
   var stackAlloc = /* @__PURE__ */ __name((sz) => __emscripten_stack_alloc(sz), "stackAlloc");
-  var stringToUTF8OnStack = /* @__PURE__ */ __name((str2) => {
-    var size = lengthBytesUTF8(str2) + 1;
+  var stringToUTF8OnStack = /* @__PURE__ */ __name((str22) => {
+    var size = lengthBytesUTF8(str22) + 1;
     var ret = stackAlloc(size);
-    stringToUTF8(str2, ret, size);
+    stringToUTF8(str22, ret, size);
     return ret;
   }, "stringToUTF8OnStack");
   var AsciiToString = /* @__PURE__ */ __name((ptr) => {
-    var str2 = "";
+    var str22 = "";
     while (1) {
       var ch = HEAPU8[ptr++];
-      if (!ch) return str2;
-      str2 += String.fromCharCode(ch);
+      if (!ch) return str22;
+      str22 += String.fromCharCode(ch);
     }
   }, "AsciiToString");
-  var stringToUTF16 = /* @__PURE__ */ __name((str2, outPtr, maxBytesToWrite) => {
+  var stringToUTF16 = /* @__PURE__ */ __name((str22, outPtr, maxBytesToWrite) => {
     maxBytesToWrite ??= 2147483647;
     if (maxBytesToWrite < 2) return 0;
     maxBytesToWrite -= 2;
     var startPtr = outPtr;
-    var numCharsToWrite = maxBytesToWrite < str2.length * 2 ? maxBytesToWrite / 2 : str2.length;
+    var numCharsToWrite = maxBytesToWrite < str22.length * 2 ? maxBytesToWrite / 2 : str22.length;
     for (var i2 = 0; i2 < numCharsToWrite; ++i2) {
-      var codeUnit = str2.charCodeAt(i2);
+      var codeUnit = str22.charCodeAt(i2);
       LE_HEAP_STORE_I16((outPtr >> 1) * 2, codeUnit);
       outPtr += 2;
     }
@@ -6329,11 +6330,11 @@ function parseMatchPredicate(steps, index, operator, textPredicates) {
     for (const c2 of captures) {
       if (c2.name === captureName) nodes.push(c2.node.text);
     }
-    const test = /* @__PURE__ */ __name((text, positive) => {
-      return positive ? regex.test(text) : !regex.test(text);
+    const test = /* @__PURE__ */ __name((text2, positive) => {
+      return positive ? regex.test(text2) : !regex.test(text2);
     }, "test");
     if (nodes.length === 0) return !isPositive;
-    return matchAll ? nodes.every((text) => test(text, isPositive)) : nodes.some((text) => test(text, isPositive));
+    return matchAll ? nodes.every((text2) => test(text2, isPositive)) : nodes.some((text2) => test(text2, isPositive));
   });
 }
 function parseAnyOfPredicate(steps, index, operator, textPredicates) {
@@ -6362,7 +6363,7 @@ function parseAnyOfPredicate(steps, index, operator, textPredicates) {
       if (c2.name === captureName) nodes.push(c2.node.text);
     }
     if (nodes.length === 0) return !isPositive;
-    return nodes.every((text) => values.includes(text)) === isPositive;
+    return nodes.every((text2) => values.includes(text2)) === isPositive;
   });
 }
 function parseIsPredicate(steps, index, operator, assertedProperties, refutedProperties) {
@@ -8877,77 +8878,77 @@ function readReceiver(node, onCallNode = false, typeCalls) {
   if (node.type === "generic_type") return readReceiver(node.childForFieldName("type"), onCallNode, typeCalls);
   if (isGoInstantiation(node)) return readReceiver(node.childForFieldName("operand"), onCallNode, typeCalls);
   if (node.type === "expression" && node.namedChildren.length === 1) return readReceiver(node.namedChildren[0], onCallNode, typeCalls);
-  let obj = null;
+  let obj2 = null;
   let field = "";
-  if (node.type === "navigation_expression") [obj, field] = [node.namedChildren[0], "object"];
-  else if (node.type === "dot") [obj, field] = [node.childForFieldName("left"), "object"];
-  else if (node.type === "scoped_call_expression") [obj, field] = [node.childForFieldName("scope"), "object"];
+  if (node.type === "navigation_expression") [obj2, field] = [node.namedChildren[0], "object"];
+  else if (node.type === "dot") [obj2, field] = [node.childForFieldName("left"), "object"];
+  else if (node.type === "scoped_call_expression") [obj2, field] = [node.childForFieldName("scope"), "object"];
   else {
     for (const candidate of RECEIVER_FIELDS) {
-      obj = node.childForFieldName(candidate);
-      if (obj) {
+      obj2 = node.childForFieldName(candidate);
+      if (obj2) {
         field = candidate;
         break;
       }
     }
   }
-  if (!obj) return void 0;
-  if (obj.type === "relative_scope") return obj.text === "parent" ? "super" : "self";
+  if (!obj2) return void 0;
+  if (obj2.type === "relative_scope") return obj2.text === "parent" ? "super" : "self";
   if (onCallNode && field !== "object" && field !== "receiver") return void 0;
-  if (obj.type === "super" || obj.type === "crate" && node.type === "scoped_identifier") return obj.type;
-  if (obj.type === "self" && node.type === "scoped_identifier") return void 0;
-  return receiverOf(obj, typeCalls);
+  if (obj2.type === "super" || obj2.type === "crate" && node.type === "scoped_identifier") return obj2.type;
+  if (obj2.type === "self" && node.type === "scoped_identifier") return void 0;
+  return receiverOf(obj2, typeCalls);
 }
 function receiverOf(start2, typeCalls) {
-  let obj = start2;
+  let obj2 = start2;
   for (; ; ) {
-    const only = obj.namedChildren.length === 1 ? obj.namedChildren[0] : void 0;
-    if (only && TRANSPARENT.test(obj.type)) obj = only;
-    else if (only && obj.type === "postfix_unary_expression" && obj.text.endsWith("!")) obj = only;
-    else if (POINTER.test(obj.type) && /^[*&]|!$/.test(obj.text)) {
-      const inner = obj.childForFieldName("operand") ?? obj.childForFieldName("argument") ?? obj.childForFieldName("value") ?? only;
+    const only = obj2.namedChildren.length === 1 ? obj2.namedChildren[0] : void 0;
+    if (only && TRANSPARENT.test(obj2.type)) obj2 = only;
+    else if (only && obj2.type === "postfix_unary_expression" && obj2.text.endsWith("!")) obj2 = only;
+    else if (POINTER.test(obj2.type) && /^[*&]|!$/.test(obj2.text)) {
+      const inner = obj2.childForFieldName("operand") ?? obj2.childForFieldName("argument") ?? obj2.childForFieldName("value") ?? only;
       if (!inner) break;
-      obj = inner;
+      obj2 = inner;
     } else break;
   }
-  if (obj.type === "binary_expression" && start2.type === "non_null_expression") obj = obj.childForFieldName("right") ?? obj;
-  const kids = obj.namedChildren;
+  if (obj2.type === "binary_expression" && start2.type === "non_null_expression") obj2 = obj2.childForFieldName("right") ?? obj2;
+  const kids = obj2.namedChildren;
   if (kids.length === 0) {
-    if (obj.type === "this") return thisReceiver(obj);
-    const self = SELF_NODE.exec(obj.type);
+    if (obj2.type === "this") return thisReceiver(obj2);
+    const self = SELF_NODE.exec(obj2.type);
     if (self) return self[1];
-    if (/^super(?:_expression)?$/.test(obj.type)) return "super";
-    if (obj.text === "__MODULE__") return "self";
-    if (BASE_NODE.test(obj.type)) return void 0;
-    if (IDENT_LEAF.test(obj.type) || RUBY_VARIABLE.test(obj.type)) return receiverName(obj.text) ?? UNNAMED_RECEIVER;
-    if (obj.type === "alias") return receiverName(obj.text.slice(obj.text.lastIndexOf(".") + 1)) ?? UNNAMED_RECEIVER;
+    if (/^super(?:_expression)?$/.test(obj2.type)) return "super";
+    if (obj2.text === "__MODULE__") return "self";
+    if (BASE_NODE.test(obj2.type)) return void 0;
+    if (IDENT_LEAF.test(obj2.type) || RUBY_VARIABLE.test(obj2.type)) return receiverName(obj2.text) ?? UNNAMED_RECEIVER;
+    if (obj2.type === "alias") return receiverName(obj2.text.slice(obj2.text.lastIndexOf(".") + 1)) ?? UNNAMED_RECEIVER;
     return UNNAMED_RECEIVER;
   }
-  if (/^super(?:_expression)?$/.test(obj.type)) return "super";
-  if (SELF_NODE.test(obj.type)) return SELF_NODE.exec(obj.type)[1];
-  if (obj.type === "bracketed_type") {
+  if (/^super(?:_expression)?$/.test(obj2.type)) return "super";
+  if (SELF_NODE.test(obj2.type)) return SELF_NODE.exec(obj2.type)[1];
+  if (obj2.type === "bracketed_type") {
     const inner = kids[0];
     return typeReceiver(readTypeName(inner.type === "qualified_type" ? inner.childForFieldName("alias") ?? inner.childForFieldName("type") : inner));
   }
-  if (obj.type === "qualified_name") return receiverOf(kids[kids.length - 1], typeCalls);
-  if (obj.type === "conditional_access_expression") return receiverOf(kids[kids.length - 1], typeCalls);
-  if (obj.type === "navigation_expression") return receiverOf(kids[kids.length - 1], typeCalls);
-  if (obj.type === "composite_literal" || NEW_NODE.test(obj.type)) {
-    const type = obj.childForFieldName("type") ?? obj.childForFieldName("constructor") ?? kids.find((c2) => IDENT_LEAF.test(c2.type) || /qualified|scoped/.test(c2.type)) ?? null;
+  if (obj2.type === "qualified_name") return receiverOf(kids[kids.length - 1], typeCalls);
+  if (obj2.type === "conditional_access_expression") return receiverOf(kids[kids.length - 1], typeCalls);
+  if (obj2.type === "navigation_expression") return receiverOf(kids[kids.length - 1], typeCalls);
+  if (obj2.type === "composite_literal" || NEW_NODE.test(obj2.type)) {
+    const type = obj2.childForFieldName("type") ?? obj2.childForFieldName("constructor") ?? kids.find((c2) => IDENT_LEAF.test(c2.type) || /qualified|scoped/.test(c2.type)) ?? null;
     return typeReceiver(readTypeName(type));
   }
-  if (GENERIC.test(obj.type)) return typeReceiver(readTypeName(obj.childForFieldName("type") ?? kids[0]));
-  if (CAST.test(obj.type)) {
-    const type = obj.type === "type_assertion" && kids[0]?.type === "type_arguments" ? kids[0].namedChildren[0] : obj.childForFieldName("type") ?? obj.childForFieldName("right") ?? kids[kids.length - 1];
+  if (GENERIC.test(obj2.type)) return typeReceiver(readTypeName(obj2.childForFieldName("type") ?? kids[0]));
+  if (CAST.test(obj2.type)) {
+    const type = obj2.type === "type_assertion" && kids[0]?.type === "type_arguments" ? kids[0].namedChildren[0] : obj2.childForFieldName("type") ?? obj2.childForFieldName("right") ?? kids[kids.length - 1];
     return castReceiver(type ?? null);
   }
-  if (INDEXED.test(obj.type)) return UNNAMED_RECEIVER;
-  const rubyRead = obj.type === "call" && obj.childForFieldName("method") !== null && obj.childForFieldName("arguments") === null && obj.childForFieldName("block") === null;
-  if (rubyRead && obj.childForFieldName("method").text !== "new") return receiverName(readName(obj.childForFieldName("method"))) ?? UNNAMED_RECEIVER;
-  if (CALL_NODE.test(obj.type) || obj.childForFieldName("arguments") !== null) return calledReceiver(obj, typeCalls);
-  const seg = obj.childForFieldName("name") ?? obj.childForFieldName("property") ?? obj.childForFieldName("attribute") ?? obj.childForFieldName("field") ?? obj.childForFieldName("member");
+  if (INDEXED.test(obj2.type)) return UNNAMED_RECEIVER;
+  const rubyRead = obj2.type === "call" && obj2.childForFieldName("method") !== null && obj2.childForFieldName("arguments") === null && obj2.childForFieldName("block") === null;
+  if (rubyRead && obj2.childForFieldName("method").text !== "new") return receiverName(readName(obj2.childForFieldName("method"))) ?? UNNAMED_RECEIVER;
+  if (CALL_NODE.test(obj2.type) || obj2.childForFieldName("arguments") !== null) return calledReceiver(obj2, typeCalls);
+  const seg = obj2.childForFieldName("name") ?? obj2.childForFieldName("property") ?? obj2.childForFieldName("attribute") ?? obj2.childForFieldName("field") ?? obj2.childForFieldName("member");
   if (seg) return receiverOf(seg, typeCalls) ?? UNNAMED_RECEIVER;
-  if (kids.length === 1 && NAME_WRAPPER.test(obj.type)) return receiverOf(kids[0], typeCalls);
+  if (kids.length === 1 && NAME_WRAPPER.test(obj2.type)) return receiverOf(kids[0], typeCalls);
   return UNNAMED_RECEIVER;
 }
 function calledReceiver(call2, typeCalls) {
@@ -9102,9 +9103,9 @@ function docstringFor(node) {
   const body2 = node.childForFieldName("body");
   const first = body2?.namedChildren[0];
   if (!first) return void 0;
-  const str2 = first.type === "string" ? first : first.type === "expression_statement" ? first.namedChildren[0] : void 0;
-  if (!str2 || str2.type !== "string") return void 0;
-  return summarizeDocLines(str2.text.split(/\r?\n/).map(stripCommentMarkers));
+  const str22 = first.type === "string" ? first : first.type === "expression_statement" ? first.namedChildren[0] : void 0;
+  if (!str22 || str22.type !== "string") return void 0;
+  return summarizeDocLines(str22.text.split(/\r?\n/).map(stripCommentMarkers));
 }
 var COMMENT_TYPE;
 var DOC_WRAPPERS;
@@ -9598,15 +9599,15 @@ var init_specs = __esm({
           if (node.type === "import_from_statement") {
             const out2 = [];
             const from = node.childForFieldName("module_name");
-            for (const child of node.namedChildren) {
-              if (from && child.startIndex === from.startIndex) continue;
-              if (child.type === "aliased_import") {
-                const original = child.namedChildren[0]?.text;
-                const alias = child.childForFieldName("alias")?.text;
+            for (const child2 of node.namedChildren) {
+              if (from && child2.startIndex === from.startIndex) continue;
+              if (child2.type === "aliased_import") {
+                const original = child2.namedChildren[0]?.text;
+                const alias = child2.childForFieldName("alias")?.text;
                 if (alias && (original === alias || ctx.ownerKind === void 0 && ctx.publicNames?.has(alias)))
                   out2.push({ name: alias, kind: "reexport" });
-              } else if (child.type === "dotted_name" && ctx.ownerKind === void 0 && ctx.publicNames?.has(child.text)) {
-                out2.push({ name: child.text, kind: "reexport" });
+              } else if (child2.type === "dotted_name" && ctx.ownerKind === void 0 && ctx.publicNames?.has(child2.text)) {
+                out2.push({ name: child2.text, kind: "reexport" });
               }
             }
             return out2;
@@ -10308,7 +10309,7 @@ var init_specs = __esm({
         containers: /* @__PURE__ */ new Set(["source", "do_block", "call", "stab_clause"]),
         // `defp`/`defmacrop`/`defguardp` are the private forms; everything else is
         // public.
-        exported: (header) => !/^\s*def(p|macrop|guardp)\b/.test(header),
+        exported: (header2) => !/^\s*def(p|macrop|guardp)\b/.test(header2),
         calls: { call: "function" },
         kindFrom: {
           call: (node) => ELIXIR_DEFS[node.childForFieldName("target")?.text ?? node.namedChildren[0]?.text ?? ""]
@@ -10331,8 +10332,8 @@ var init_specs = __esm({
             const inner = prev.namedChildren[0];
             const target = inner?.childForFieldName("target") ?? inner?.namedChildren[0];
             if (target && /^(doc|moduledoc)$/.test(target.text)) {
-              const str2 = findFirst(prev, (n) => n.type === "string");
-              if (str2) return str2.text.replace(/^"""|"""$/g, "").replace(/^"|"$/g, "").trim() || void 0;
+              const str22 = findFirst(prev, (n) => n.type === "string");
+              if (str22) return str22.text.replace(/^"""|"""$/g, "").replace(/^"|"$/g, "").trim() || void 0;
             }
             prev = prev.previousNamedSibling;
           }
@@ -10419,7 +10420,7 @@ var init_specs = __esm({
         containers: /* @__PURE__ */ new Set(["source_file", "contract_body", "struct_declaration", "enum_declaration", "enum_body"]),
         // Solidity states visibility on every member; `public`/`external` is the
         // contract's ABI, `internal`/`private` is not.
-        exported: (header, name2) => /\b(public|external)\b/.test(header) ? true : /\b(internal|private)\b/.test(header) ? false : byCapital(header, name2) || true,
+        exported: (header2, name2) => /\b(public|external)\b/.test(header2) ? true : /\b(internal|private)\b/.test(header2) ? false : byCapital(header2, name2) || true,
         calls: { call_expression: "function" },
         // `IToken(token).transfer(…)`: a cast to a contract or interface.
         typeCalls: "plain",
@@ -10518,15 +10519,15 @@ function declHeader(node, src) {
   const start2 = node.startIndex;
   const end = Math.min(bodyStart(node, src) ?? node.endIndex, start2 + MAX_HEADER_BYTES);
   const raw = src.slice(start2, end);
-  let text = "";
+  let text2 = "";
   let at = start2;
   for (const c2 of COMMENT_OPENER.test(raw) ? commentsWithin(node, start2, end) : []) {
-    text = glue(text, src.slice(at, Math.max(at, c2.startIndex)).replace(/[ \t]+$/, ""));
+    text2 = glue(text2, src.slice(at, Math.max(at, c2.startIndex)).replace(/[ \t]+$/, ""));
     at = Math.min(c2.endIndex, end);
     while (at < end && (src[at] === " " || src[at] === "	")) at++;
   }
-  text = glue(text, src.slice(at, end));
-  return text.replace(/\\(\r?\n)/g, "$1").replace(/([([])\s*\n\s*/g, "$1").replace(/,(?=\s*\n\s*[)\]}])/g, "").replace(/\s*\n\s*([)\]])/g, "$1").replace(/\s+/g, " ").trim().replace(/\s*(?:\{|=>|=)$/, "").trim().slice(0, MAX_SIGNATURE);
+  text2 = glue(text2, src.slice(at, end));
+  return text2.replace(/\\(\r?\n)/g, "$1").replace(/([([])\s*\n\s*/g, "$1").replace(/,(?=\s*\n\s*[)\]}])/g, "").replace(/\s*\n\s*([)\]])/g, "$1").replace(/\s+/g, " ").trim().replace(/\s*(?:\{|=>|=)$/, "").trim().slice(0, MAX_SIGNATURE);
 }
 var BODY_TYPES;
 var INLINE_BODY;
@@ -10596,8 +10597,8 @@ var init_signature = __esm({
     glue = (a, b) => a && b && !/[\s([{]$/.test(a) && !/^[\s,;)\]}]/.test(b) ? `${a} ${b}` : a + b;
   }
 });
-function unquote2(text) {
-  return text.replace(/^['"`]|['"`]$/g, "");
+function unquote2(text2) {
+  return text2.replace(/^['"`]|['"`]$/g, "");
 }
 function readJs(node, out2) {
   if (node.type === "import_statement") {
@@ -10783,9 +10784,9 @@ function collectAll(root, spec, defNames, maxCalls) {
     calls.push(receiver ? { name: name2, line: line2, receiver } : { name: name2, line: line2 });
   };
   const termsFound = /* @__PURE__ */ new Set();
-  const addTerms2 = (text) => {
+  const addTerms2 = (text2) => {
     if (termsFound.size >= MAX_TERMS) return;
-    for (const t of subtokens(text)) {
+    for (const t of subtokens(text2)) {
       if (termsFound.size >= MAX_TERMS) return;
       termsFound.add(t);
     }
@@ -10800,8 +10801,8 @@ function collectAll(root, spec, defNames, maxCalls) {
     const kids = node.namedChildren;
     const flags2 = typeFlagsOf(type);
     if (kids.length === 0 && flags2 & T_REF_IDENT) {
-      const text = node.text;
-      if (REF_IDENT_TEXT.test(text) && !defNames.has(text)) identsFound.add(text);
+      const text2 = node.text;
+      if (REF_IDENT_TEXT.test(text2) && !defNames.has(text2)) identsFound.add(text2);
     }
     const plain2 = flags2 & T_STRING ? isPlainString(node) : false;
     if (flags2 & T_COMMENT) {
@@ -10932,7 +10933,7 @@ function extractAst(rel2, ext, content, opts = {}) {
         relations.push(r);
       }
     };
-    const visibilityOf = (node, header, name2, ctx) => {
+    const visibilityOf = (node, header2, name2, ctx) => {
       if (ctx.inFunctionBody) return false;
       if (spec.privateMember?.(node) === true) return false;
       if (spec.publicMember?.(node) === true) return true;
@@ -10940,7 +10941,7 @@ function extractAst(rel2, ext, content, opts = {}) {
       if (ctx.forcePublic) return true;
       if (ctx.exported) return true;
       const at = nameStart(node, name2);
-      return spec.exported(header, name2, at === void 0 ? header : content.slice(node.startIndex, at));
+      return spec.exported(header2, name2, at === void 0 ? header2 : content.slice(node.startIndex, at));
     };
     const docOf = (node) => spec.docFrom?.(node) ?? (spec.docstring ? docstringFor(node) : void 0) ?? docCommentFor(node);
     const walkChildren = (container, ctx) => {
@@ -10980,7 +10981,7 @@ function extractAst(rel2, ext, content, opts = {}) {
       const extras = spec.extraMembers?.(c2, { ownerKind: childCtx.ownerKind, inFunctionBody: childCtx.inFunctionBody, publicNames });
       for (const extra of extras ?? []) {
         const at = extra.node ?? c2;
-        const header = declHeader(at, content);
+        const header2 = declHeader(at, content);
         const doc = spec.docFrom?.(at) ?? docCommentFor(at);
         emit2({
           name: extra.name,
@@ -10990,9 +10991,9 @@ function extractAst(rel2, ext, content, opts = {}) {
           endLine: endLineOf(at),
           ...childCtx.parent ? { parent: childCtx.parent } : {},
           ...childCtx.parentPath && childCtx.parentPath !== childCtx.parent ? { parentPath: childCtx.parentPath } : {},
-          signature: header,
+          signature: header2,
           ...doc ? { doc } : {},
-          exported: visibilityOf(at, header, extra.name, childCtx),
+          exported: visibilityOf(at, header2, extra.name, childCtx),
           lang
         });
       }
@@ -11111,8 +11112,8 @@ function extractAst(rel2, ext, content, opts = {}) {
               const prop = left.childForFieldName("property");
               if (prop?.type === "property_identifier") {
                 name2 = prop.text;
-                const obj = left.text.slice(0, left.text.length - prop.text.length - 1);
-                exportedAssign = obj === "exports" || obj === "module.exports";
+                const obj2 = left.text.slice(0, left.text.length - prop.text.length - 1);
+                exportedAssign = obj2 === "exports" || obj2 === "module.exports";
               }
             } else if (left.type === "identifier") {
               name2 = left.text;
@@ -11139,8 +11140,8 @@ function extractAst(rel2, ext, content, opts = {}) {
           } else if (left?.type === "member_expression" && right) {
             const prop = left.childForFieldName("property");
             if (prop?.type === "property_identifier") {
-              const obj = left.text.slice(0, left.text.length - prop.text.length - 1);
-              if (obj === "exports" || obj === "module.exports") {
+              const obj2 = left.text.slice(0, left.text.length - prop.text.length - 1);
+              if (obj2 === "exports" || obj2 === "module.exports") {
                 if (right.type === "identifier") exportName(right.text, ctx);
                 if (right.type !== "identifier" || right.text !== prop.text) {
                   emit2({
@@ -11170,7 +11171,7 @@ function extractAst(rel2, ext, content, opts = {}) {
         for (let i2 = 0; i2 < pairs; i2++) {
           const member = luaMember(targets[i2]);
           if (values[i2].type !== "function_definition" || !member) continue;
-          const header = declHeader(node, content);
+          const header2 = declHeader(node, content);
           const doc = docCommentFor(node);
           const parent = member.table ?? ctx.parent;
           emit2({
@@ -11180,9 +11181,9 @@ function extractAst(rel2, ext, content, opts = {}) {
             line: node.startPosition.row + 1,
             endLine: endLineOf(node),
             ...parent ? { parent } : {},
-            signature: header,
+            signature: header2,
             ...doc ? { doc } : {},
-            exported: visibilityOf(node, header, member.name, { ...ctx, exported: nowExported }),
+            exported: visibilityOf(node, header2, member.name, { ...ctx, exported: nowExported }),
             lang
           });
         }
@@ -11196,7 +11197,7 @@ function extractAst(rel2, ext, content, opts = {}) {
         const name2 = reader ? reader(node) : nameOf(node);
         const pattern = node.namedChildren.find((c2) => c2.type === "object_pattern" || c2.type === "array_pattern");
         if (pattern && !ctx.inFunctionBody) {
-          const header = declHeader(node, content);
+          const header2 = declHeader(node, content);
           const doc = docOf(node);
           for (const bound of boundNames(pattern)) {
             emit2({
@@ -11206,9 +11207,9 @@ function extractAst(rel2, ext, content, opts = {}) {
               line: node.startPosition.row + 1,
               endLine: endLineOf(node),
               ...ctx.parent ? { parent: ctx.parent } : {},
-              signature: header,
+              signature: header2,
               ...doc ? { doc } : {},
-              exported: visibilityOf(node, header, bound, { ...ctx, exported: nowExported }),
+              exported: visibilityOf(node, header2, bound, { ...ctx, exported: nowExported }),
               lang
             });
           }
@@ -11216,7 +11217,7 @@ function extractAst(rel2, ext, content, opts = {}) {
         }
         const declaresFunction = FUNCTION_KINDS.has(kind) || NESTED_TYPE_KINDS.has(kind) || spec.nestedDefs?.has(type) === true || FUNCTION_VALUE_TYPES.has(node.childForFieldName("value")?.type ?? "");
         if (name2 && (!ctx.inFunctionBody || declaresFunction)) {
-          const header = declHeader(node, content);
+          const header2 = declHeader(node, content);
           const doc = docOf(node);
           const parent = qualifier ?? ctx.parent;
           const parentPath = qualifier ?? ctx.parentPath;
@@ -11230,9 +11231,9 @@ function extractAst(rel2, ext, content, opts = {}) {
               endLine: endLineOf(node),
               ...parent ? { parent } : {},
               ...parentPath && parentPath !== parent ? { parentPath } : {},
-              signature: header,
+              signature: header2,
               ...doc ? { doc } : {},
-              exported: visibilityOf(node, header, each, { ...ctx, exported: nowExported }),
+              exported: visibilityOf(node, header2, each, { ...ctx, exported: nowExported }),
               lang
             });
           }
@@ -11382,8 +11383,8 @@ function attr(attrs, re) {
   const m = re.exec(attrs);
   return m ? (m[1] ?? m[2] ?? m[3] ?? "").trim().toLowerCase() : void 0;
 }
-function blank(text) {
-  return text.replace(/[^\r\n]/g, " ");
+function blank(text2) {
+  return text2.replace(/[^\r\n]/g, " ");
 }
 function select(content, ranges, keep) {
   let out2 = "";
@@ -11650,9 +11651,9 @@ function afterUnnamedReceiver(line2, at) {
 }
 function collectTermsRegex(content) {
   const found = /* @__PURE__ */ new Set();
-  const add = (text) => {
+  const add = (text2) => {
     if (found.size >= MAX_TERMS2) return;
-    for (const t of subtokens(text)) {
+    for (const t of subtokens(text2)) {
       if (found.size >= MAX_TERMS2) return;
       found.add(t);
     }
@@ -11949,9 +11950,9 @@ function normalizeScope(root, scope) {
   s = posix.normalize(s).replace(/\/+$/, "");
   return s === "." ? "" : s;
 }
-function normalizeGlob(root, glob) {
+function normalizeGlob(root, glob2) {
   const abs = resolve3(root).split(sep2).join("/") + "/";
-  let g = glob.startsWith(abs) ? glob.slice(abs.length) : glob;
+  let g = glob2.startsWith(abs) ? glob2.slice(abs.length) : glob2;
   while (g.startsWith("./")) g = g.slice(2);
   return g.replace(/^\/+/, "");
 }
@@ -12165,8 +12166,8 @@ var init_scan = __esm({
         const abs = this.pending.get(rel2);
         if (abs === void 0) return;
         this.pending.delete(rel2);
-        const text = readText(abs);
-        if (text) super.set(rel2, text);
+        const text2 = readText(abs);
+        if (text2) super.set(rel2, text2);
       }
       loadAll() {
         for (const rel2 of [...this.pending.keys()]) this.load(rel2);
@@ -12179,9 +12180,9 @@ var init_scan = __esm({
         this.load(rel2);
         return super.has(rel2);
       }
-      set(rel2, text) {
+      set(rel2, text2) {
         this.pending?.delete(rel2);
-        return super.set(rel2, text);
+        return super.set(rel2, text2);
       }
       delete(rel2) {
         const deferred = this.pending.delete(rel2);
@@ -12578,11 +12579,11 @@ function readPersistedIndex(repo, indexDir = INDEX_DIR) {
   return "unusable" in read ? void 0 : read;
 }
 function inspectPersistedIndex(repo, indexDir = INDEX_DIR) {
-  let text;
+  let text2;
   let written;
   try {
     const path = join5(indexDirPath(repo, indexDir), "cache.json");
-    text = readFileSync5(path, "utf8");
+    text2 = readFileSync5(path, "utf8");
     written = statSync4(path).mtimeMs;
   } catch (e) {
     const code = e.code;
@@ -12590,7 +12591,7 @@ function inspectPersistedIndex(repo, indexDir = INDEX_DIR) {
   }
   let parsed2;
   try {
-    parsed2 = JSON.parse(text);
+    parsed2 = JSON.parse(text2);
   } catch {
     return { unusable: "corrupt" };
   }
@@ -12771,7 +12772,7 @@ function readFreshness(repo, indexDir = INDEX_DIR) {
   }
   const cache = value.cache;
   if (!cache || cache.size !== cacheStat.size || cache.mtimeMs !== cacheStat.mtimeMs) return void 0;
-  const str2 = (v) => typeof v === "string" ? v : void 0;
+  const str22 = (v) => typeof v === "string" ? v : void 0;
   const embed = value.embed;
   if (embed !== void 0 && (embed === null || typeof embed !== "object")) return void 0;
   if (typeof value.files !== "object" || value.files === null) return void 0;
@@ -12783,14 +12784,14 @@ function readFreshness(repo, indexDir = INDEX_DIR) {
   }
   return {
     meta: {
-      engineVersion: str2(value.engineVersion),
-      commit: str2(value.commit),
-      graphSha1: str2(value.graphSha1),
-      symbolsSha1: str2(value.symbolsSha1),
+      engineVersion: str22(value.engineVersion),
+      commit: str22(value.commit),
+      graphSha1: str22(value.graphSha1),
+      symbolsSha1: str22(value.symbolsSha1),
       embed: embed && {
         embedVersion: typeof embed.embedVersion === "number" ? embed.embedVersion : void 0,
-        modelId: str2(embed.modelId),
-        sha1: str2(embed.sha1)
+        modelId: str22(embed.modelId),
+        sha1: str22(embed.sha1)
       },
       extraction: parseExtractionProfile(value.extraction)
     },
@@ -12921,26 +12922,26 @@ function firstThat(fileSet, candidates) {
 function byLen(a, b) {
   return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
 }
-function tolerantJsonParse(text) {
+function tolerantJsonParse(text2) {
   let stripped = "";
   let inStr = false;
-  for (let i2 = 0; i2 < text.length; i2++) {
-    const c2 = text[i2];
+  for (let i2 = 0; i2 < text2.length; i2++) {
+    const c2 = text2[i2];
     if (inStr) {
       stripped += c2;
-      if (c2 === "\\") stripped += text[++i2] ?? "";
+      if (c2 === "\\") stripped += text2[++i2] ?? "";
       else if (c2 === '"') inStr = false;
       continue;
     }
     if (c2 === '"') {
       inStr = true;
       stripped += c2;
-    } else if (c2 === "/" && text[i2 + 1] === "/") {
-      while (i2 < text.length && text[i2] !== "\n") i2++;
+    } else if (c2 === "/" && text2[i2 + 1] === "/") {
+      while (i2 < text2.length && text2[i2] !== "\n") i2++;
       stripped += "\n";
-    } else if (c2 === "/" && text[i2 + 1] === "*") {
+    } else if (c2 === "/" && text2[i2 + 1] === "*") {
       i2 += 2;
-      while (i2 < text.length && !(text[i2] === "*" && text[i2 + 1] === "/")) i2++;
+      while (i2 < text2.length && !(text2[i2] === "*" && text2[i2 + 1] === "/")) i2++;
       i2++;
     } else {
       stripped += c2;
@@ -13105,7 +13106,7 @@ function matchEntryTargets(entries, key) {
   }
   return void 0;
 }
-function parseGoReplaces(text, modDir) {
+function parseGoReplaces(text2, modDir) {
   const out2 = [];
   const addLine = (line2) => {
     const m = /^\s*([^\s=]+)(?:\s+v\S+)?\s*=>\s*(\S+)(?:\s+v\S+)?\s*$/.exec(line2);
@@ -13116,15 +13117,15 @@ function parseGoReplaces(text, modDir) {
     if (toDir.startsWith("..")) return;
     out2.push({ from: m[1], toDir });
   };
-  for (const m of text.matchAll(/^[ \t]*replace[ \t]+([^(\r\n][^\r\n]*)$/gm)) addLine(m[1]);
-  for (const b of text.matchAll(/^[ \t]*replace[ \t]*\(([\s\S]*?)\)/gm)) {
+  for (const m of text2.matchAll(/^[ \t]*replace[ \t]+([^(\r\n][^\r\n]*)$/gm)) addLine(m[1]);
+  for (const b of text2.matchAll(/^[ \t]*replace[ \t]*\(([\s\S]*?)\)/gm)) {
     for (const line2 of b[1].split(/\r?\n/)) addLine(line2);
   }
   return out2;
 }
-function parseCargoManifest(text, dir) {
+function parseCargoManifest(text2, dir) {
   const out2 = { dir, deps: /* @__PURE__ */ new Map() };
-  const str2 = (v) => {
+  const str22 = (v) => {
     const m = /^(?:"([^"]*)"|'([^']*)')$/.exec(v);
     return m ? m[1] ?? m[2] : void 0;
   };
@@ -13134,15 +13135,15 @@ function parseCargoManifest(text, dir) {
     return d;
   };
   const setDep = (dep, key, value) => {
-    if (key === "package" || key === "path") dep[key] = str2(value) ?? dep[key];
+    if (key === "package" || key === "path") dep[key] = str22(value) ?? dep[key];
     else if (key === "workspace") dep.workspace = value === "true";
   };
   let section = "";
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text2.split(/\r?\n/)) {
     const line2 = raw.replace(/^((?:[^"'#]|"[^"]*"|'[^']*')*)#.*$/, "$1").trim();
-    const header = /^\[\[?([^\]]+)\]\]?$/.exec(line2);
-    if (header) {
-      section = header[1].replace(/["'\s]/g, "");
+    const header2 = /^\[\[?([^\]]+)\]\]?$/.exec(line2);
+    if (header2) {
+      section = header2[1].replace(/["'\s]/g, "");
       if (section === "workspace" || section.startsWith("workspace.")) out2.workspaceDeps ??= /* @__PURE__ */ new Map();
       continue;
     }
@@ -13151,14 +13152,14 @@ function parseCargoManifest(text, dir) {
     const key = kv[1];
     const value = kv[2];
     if (section === "package") {
-      if (key === "name") out2.packageName = str2(value) ?? out2.packageName;
-      else if (key === "edition") out2.edition = str2(value) ?? (/workspace\s*=\s*true/.test(value) ? "workspace" : void 0);
+      if (key === "name") out2.packageName = str22(value) ?? out2.packageName;
+      else if (key === "edition") out2.edition = str22(value) ?? (/workspace\s*=\s*true/.test(value) ? "workspace" : void 0);
       else if (key === "edition.workspace") out2.edition = "workspace";
       continue;
     }
     if (section === "lib") {
-      if (key === "name") out2.libName = str2(value) ?? out2.libName;
-      else if (key === "path") out2.libPath = str2(value) ?? out2.libPath;
+      if (key === "name") out2.libName = str22(value) ?? out2.libName;
+      else if (key === "path") out2.libPath = str22(value) ?? out2.libPath;
       continue;
     }
     const deps = /^(?:(workspace)\.|target\..+\.)?(?:dev-|build-)?dependencies(?:\.(.+))?$/.exec(section);
@@ -13292,11 +13293,11 @@ function buildResolveContext(scan2) {
   const goModules = [];
   for (const rel2 of fileSet) {
     if (rel2 !== "go.mod" && !rel2.endsWith("/go.mod")) continue;
-    const text = readText(join9(scan2.root, rel2));
-    const m = /^\s*module\s+(\S+)/m.exec(text);
+    const text2 = readText(join9(scan2.root, rel2));
+    const m = /^\s*module\s+(\S+)/m.exec(text2);
     if (!m) continue;
     const dir = rel2.includes("/") ? posix2.dirname(rel2) : "";
-    goModules.push({ module: m[1], dir, replaces: parseGoReplaces(text, dir) });
+    goModules.push({ module: m[1], dir, replaces: parseGoReplaces(text2, dir) });
   }
   goModules.sort((a, b) => b.dir.length - a.dir.length || (a.dir < b.dir ? -1 : 1));
   const rustCrates = buildRustCrates(scan2.root, fileSet);
@@ -13357,11 +13358,11 @@ function buildResolveContext(scan2) {
   const csharpNamespaces = /* @__PURE__ */ new Map();
   for (const f of scan2.files) {
     if (f.ext !== ".cs" || !f.pkg) continue;
-    let arr = csharpNamespaces.get(f.pkg);
-    if (!arr) csharpNamespaces.set(f.pkg, arr = []);
-    arr.push(f.rel);
+    let arr2 = csharpNamespaces.get(f.pkg);
+    if (!arr2) csharpNamespaces.set(f.pkg, arr2 = []);
+    arr2.push(f.rel);
   }
-  for (const arr of csharpNamespaces.values()) arr.sort(byStr);
+  for (const arr2 of csharpNamespaces.values()) arr2.sort(byStr);
   const javaRootList = [...javaRoots].sort(byLen);
   const dartPackages = /* @__PURE__ */ new Map();
   const pubspecs = [...fileSet].filter((rel2) => rel2 === "pubspec.yaml" || rel2.endsWith("/pubspec.yaml"));
@@ -14159,9 +14160,9 @@ function buildSymbolIndex(scan2, refs = /* @__PURE__ */ new Map(), schemaVersion
   const defsByName = /* @__PURE__ */ new Map();
   for (const f of scan2.files) {
     for (const s of f.symbols) {
-      let arr = defsByName.get(s.name);
-      if (!arr) defsByName.set(s.name, arr = []);
-      arr.push({
+      let arr2 = defsByName.get(s.name);
+      if (!arr2) defsByName.set(s.name, arr2 = []);
+      arr2.push({
         file: s.file,
         line: s.line,
         ...s.endLine !== void 0 ? { endLine: s.endLine } : {},
@@ -14515,12 +14516,12 @@ function implementationsOf(hierarchy, name2, declarations) {
   while (frontier.length) {
     const next = [];
     for (const e of frontier) {
-      for (const child of [...e.implementedBy, ...e.extendedBy]) {
-        const key = `${child.name}${SEP}${child.file}`;
+      for (const child2 of [...e.implementedBy, ...e.extendedBy]) {
+        const key = `${child2.name}${SEP}${child2.file}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out2.push(child);
-        const entry2 = entryAt(hierarchy, child.name, child.file);
+        out2.push(child2);
+        const entry2 = entryAt(hierarchy, child2.name, child2.file);
         if (entry2) next.push(entry2);
       }
     }
@@ -14950,8 +14951,8 @@ function adjacencyOf(edges, kinds2) {
     degree2.set(e.from, (degree2.get(e.from) ?? 0) + 1);
     degree2.set(e.to, (degree2.get(e.to) ?? 0) + 1);
   }
-  for (const arr of out2.values()) arr.sort((a, b) => byStr(a.to, b.to));
-  for (const arr of inn.values()) arr.sort((a, b) => byStr(a.from, b.from));
+  for (const arr2 of out2.values()) arr2.sort((a, b) => byStr(a.to, b.to));
+  for (const arr2 of inn.values()) arr2.sort((a, b) => byStr(a.from, b.from));
   const adj = { out: out2, inn, degree: degree2, threshold: hubThreshold([...degree2.values()]) };
   entry2.views.set(viewKey, adj);
   return adj;
@@ -14969,8 +14970,8 @@ function dependentsIndex(edges, opts = {}) {
   const dependents = /* @__PURE__ */ new Map();
   const packageImports = /* @__PURE__ */ new Map();
   const push = (m, key, e) => {
-    const arr = m.get(key);
-    if (arr) arr.push(e);
+    const arr2 = m.get(key);
+    if (arr2) arr2.push(e);
     else m.set(key, [e]);
   };
   for (const e of edges) {
@@ -15268,9 +15269,9 @@ var init_tests_map = __esm({
     JS_EXTS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"];
   }
 });
-function addTerms(doc, field, text) {
+function addTerms(doc, field, text2) {
   const f = doc.fields[field];
-  for (const t of subtokens(text)) {
+  for (const t of subtokens(text2)) {
     f.tf.set(t, (f.tf.get(t) ?? 0) + 1);
     f.len++;
     doc.all.add(t);
@@ -15394,12 +15395,12 @@ function buildStemIndex(docs) {
       seen.add(term);
       const stem22 = stemOf(term);
       if (stem22 === term) continue;
-      let arr = index.get(stem22);
-      if (!arr) index.set(stem22, arr = []);
-      arr.push(term);
+      let arr2 = index.get(stem22);
+      if (!arr2) index.set(stem22, arr2 = []);
+      arr2.push(term);
     }
   }
-  for (const arr of index.values()) arr.sort(byStr);
+  for (const arr2 of index.values()) arr2.sort(byStr);
   return index;
 }
 function buildTrigramIndex(docs) {
@@ -16195,9 +16196,9 @@ function importPagerankFor(scan2) {
     const known = new Set(ids);
     const edges = [];
     for (const pair of importPairsFor(scan2)) {
-      let sep9 = pair.indexOf("|");
-      while (sep9 !== -1 && !(known.has(pair.slice(0, sep9)) && known.has(pair.slice(sep9 + 1)))) sep9 = pair.indexOf("|", sep9 + 1);
-      if (sep9 !== -1) edges.push({ from: pair.slice(0, sep9), to: pair.slice(sep9 + 1), kind: "import", weight: 1 });
+      let sep92 = pair.indexOf("|");
+      while (sep92 !== -1 && !(known.has(pair.slice(0, sep92)) && known.has(pair.slice(sep92 + 1)))) sep92 = pair.indexOf("|", sep92 + 1);
+      if (sep92 !== -1) edges.push({ from: pair.slice(0, sep92), to: pair.slice(sep92 + 1), kind: "import", weight: 1 });
     }
     c2.importPagerank = pagerankOf(ids, edges);
   }
@@ -16326,9 +16327,9 @@ function indexRawCallers(scan2, only) {
       if (c2.receiver !== void 0) site.receiver = c2.receiver;
       const enc = enclosingAmong(symbols, c2.line);
       if (enc) site.enclosingSymbol = enc;
-      let arr = byName.get(c2.name);
-      if (!arr) byName.set(c2.name, arr = []);
-      arr.push(site);
+      let arr2 = byName.get(c2.name);
+      if (!arr2) byName.set(c2.name, arr2 = []);
+      arr2.push(site);
     }
   }
   const index = /* @__PURE__ */ new Map();
@@ -16627,14 +16628,14 @@ function createCallBinder(scan2, pairs, opts = {}) {
     if (parents) return parents;
     const symbols = (byRel ??= new Map(scan2.files.map((f) => [f.rel, f]))).get(rel2)?.symbols ?? [];
     let set;
-    let kindOf2;
+    let kindOf22;
     for (const x of symbols) {
       if (x.parent === void 0) continue;
-      if (!kindOf2) {
-        kindOf2 = /* @__PURE__ */ new Map();
-        for (const y of symbols) if (!kindOf2.has(y.name)) kindOf2.set(y.name, y.kind);
+      if (!kindOf22) {
+        kindOf22 = /* @__PURE__ */ new Map();
+        for (const y of symbols) if (!kindOf22.has(y.name)) kindOf22.set(y.name, y.kind);
       }
-      if (FUNCTION_KINDS2.has(kindOf2.get(x.parent) ?? "")) (set ??= /* @__PURE__ */ new Set()).add(x.parent);
+      if (FUNCTION_KINDS2.has(kindOf22.get(x.parent) ?? "")) (set ??= /* @__PURE__ */ new Set()).add(x.parent);
     }
     fnParentsMemo.set(rel2, parents = set ?? noParents);
     return parents;
@@ -17614,10 +17615,10 @@ function braceBodyEnd(lines, start2, lang) {
         i2 += 2;
         continue;
       }
-      const str2 = stringOpener(line2, i2, lang);
-      if (str2) {
-        stack.push(str2.frame);
-        i2 += str2.length;
+      const str22 = stringOpener(line2, i2, lang);
+      if (str22) {
+        stack.push(str22.frame);
+        i2 += str22.length;
         if (top2.close === null) lastCode = '"';
         continue;
       }
@@ -17813,8 +17814,8 @@ var init_edit_spans = __esm({
     BRACKET_ATTRIBUTES = /* @__PURE__ */ new Set(["csharp", "cpp"]);
     MAX_BLOCK_LINES = 200;
     RUST_INNER = /^(?:\/\/!|\/\*!|#!\[)/;
-    isLegalLine = (text) => {
-      const t = text.trim();
+    isLegalLine = (text2) => {
+      const t = text2.trim();
       return /^(?:copyright\b|\(c\)\s*\d|©|spdx-license-identifier\b|@license\b|@copyright\b)/i.test(t) || isLicense(t);
     };
   }
@@ -17886,13 +17887,13 @@ function readDocument(abs) {
       return out2;
     },
     encode() {
-      const text = this.text();
+      const text2 = this.text();
       if (encoding === "latin1") {
-        if (/[^\x00-\xff]/.test(text)) throw new Error("replacement contains characters outside the source's Latin-1 encoding");
-        return Buffer.from(text, "latin1");
+        if (/[^\x00-\xff]/.test(text2)) throw new Error("replacement contains characters outside the source's Latin-1 encoding");
+        return Buffer.from(text2, "latin1");
       }
-      if (encoding === "utf8" || encoding === "utf8-bom") return Buffer.concat([bom, Buffer.from(text, "utf8")]);
-      const payload = Buffer.from(text, "utf16le");
+      if (encoding === "utf8" || encoding === "utf8-bom") return Buffer.concat([bom, Buffer.from(text2, "utf8")]);
+      const payload = Buffer.from(text2, "utf16le");
       if (encoding === "utf16be") payload.swap16();
       return Buffer.concat([bom, payload]);
     }
@@ -17943,11 +17944,11 @@ function atomicWrite(abs, content, cleanup = rmSync2, root) {
     }
   }
 }
-function outlineOf(rel2, ext, text, record2) {
-  if (record2 && record2.hash === sha1(text) && record2.symbols.some((s) => s.endLine !== void 0) === astTier(ext)) {
+function outlineOf(rel2, ext, text2, record2) {
+  if (record2 && record2.hash === sha1(text2) && record2.symbols.some((s) => s.endLine !== void 0) === astTier(ext)) {
     return { symbols: record2.symbols, truncated: record2.truncated === true };
   }
-  const info2 = extractCode(rel2, ext, text);
+  const info2 = extractCode(rel2, ext, text2);
   return { symbols: info2.symbols, truncated: info2.truncated === true };
 }
 function relocate(sym, outline) {
@@ -18012,11 +18013,11 @@ function verifyEdit(rel2, ext, before, oldText, newText, edit) {
   }
   return warnings;
 }
-function syntaxErrorLines(ext, text) {
+function syntaxErrorLines(ext, text2) {
   const key = grammarKeyForExt(ext);
   if (!key || !grammarReady(key)) return void 0;
   const parser2 = parserFor(key);
-  const tree = parser2?.parse(text);
+  const tree = parser2?.parse(text2);
   if (!tree) return void 0;
   try {
     const lines = [];
@@ -18024,7 +18025,7 @@ function syntaxErrorLines(ext, text) {
     while (stack.length) {
       const node = stack.pop();
       if (node.isError || node.isMissing) lines.push(node.startPosition.row + 1);
-      for (const child of node.children) if (child.hasError) stack.push(child);
+      for (const child2 of node.children) if (child2.hasError) stack.push(child2);
     }
     return lines.sort((x, y) => x - y);
   } finally {
@@ -18578,10 +18579,10 @@ function detectMavenModules(root, found, warnings) {
     for (const block of pom.matchAll(/<modules>([\s\S]*?)<\/modules>/g)) {
       for (const m of block[1].matchAll(/<module>\s*([^<]+?)\s*<\/module>/g)) {
         const spec = m[1].endsWith(".xml") ? posix6.dirname(m[1]) : m[1];
-        const child = posix6.normalize(posix6.join(dir || ".", spec)).replace(/\/+$/, "");
-        if (child === "." || child === ".." || child.startsWith("../")) continue;
-        addPackage(root, child, found, "maven", warnings);
-        visit(child, depth + 1);
+        const child2 = posix6.normalize(posix6.join(dir || ".", spec)).replace(/\/+$/, "");
+        if (child2 === "." || child2 === ".." || child2.startsWith("../")) continue;
+        addPackage(root, child2, found, "maven", warnings);
+        visit(child2, depth + 1);
       }
     }
   };
@@ -18614,9 +18615,9 @@ function detectComposerPathRepos(root, found, warnings) {
 }
 function detectGradleIncludes(root, found, warnings) {
   for (const f of ["settings.gradle", "settings.gradle.kts"]) {
-    const text = readText(join16(root, f));
-    if (!text) continue;
-    const code = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const text2 = readText(join16(root, f));
+    if (!text2) continue;
+    const code = text2.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     for (const call2 of code.matchAll(/^[ \t]*include\b[ \t]*(\([^)]*\)|(?:[^\n]*,[ \t]*\r?\n)*[^\n]*)/gm)) {
       for (const m of call2[1].matchAll(/["']([^"']+)["']/g)) {
         const dir = m[1].replace(/^:/, "").replace(/:/g, "/");
@@ -18734,15 +18735,15 @@ function gradleAccessor(dir) {
 }
 function gradleEdges(root, pkg, byName, byDir, accessors) {
   for (const f of ["build.gradle", "build.gradle.kts"]) {
-    const text = readText(join16(root, pkg.dir, f));
-    if (!text) continue;
+    const text2 = readText(join16(root, pkg.dir, f));
+    if (!text2) continue;
     const edges = /* @__PURE__ */ new Set();
-    for (const m of text.matchAll(/project\s*\(\s*(?:path\s*[:=]\s*)?["']:?([^"']+)["']/g)) {
+    for (const m of text2.matchAll(/project\s*\(\s*(?:path\s*[:=]\s*)?["']:?([^"']+)["']/g)) {
       const path = m[1].replace(/:/g, "/");
       const target = byDir.get(path) ?? (byName.has(path) ? path : void 0);
       if (target && target !== pkg.name) edges.add(target);
     }
-    for (const m of text.matchAll(/\bprojects((?:\.[A-Za-z_]\w*)+)/g)) {
+    for (const m of text2.matchAll(/\bprojects((?:\.[A-Za-z_]\w*)+)/g)) {
       const segs = m[1].slice(1).split(".");
       for (let n = segs.length; n > 0; n--) {
         const target = accessors.get(segs.slice(0, n).join("."));
@@ -18871,8 +18872,8 @@ function ownPomVersion(pom) {
 }
 function manifestCoordinates(root, dir, manifest) {
   const path = join16(root, dir, manifest);
-  const text = readText(path);
-  if (!text) return void 0;
+  const text2 = readText(path);
+  if (!text2) return void 0;
   const nonEmpty = (v) => typeof v === "string" && v.trim() ? v.trim() : void 0;
   const coords = (manager, name2, version) => name2 ? { manager, name: name2, ...version ? { version } : {} } : void 0;
   switch (manifest) {
@@ -18882,14 +18883,14 @@ function manifestCoordinates(root, dir, manifest) {
       return coords(manifest === "package.json" ? "npm" : "composer", nonEmpty(pkg?.name), nonEmpty(pkg?.version));
     }
     case "go.mod":
-      return coords("gomod", text.match(/^module\s+"?([^\s"]+)/m)?.[1], void 0);
+      return coords("gomod", text2.match(/^module\s+"?([^\s"]+)/m)?.[1], void 0);
     case "Cargo.toml": {
-      const body2 = tomlSectionBody(text, "package");
+      const body2 = tomlSectionBody(text2, "package");
       return coords("cargo", tomlString(body2, "name"), tomlString(body2, "version"));
     }
     case "pyproject.toml": {
-      const project = tomlSectionBody(text, "project");
-      const poetry = tomlSectionBody(text, "tool.poetry");
+      const project = tomlSectionBody(text2, "project");
+      const poetry = tomlSectionBody(text2, "tool.poetry");
       return coords(
         "python",
         tomlString(project, "name") ?? tomlString(poetry, "name"),
@@ -18897,7 +18898,7 @@ function manifestCoordinates(root, dir, manifest) {
       );
     }
     case "pom.xml":
-      return coords("maven", ownArtifactId(text), ownPomVersion(text));
+      return coords("maven", ownArtifactId(text2), ownPomVersion(text2));
     default:
       return void 0;
   }
@@ -19231,9 +19232,9 @@ var init_surprise = __esm({
     DEP_KINDS = DEPENDS_KINDS;
   }
 });
-function sortObject(obj) {
+function sortObject(obj2) {
   const out2 = {};
-  for (const k of Object.keys(obj).sort(byStr)) out2[k] = obj[k];
+  for (const k of Object.keys(obj2).sort(byStr)) out2[k] = obj2[k];
   return out2;
 }
 function renderGraphJson(graph) {
@@ -19721,15 +19722,15 @@ function scanFiles(job, io) {
       return;
     }
     io.progress(i2);
-    let text;
+    let text2;
     try {
-      text = decode(io.readFile(job.files[i2][1]));
+      text2 = decode(io.readFile(job.files[i2][1]));
     } catch {
-      text = void 0;
+      text2 = void 0;
     }
-    if (!text) continue;
-    const lines = text.split("\n");
-    if (text.endsWith("\n")) lines.pop();
+    if (!text2) continue;
+    const lines = text2.split("\n");
+    if (text2.endsWith("\n")) lines.pop();
     const hits = [];
     let matched = false;
     for (let n = 0; n < lines.length; n++) {
@@ -19821,7 +19822,7 @@ function jsBackend(root, re, opts, keep, max, deadline) {
     if (!("i" in ev)) return;
     filesMatched++;
     const file = files[ev.i][0];
-    for (const [line2, col, text] of ev.hits) hits.push({ file, line: line2, col, text });
+    for (const [line2, col, text2] of ev.hits) hits.push({ file, line: line2, col, text: text2 });
   });
   const notes = [];
   const timedOut = stoppedAt !== void 0;
@@ -20011,8 +20012,8 @@ var init_model = __esm({
     EMBED_DOWNLOAD_TIMEOUT_MS = 6e5;
   }
 });
-function basicTokenize(text) {
-  const folded = foldText(text);
+function basicTokenize(text2) {
+  const folded = foldText(text2);
   const out2 = [];
   if (!NON_ASCII_RE.test(folded)) {
     const spaced2 = folded.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
@@ -20061,9 +20062,9 @@ function wordpiece(word, model) {
   }
   return ids;
 }
-function tokenize(text, model) {
+function tokenize(text2, model) {
   const ids = [];
-  for (const word of basicTokenize(text)) {
+  for (const word of basicTokenize(text2)) {
     for (const id of wordpiece(word, model)) ids.push(id);
   }
   return ids;
@@ -20090,9 +20091,9 @@ function quantize(vec) {
   }
   return out2;
 }
-function encode(model, text) {
+function encode(model, text2) {
   const { dim, weights } = model;
-  const ids = tokenize(text, model);
+  const ids = tokenize(text2, model);
   if (ids.length === 0) return new Int8Array(dim);
   const pooled = new Float64Array(dim);
   for (const id of ids) {
@@ -20129,8 +20130,8 @@ function symbolText2(rel2, s, summary) {
 function fileText2(rel2, title, summary, headings) {
   return [title ?? "", summary ?? "", ...headings, rel2.replace(/\//g, " ")].join("\n");
 }
-function unitHash(text) {
-  return sha1(text).slice(0, 16);
+function unitHash(text2) {
+  return sha1(text2).slice(0, 16);
 }
 function reusableVectors(previous, modelId, dim) {
   const out2 = /* @__PURE__ */ new Map();
@@ -20162,8 +20163,8 @@ function embeddingUnits(scan2) {
       units.push({ file: f.rel, symbol: s.name, line: s.line, text: symbolText2(f.rel, s, f.summary) });
     }
     if (!hadSymbol) {
-      const text = fileText2(f.rel, f.title, f.summary, f.headings);
-      if (text.replace(/\s+/g, "")) units.push({ file: f.rel, text });
+      const text2 = fileText2(f.rel, f.title, f.summary, f.headings);
+      if (text2.replace(/\s+/g, "")) units.push({ file: f.rel, text: text2 });
     }
   }
   return units;
@@ -20186,14 +20187,14 @@ function unitRecord(u, textHash, vec) {
   };
 }
 function serializeEmbeddings(index) {
-  const header = JSON.stringify({
+  const header2 = JSON.stringify({
     embedVersion: index.embedVersion,
     modelId: index.modelId,
     dim: index.dim,
     count: index.records.length,
     records: index.records.map((r) => ({ file: r.file, symbol: r.symbol ?? "", line: r.line ?? 0, hash: r.textHash ?? "" }))
   });
-  const headerBuf = new TextEncoder().encode(header);
+  const headerBuf = new TextEncoder().encode(header2);
   const bodyLength = index.records.length * index.dim;
   const out2 = new Uint8Array(8 + headerBuf.length + bodyLength);
   out2.set([67, 73, 69, 49], 0);
@@ -20212,22 +20213,22 @@ function deserializeEmbeddings(bytes) {
   const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const headerLen = data.getUint32(4, true);
   if (8 + headerLen > bytes.byteLength) throw new Error("embeddings.bin: truncated header");
-  const header = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + headerLen)));
-  const { dim } = header;
-  if (typeof header.embedVersion !== "number" || typeof header.modelId !== "string" || !Number.isInteger(dim) || dim < 0 || !Array.isArray(header.records) || header.records.length !== header.count) {
+  const header2 = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + headerLen)));
+  const { dim } = header2;
+  if (typeof header2.embedVersion !== "number" || typeof header2.modelId !== "string" || !Number.isInteger(dim) || dim < 0 || !Array.isArray(header2.records) || header2.records.length !== header2.count) {
     throw new Error("embeddings.bin: malformed header");
   }
   const bodyOff = 8 + headerLen;
-  const bodyLen = header.records.length * dim;
+  const bodyLen = header2.records.length * dim;
   if (bodyOff + bodyLen > bytes.byteLength) throw new Error("embeddings.bin: truncated body");
-  for (const m of header.records) {
+  for (const m of header2.records) {
     if (m === null || typeof m !== "object" || typeof m.file !== "string" || m.symbol !== void 0 && typeof m.symbol !== "string" || m.line !== void 0 && !(Number.isInteger(m.line) && m.line >= 0) || m.hash !== void 0 && typeof m.hash !== "string") {
       throw new Error("embeddings.bin: malformed record");
     }
   }
   const body2 = new Int8Array(bodyLen);
   body2.set(new Int8Array(bytes.buffer, bytes.byteOffset + bodyOff, bodyLen));
-  const records = header.records.map((m, i2) => {
+  const records = header2.records.map((m, i2) => {
     return {
       file: m.file,
       ...m.symbol ? { symbol: m.symbol } : {},
@@ -20236,7 +20237,7 @@ function deserializeEmbeddings(bytes) {
       vec: body2.subarray(i2 * dim, (i2 + 1) * dim)
     };
   });
-  return { embedVersion: header.embedVersion, modelId: header.modelId, dim, records };
+  return { embedVersion: header2.embedVersion, modelId: header2.modelId, dim, records };
 }
 var REEXPORT_KINDS2;
 var MAGIC;
@@ -20382,11 +20383,11 @@ async function readCapped(res, max, url) {
   }
   return new TextDecoder().decode(Buffer.concat(chunks));
 }
-function capText(text) {
-  if (text.length <= ENDPOINT_MAX_TEXT_CHARS) return text;
-  const last = text.charCodeAt(ENDPOINT_MAX_TEXT_CHARS - 1);
+function capText(text2) {
+  if (text2.length <= ENDPOINT_MAX_TEXT_CHARS) return text2;
+  const last = text2.charCodeAt(ENDPOINT_MAX_TEXT_CHARS - 1);
   const end = last >= 55296 && last <= 56319 ? ENDPOINT_MAX_TEXT_CHARS - 1 : ENDPOINT_MAX_TEXT_CHARS;
-  return text.slice(0, end);
+  return text2.slice(0, end);
 }
 async function embedViaEndpoint(texts, opts = {}) {
   const base = resolveEmbedEndpoint(opts);
@@ -20702,10 +20703,10 @@ var init_coupling = __esm({
     round3 = (x) => Number(x.toFixed(3));
   }
 });
-function taglineFromReadme(text) {
+function taglineFromReadme(text2) {
   let level = 0;
   let fallback;
-  const prose = text.replace(/\r\n?/g, "\n").replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$/gm, "");
+  const prose = text2.replace(/\r\n?/g, "\n").replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$/gm, "");
   for (const raw of prose.split(/\n\s*\n/)) {
     let lines = raw.trim().split("\n");
     const atx = /^(#{1,6})\s/.exec(lines[0] ?? "");
@@ -20925,47 +20926,47 @@ function lspUnavailable(server, reason) {
 }
 function columnOfSymbol(root, rel2, line2, name2) {
   try {
-    const text = readFileSync15(join21(root, rel2), "utf8").split(/\r?\n/)[line2 - 1];
-    return text === void 0 ? 0 : nameColumn(text, name2);
+    const text2 = readFileSync15(join21(root, rel2), "utf8").split(/\r?\n/)[line2 - 1];
+    return text2 === void 0 ? 0 : nameColumn(text2, name2);
   } catch {
     return 0;
   }
 }
-function nameColumn(text, name2) {
+function nameColumn(text2, name2) {
   if (!name2) return 0;
   const guardStart = IDENT_CHAR.test(name2[0]);
   const guardEnd = IDENT_CHAR.test(name2[name2.length - 1]);
-  const isWhole = (at) => (!guardStart || at === 0 || !IDENT_CHAR.test(text[at - 1])) && (!guardEnd || at + name2.length >= text.length || !IDENT_CHAR.test(text[at + name2.length]));
+  const isWhole = (at) => (!guardStart || at === 0 || !IDENT_CHAR.test(text2[at - 1])) && (!guardEnd || at + name2.length >= text2.length || !IDENT_CHAR.test(text2[at + name2.length]));
   const wholeFrom = (from) => {
     const hits2 = [];
-    for (let at = text.indexOf(name2, from); at >= 0; at = text.indexOf(name2, at + 1)) if (isWhole(at)) hits2.push(at);
+    for (let at = text2.indexOf(name2, from); at >= 0; at = text2.indexOf(name2, at + 1)) if (isWhole(at)) hits2.push(at);
     return hits2;
   };
-  const skip = goReceiverEnd(text);
+  const skip = goReceiverEnd(text2);
   const hits = wholeFrom(skip);
   if (hits.length) {
     if (!DECLARATION_WORDS.has(name2)) return hits[0];
-    const head = headEnd(text, skip);
+    const head = headEnd(text2, skip);
     const inHead = hits.filter((at) => at < head);
     return inHead.length ? inHead[inHead.length - 1] : hits[0];
   }
   return skip > 0 ? wholeFrom(0)[0] ?? 0 : 0;
 }
-function headEnd(text, from) {
-  for (let i2 = from; i2 < text.length; i2++) {
-    const c2 = text[i2];
-    if (c2 === ":" && (text[i2 + 1] === ":" || text[i2 - 1] === ":")) continue;
+function headEnd(text2, from) {
+  for (let i2 = from; i2 < text2.length; i2++) {
+    const c2 = text2[i2];
+    if (c2 === ":" && (text2[i2 + 1] === ":" || text2[i2 - 1] === ":")) continue;
     if (c2 === "(" || c2 === ":" || c2 === "=" || c2 === "<" || c2 === "{" || c2 === ";") return i2;
   }
-  return text.length;
+  return text2.length;
 }
-function goReceiverEnd(text) {
-  const head = /^\s*func\s*\(/.exec(text);
+function goReceiverEnd(text2) {
+  const head = /^\s*func\s*\(/.exec(text2);
   if (!head) return 0;
   let depth = 0;
-  for (let i2 = head[0].length - 1; i2 < text.length; i2++) {
-    if (text[i2] === "(") depth++;
-    else if (text[i2] === ")" && --depth === 0) return i2 + 1;
+  for (let i2 = head[0].length - 1; i2 < text2.length; i2++) {
+    if (text2[i2] === "(") depth++;
+    else if (text2[i2] === ")" && --depth === 0) return i2 + 1;
   }
   return 0;
 }
@@ -20996,9 +20997,9 @@ async function annotateWithLsp(scan2, name2, statik, session, serverId, language
   const refs = [];
   try {
     for (const def of statik.defs) {
-      const text = readTextOrEmpty(scan2.root, def.file);
-      if (!text) continue;
-      session.didOpen(def.file, text, languageId ?? def.lang);
+      const text2 = readTextOrEmpty(scan2.root, def.file);
+      if (!text2) continue;
+      session.didOpen(def.file, text2, languageId ?? def.lang);
       const character = columnOfSymbol(scan2.root, def.file, def.line, name2);
       for (const ref2 of await session.references(def.file, def.line, character)) {
         const key = `${ref2.file}:${ref2.line}:${ref2.character ?? ""}`;
@@ -21369,11 +21370,11 @@ async function openLspSession(transport, options) {
   });
   return {
     capabilities,
-    didOpen(rel2, text, languageId) {
+    didOpen(rel2, text2, languageId) {
       if (open.has(rel2)) return;
       open.add(rel2);
       notify("textDocument/didOpen", {
-        textDocument: { uri: fileUri(options.root, rel2), languageId, version: 1, text }
+        textDocument: { uri: fileUri(options.root, rel2), languageId, version: 1, text: text2 }
       });
     },
     async references(rel2, line2, character) {
@@ -21475,8 +21476,8 @@ async function collectIncomingCalls(scan2, defs, session, languageId) {
   if (!session.capabilities.callHierarchy) return { calls, reason: "server does not provide textDocument/prepareCallHierarchy" };
   try {
     for (const def of defs) {
-      const text = readFileSync16(join22(scan2.root, def.file), "utf8");
-      session.didOpen(def.file, text, languageId ?? def.lang);
+      const text2 = readFileSync16(join22(scan2.root, def.file), "utf8");
+      session.didOpen(def.file, text2, languageId ?? def.lang);
       calls.push(...await session.incomingCalls(def.file, def.line, columnOfSymbol(scan2.root, def.file, def.line, def.name)));
     }
     return { calls: uniqueIncomingCalls(calls) };
@@ -21496,9 +21497,9 @@ var init_callers2 = __esm({
   }
 });
 function spawnLspTransport(server, cwd) {
-  let child;
+  let child2;
   try {
-    child = spawn(server.command, server.args ?? [], {
+    child2 = spawn(server.command, server.args ?? [], {
       cwd,
       stdio: ["pipe", "pipe", "pipe"],
       ...server.env ? { env: { ...process.env, ...server.env } } : {}
@@ -21508,8 +21509,8 @@ function spawnLspTransport(server, cwd) {
   }
   let exited = false;
   let tail = "";
-  const note = (text) => {
-    tail = (tail + text).slice(-STDERR_TAIL);
+  const note = (text2) => {
+    tail = (tail + text2).slice(-STDERR_TAIL);
   };
   const dataListeners = [];
   const exitListeners = [];
@@ -21518,24 +21519,24 @@ function spawnLspTransport(server, cwd) {
     exited = true;
     for (const listener of exitListeners) listener(code);
   };
-  child.on("error", (error) => {
+  child2.on("error", (error) => {
     note(error.message);
     fireExit(null);
   });
-  child.on("close", (code) => fireExit(code));
-  child.stdin?.on("error", () => fireExit(null));
-  child.stdout?.on("error", () => fireExit(null));
-  child.stderr?.on("error", () => fireExit(null));
-  child.stdout?.on("data", (chunk) => {
+  child2.on("close", (code) => fireExit(code));
+  child2.stdin?.on("error", () => fireExit(null));
+  child2.stdout?.on("error", () => fireExit(null));
+  child2.stderr?.on("error", () => fireExit(null));
+  child2.stdout?.on("data", (chunk) => {
     for (const listener of dataListeners) listener(chunk);
   });
-  child.stderr?.setEncoding("utf8");
-  child.stderr?.on("data", (chunk) => note(String(chunk)));
+  child2.stderr?.setEncoding("utf8");
+  child2.stderr?.on("data", (chunk) => note(String(chunk)));
   return {
     write(chunk) {
       if (exited) return;
       try {
-        child.stdin?.write(chunk);
+        child2.stdin?.write(chunk);
       } catch {
         fireExit(null);
       }
@@ -21555,23 +21556,23 @@ function spawnLspTransport(server, cwd) {
     kill() {
       if (exited) return;
       try {
-        child.kill("SIGKILL");
+        child2.kill("SIGKILL");
       } catch {
       }
     },
     close() {
       try {
-        child.stdin?.end();
+        child2.stdin?.end();
       } catch {
       }
       const timer = setTimeout(() => {
         try {
-          child.kill("SIGKILL");
+          child2.kill("SIGKILL");
         } catch {
         }
       }, 2e3);
       timer.unref?.();
-      child.on("close", () => clearTimeout(timer));
+      child2.on("close", () => clearTimeout(timer));
     }
   };
 }
@@ -22004,15 +22005,15 @@ function isEntrypointLike(rel2) {
 function toList(v) {
   return Array.isArray(v) ? v : [v];
 }
-function parseRulesText(text, source) {
+function parseRulesText(text2, source) {
   let payload;
   try {
-    payload = JSON.parse(text);
+    payload = JSON.parse(text2);
   } catch (e) {
     const pos = /position (\d+)/.exec(e instanceof Error ? e.message : "");
     let where = "";
     if (pos) {
-      const before = text.slice(0, Number(pos[1]));
+      const before = text2.slice(0, Number(pos[1]));
       const line2 = before.split("\n").length;
       where = ` (line ${line2}, column ${before.length - before.lastIndexOf("\n")})`;
     }
@@ -22067,14 +22068,14 @@ function parseRules(input) {
         ...r.includeTests !== void 0 ? { includeTests: r.includeTests } : {}
       };
     }
-    const glob = (field) => {
+    const glob2 = (field) => {
       const v = r[field];
       const ok = typeof v === "string" ? v.length > 0 : Array.isArray(v) && v.length > 0 && v.every((g) => typeof g === "string" && g);
       if (!ok) throw new Error(`${at} (${r.name}): \`${field}\` must be a glob or a non-empty array of globs`);
       return v;
     };
-    const from = glob("from");
-    const to = glob("to");
+    const from = glob2("from");
+    const to = glob2("to");
     if (r.kind !== void 0) {
       const ok = Array.isArray(r.kind) && r.kind.length > 0 && r.kind.every((k) => EDGE_KINDS2.has(k));
       if (!ok) throw new Error(`${at} (${r.name}): \`kind\` must be a non-empty array of edge kinds (${[...EDGE_KINDS2].join(", ")})`);
@@ -22434,10 +22435,10 @@ function referencedElsewhere(scan2, candidates, relations) {
       const family = familyOf(f.lang);
       const names = blind.get(family);
       if (!names) continue;
-      const text = readText(join23(scan2.root, f.rel));
+      const text2 = readText(join23(scan2.root, f.rel));
       const token = family === "js" ? /[A-Za-z_$][\w$]*/g : /[A-Za-z_]\w*/g;
       const found = /* @__PURE__ */ new Set();
-      for (const m of text.match(token) ?? []) if (names.has(m)) found.add(m);
+      for (const m of text2.match(token) ?? []) if (names.has(m)) found.add(m);
       for (const name2 of found) note(wanted.get(family), name2, f.rel);
     }
   }
@@ -22453,8 +22454,8 @@ function referencedElsewhere(scan2, candidates, relations) {
     const names = new Set(list.map((s) => s.name));
     const token = familyOf(list[0].lang) === "js" ? /[A-Za-z_$][\w$]*/g : /[A-Za-z_]\w*/g;
     const linesOf = /* @__PURE__ */ new Map();
-    codeOnly(readText(join23(scan2.root, rel2)), list[0].lang).split("\n").forEach((text, i2) => {
-      for (const m of text.match(token) ?? []) if (names.has(m)) (linesOf.get(m) ?? linesOf.set(m, []).get(m)).push(i2 + 1);
+    codeOnly(readText(join23(scan2.root, rel2)), list[0].lang).split("\n").forEach((text2, i2) => {
+      for (const m of text2.match(token) ?? []) if (names.has(m)) (linesOf.get(m) ?? linesOf.set(m, []).get(m)).push(i2 + 1);
     });
     for (const s of list) {
       const end = s.endLine ?? s.line;
@@ -22538,8 +22539,8 @@ function libraryApi(scan2, ctx) {
   for (const f of scan2.files) {
     const base = f.rel.slice(f.rel.lastIndexOf("/") + 1);
     if (base !== "build.gradle" && base !== "build.gradle.kts" && base !== "pom.xml") continue;
-    const text = readText(join23(scan2.root, f.rel));
-    const published = base === "pom.xml" ? /<distributionManagement>|maven-deploy-plugin|central-publishing-maven-plugin|nexus-staging-maven-plugin/.test(text) : /\bjava-library\b|\bmaven-publish\b|com\.vanniktech\.maven\.publish/.test(text);
+    const text2 = readText(join23(scan2.root, f.rel));
+    const published = base === "pom.xml" ? /<distributionManagement>|maven-deploy-plugin|central-publishing-maven-plugin|nexus-staging-maven-plugin/.test(text2) : /\bjava-library\b|\bmaven-publish\b|com\.vanniktech\.maven\.publish/.test(text2);
     if (published) libraryDirs.push(dirOf(f.rel));
   }
   const under = (rel2, dir) => !dir || rel2.startsWith(dir + "/");
@@ -22589,9 +22590,9 @@ function manifestEntries(scan2, ctx, byRel) {
         }
       }
     } else if (base === "pyproject.toml") {
-      const text = readText(join23(scan2.root, f.rel));
+      const text2 = readText(join23(scan2.root, f.rel));
       const section = /^\[(?:project\.(?:gui-)?scripts|tool\.poetry\.scripts)\]\s*$([\s\S]*?)(?=^\[|(?![\s\S]))/gm;
-      for (const m of text.matchAll(section)) {
+      for (const m of text2.matchAll(section)) {
         for (const e of m[1].matchAll(/^\s*[\w.-]+\s*=\s*["']([\w.]+):(\w+)[\w.]*["']/gm)) {
           const r = resolveImport(dir ? `${dir}/pyproject.py` : "pyproject.py", ".py", e[1], ctx);
           if (r.kind !== "resolved" || !isCode2(r.target)) continue;
@@ -22671,8 +22672,8 @@ function moduleSlugFor(graph, target) {
   if (byPath) return byPath.slug;
   return graph.files.find((f) => f.rel === target)?.module;
 }
-function mermaidLabel(text) {
-  return text.replace(/#/g, "#35;").replace(/"/g, "#quot;").replace(/&/g, "#38;").replace(/</g, "#lt;").replace(/>/g, "#gt;").replace(/`/g, "#96;").replace(/[\r\n]+/g, " ");
+function mermaidLabel(text2) {
+  return text2.replace(/#/g, "#35;").replace(/"/g, "#quot;").replace(/&/g, "#38;").replace(/</g, "#lt;").replace(/>/g, "#gt;").replace(/`/g, "#96;").replace(/[\r\n]+/g, " ");
 }
 function renderMermaid(graph, opts = {}) {
   const maxEdges = opts.maxEdges ?? 80;
@@ -22835,7 +22836,7 @@ function computeDelta(graph, symbols, diff, depth = DEFAULT_DELTA_DEPTH) {
     for (const name2 of Object.keys(symbols.defs)) {
       for (const d of symbols.defs[name2]) defsByFile.get(d.file)?.push({ name: name2, ...d });
     }
-    for (const arr of defsByFile.values()) arr.sort((a, b) => a.line - b.line || byStr(a.name, b.name));
+    for (const arr2 of defsByFile.values()) arr2.sort((a, b) => a.line - b.line || byStr(a.name, b.name));
   }
   const deleted = [];
   const unindexed = [];
@@ -22887,9 +22888,9 @@ function computeDelta(graph, symbols, diff, depth = DEFAULT_DELTA_DEPTH) {
   const byModule = /* @__PURE__ */ new Map();
   for (const c2 of changes) {
     if (c2.status === "deleted" || !c2.module) continue;
-    let arr = byModule.get(c2.module);
-    if (!arr) byModule.set(c2.module, arr = []);
-    arr.push(c2);
+    let arr2 = byModule.get(c2.module);
+    if (!arr2) byModule.set(c2.module, arr2 = []);
+    arr2.push(c2);
   }
   const moduleOfDir = new Map(graph.modules.map((m) => [m.path, m]));
   const slugOfRemoved = (rel2) => {
@@ -22904,9 +22905,9 @@ function computeDelta(graph, symbols, diff, depth = DEFAULT_DELTA_DEPTH) {
   for (const b of broken) {
     const slug = slugOfRemoved(b.target);
     if (!moduleBySlug.has(slug)) removedPathOf.set(slug, b.target.includes("/") ? posix7.dirname(b.target) : "(root)");
-    let arr = brokenByModule.get(slug);
-    if (!arr) brokenByModule.set(slug, arr = []);
-    arr.push(b);
+    let arr2 = brokenByModule.get(slug);
+    if (!arr2) brokenByModule.set(slug, arr2 = []);
+    arr2.push(b);
   }
   const nonTestCode = /* @__PURE__ */ new Set();
   for (const f of graph.files) {
@@ -22944,13 +22945,13 @@ function computeDelta(graph, symbols, diff, depth = DEFAULT_DELTA_DEPTH) {
       const shown = exportedNames.slice(0, 3).join(", ") + (exportedNames.length > 3 ? ", \u2026" : "");
       reasons.push(exportedNames.length === 1 ? `exported symbol ${shown} changed` : `exported symbols ${shown} changed`);
     }
-    const pct = m ? percentile(metricValues, metricOf(m)) : 0;
-    if (pct >= 0.9) {
+    const pct2 = m ? percentile(metricValues, metricOf(m)) : 0;
+    if (pct2 >= 0.9) {
       score += RISK_WEIGHTS.hubHigh;
-      reasons.push(`${metricName} p${Math.round(pct * 100)} hub`);
-    } else if (pct >= 0.75) {
+      reasons.push(`${metricName} p${Math.round(pct2 * 100)} hub`);
+    } else if (pct2 >= 0.75) {
       score += RISK_WEIGHTS.hubMed;
-      reasons.push(`${metricName} p${Math.round(pct * 100)} hub`);
+      reasons.push(`${metricName} p${Math.round(pct2 * 100)} hub`);
     }
     const depthByRel = /* @__PURE__ */ new Map();
     const impModules = /* @__PURE__ */ new Set();
@@ -23326,13 +23327,13 @@ function oversizedNaming(scan2, name2) {
   const out2 = [];
   for (const o of scan2.oversized) {
     if (o.size > MAX_PROBE_BYTES || classify(o.rel, extname4(o.rel).toLowerCase()) !== "code") continue;
-    let text;
+    let text2;
     try {
-      text = readFileSync17(join24(scan2.root, o.rel), "utf8");
+      text2 = readFileSync17(join24(scan2.root, o.rel), "utf8");
     } catch {
       continue;
     }
-    if (word.test(text)) out2.push({ file: o.rel, size: o.size });
+    if (word.test(text2)) out2.push({ file: o.rel, size: o.size });
   }
   memo.set(name2, out2);
   return out2;
@@ -23832,9 +23833,9 @@ var init_watch = __esm({
           sessionInvalidate(this.repo);
           return;
         }
-        const child = rel2 ? `${rel2}/${name2}` : name2;
-        if (event === "rename") this.forget(child);
-        sessionInvalidate(this.repo, child);
+        const child2 = rel2 ? `${rel2}/${name2}` : name2;
+        if (event === "rename") this.forget(child2);
+        sessionInvalidate(this.repo, child2);
       }
       // Close `rel`'s watcher and every watcher below it. Only a watched
       // directory can have watched descendants (the walk watches a parent before
@@ -23862,9 +23863,9 @@ var init_watch = __esm({
     };
   }
 });
-function validateArgs(schema, args2) {
-  const props = schema.properties ?? {};
-  for (const key of schema.required ?? []) {
+function validateArgs(schema2, args2) {
+  const props = schema2.properties ?? {};
+  for (const key of schema2.required ?? []) {
     if (args2[key] !== void 0 && args2[key] !== null) continue;
     const description = props[key]?.description;
     return description ? `\`${key}\` is required (${description})` : `\`${key}\` is required`;
@@ -23898,11 +23899,11 @@ function validateArgs(schema, args2) {
   }
   return void 0;
 }
-function structuredContentFor(text, capped, hasSchema) {
+function structuredContentFor(text2, capped, hasSchema) {
   if (capped || !hasSchema) return void 0;
   let parsed2;
   try {
-    parsed2 = JSON.parse(text);
+    parsed2 = JSON.parse(text2);
   } catch {
     return void 0;
   }
@@ -23912,7 +23913,7 @@ function structuredContentFor(text, capped, hasSchema) {
 function negotiateProtocol(requested) {
   return typeof requested === "string" && PROTOCOL_VERSIONS.includes(requested) ? requested : LATEST_PROTOCOL;
 }
-function artifactState(path, text, bytes) {
+function artifactState(path, text2, bytes) {
   let size;
   try {
     size = statSync11(path).size;
@@ -23922,18 +23923,18 @@ function artifactState(path, text, bytes) {
   if (size !== bytes && size !== bytes + 1) return "stale";
   try {
     const disk = readFileSync19(path, "utf8");
-    return disk === text || disk === text + "\n" ? "identical" : "stale";
+    return disk === text2 || disk === text2 + "\n" ? "identical" : "stale";
   } catch {
     return "absent";
   }
 }
-function capResponse(text, tool, repo, maxBytes, wholeRepo = true, onWire) {
-  const textBytes = Buffer.byteLength(text, "utf8");
+function capResponse(text2, tool, repo, maxBytes, wholeRepo = true, onWire) {
+  const textBytes = Buffer.byteLength(text2, "utf8");
   const bytes = onWire ?? textBytes;
-  if (bytes <= maxBytes) return text;
+  if (bytes <= maxBytes) return text2;
   const artifactName = wholeRepo && Object.hasOwn(ARTIFACT_FOR, tool) ? ARTIFACT_FOR[tool] : void 0;
   const artifact = artifactName ? join27(repo, INDEX_DIR, artifactName) : void 0;
-  const state = artifact ? artifactState(artifact, text, textBytes) : void 0;
+  const state = artifact ? artifactState(artifact, text2, textBytes) : void 0;
   const refresh = `codeindex index --repo ${shellQuote(repo)} --out ${shellQuote(join27(repo, INDEX_DIR))}`;
   return JSON.stringify(
     {
@@ -23949,12 +23950,12 @@ function capResponse(text, tool, repo, maxBytes, wholeRepo = true, onWire) {
     2
   ) + "\n";
 }
-function resourceLinkFor(text, tool) {
+function resourceLinkFor(text2, tool) {
   const artifactName = ARTIFACT_FOR[tool];
   if (!artifactName) return void 0;
   let parsed2;
   try {
-    parsed2 = JSON.parse(text);
+    parsed2 = JSON.parse(text2);
   } catch {
     return void 0;
   }
@@ -25176,9 +25177,9 @@ async function callTool(name2, args2, repo, progress, walkRepo = async (r) => ({
       }
       return JSON.stringify(withCoverage(args2.lsp === true ? await callersWithLsp(scan2, repo, lspRef, absent, lsp) : absent, coverage), null, 2);
     }
-    const obj = {};
-    for (const [k, v] of index) obj[k] = args2.concise === true ? conciseCaller(sited(v)) : sited(v);
-    return JSON.stringify(obj, null, 2);
+    const obj2 = {};
+    for (const [k, v] of index) obj2[k] = args2.concise === true ? conciseCaller(sited(v)) : sited(v);
+    return JSON.stringify(obj2, null, 2);
   }
   if (name2 === "workspaces") {
     const info2 = detectWorkspaces(repo);
@@ -25440,9 +25441,9 @@ async function callTool(name2, args2, repo, progress, walkRepo = async (r) => ({
     const hierarchy = hierarchyFor(scan2);
     const wanted = str(args2.name);
     if (!wanted) {
-      const obj = {};
-      for (const [key, entry3] of hierarchy) obj[key] = entry3;
-      return JSON.stringify(obj, null, 2);
+      const obj2 = {};
+      for (const [key, entry3] of hierarchy) obj2[key] = entry3;
+      return JSON.stringify(obj2, null, 2);
     }
     const entry2 = typeEntry(hierarchy, wanted, resolveSymbolRef(scan2, wanted)?.defs);
     if (!entry2) throw new NotFound(`no type named ${wanted}`);
@@ -25524,13 +25525,13 @@ async function callTool(name2, args2, repo, progress, walkRepo = async (r) => ({
       if (!abs.startsWith(root.endsWith(sep7) ? root : root + sep7)) {
         throw new Error(`rules config must be a file inside the repository: ${configPath}`);
       }
-      let text;
+      let text2;
       try {
-        text = readFileSync20(abs, "utf8");
+        text2 = readFileSync20(abs, "utf8");
       } catch {
         throw unreadable;
       }
-      rules = parseRulesText(text, configPath);
+      rules = parseRulesText(text2, configPath);
     } else throw new Error("`rules` (or `configPath`) is required");
     const { scan: scan2, graph } = readArtifacts();
     return JSON.stringify(rulesReport(checkRules(graph, rules, { scan: scan2 })), null, 2);
@@ -25683,8 +25684,8 @@ async function runMcpServer(opts = {}) {
     }
     const name2 = params.name;
     const args2 = rawArgs ?? {};
-    const schema = callable.get(name2);
-    const invalid = schema ? validateArgs(schema, args2) : `unknown tool: ${name2}`;
+    const schema2 = callable.get(name2);
+    const invalid = schema2 ? validateArgs(schema2, args2) : `unknown tool: ${name2}`;
     if (invalid) return respond({ result: { content: [{ type: "text", text: invalid }], isError: true } });
     const version = protocolVersion;
     const id = typeof req.id === "string" || typeof req.id === "number" ? req.id : void 0;
@@ -25721,12 +25722,12 @@ async function runMcpServer(opts = {}) {
       const raw = await callTool(name2, args2, repo, progress, walkRepo, { pool: lspPool, trustRepoConfig });
       const narrowed = str(args2.scope) !== void 0 || strArray(args2.include) !== void 0 || strArray(args2.exclude) !== void 0 || str(args2.name) !== void 0 || args2.concise === true;
       const maxBytes = opts.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
-      const assemble = (text2) => {
-        const capped = text2 !== raw;
-        const link = capped && version >= RICH_TOOLS_SINCE ? resourceLinkFor(text2, name2) : void 0;
-        const structured = version >= RICH_TOOLS_SINCE ? structuredContentFor(text2, capped, OUTPUT_SCHEMAS[name2] !== void 0) : void 0;
+      const assemble = (text22) => {
+        const capped = text22 !== raw;
+        const link = capped && version >= RICH_TOOLS_SINCE ? resourceLinkFor(text22, name2) : void 0;
+        const structured = version >= RICH_TOOLS_SINCE ? structuredContentFor(text22, capped, OUTPUT_SCHEMAS[name2] !== void 0) : void 0;
         return {
-          content: link ? [{ type: "text", text: text2 }, link] : [{ type: "text", text: text2 }],
+          content: link ? [{ type: "text", text: text22 }, link] : [{ type: "text", text: text22 }],
           ...structured ? { structuredContent: structured } : {},
           // The withheld-payload notice is a tool execution error: the call
           // did not deliver what was asked, and the notice is exactly the
@@ -25737,16 +25738,16 @@ async function runMcpServer(opts = {}) {
           ...capped ? { isError: true } : {}
         };
       };
-      const text = capResponse(raw, name2, repo, maxBytes, !narrowed);
-      let result = assemble(text);
-      if (text === raw) {
+      const text2 = capResponse(raw, name2, repo, maxBytes, !narrowed);
+      let result = assemble(text2);
+      if (text2 === raw) {
         const onWire = Buffer.byteLength(JSON.stringify(result), "utf8") + WIRE_ENVELOPE_BYTES;
         if (onWire > maxBytes) result = assemble(capResponse(raw, name2, repo, maxBytes, !narrowed, onWire));
       }
       return { result };
     } catch (e) {
-      const text = e instanceof NotFound ? JSON.stringify({ error: e.message }, null, 2) : errMessage(e);
-      return { result: { content: [{ type: "text", text }], isError: true } };
+      const text2 = e instanceof NotFound ? JSON.stringify({ error: e.message }, null, 2) : errMessage(e);
+      return { result: { content: [{ type: "text", text: text2 }], isError: true } };
     }
   }
 }
@@ -25941,20 +25942,20 @@ function fresh(dialect, recursive) {
     skipHidden: false
   };
 }
-function include(p, glob) {
-  if (glob === void 0) return false;
+function include(p, glob2) {
+  if (glob2 === void 0) return false;
   if (p.excludes.length) p.orderSensitive = true;
-  p.includes.push(glob);
+  p.includes.push(glob2);
   return true;
 }
-function exclude(p, glob) {
-  if (glob === void 0) return false;
-  p.excludes.push(glob);
+function exclude(p, glob2) {
+  if (glob2 === void 0) return false;
+  p.excludes.push(glob2);
   return true;
 }
-function excludeDir(p, glob) {
-  if (glob === void 0) return false;
-  p.excludeDirs.push(glob);
+function excludeDir(p, glob2) {
+  if (glob2 === void 0) return false;
+  p.excludeDirs.push(glob2);
   return true;
 }
 function baseNameGlob(g, dir = false) {
@@ -26144,8 +26145,8 @@ function parseRg(args2) {
   }
   if (!positionalsInto(p, split.positionals)) return void 0;
   if (p.types.length && pending.some((g) => !g.negated)) return void 0;
-  for (const { glob, negated } of pending) {
-    const g = rgGlob(glob, p.paths.length === 0);
+  for (const { glob: glob2, negated } of pending) {
+    const g = rgGlob(glob2, p.paths.length === 0);
     if (!(negated ? exclude(p, g) : include(p, g))) return void 0;
   }
   p.skipHidden = !hidden;
@@ -26398,13 +26399,13 @@ function submodulesAround(cwd) {
   for (let dir = resolve11(cwd); ; dir = dirname8(dir)) {
     const modules = join29(dir, ".gitmodules");
     if (existsSync12(modules)) {
-      let text;
+      let text2;
       try {
-        text = readFileSync21(modules, "utf8");
+        text2 = readFileSync21(modules, "utf8");
       } catch {
         return [];
       }
-      return [...text.matchAll(/^\s*path\s*=\s*(.+?)\s*$/gm)].map((m) => resolve11(dir, m[1]));
+      return [...text2.matchAll(/^\s*path\s*=\s*(.+?)\s*$/gm)].map((m) => resolve11(dir, m[1]));
     }
     if (existsSync12(join29(dir, ".git")) || dirname8(dir) === dir) return [];
   }
@@ -26844,8 +26845,8 @@ function asBuffer(u) {
 async function fetchExpectedSha256(url, timeoutMs = GRAMMARS_CHECKSUM_TIMEOUT_MS) {
   const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
-  const text = await res.text();
-  const hex = (text.trim().split(/\s+/)[0] ?? "").toLowerCase();
+  const text2 = await res.text();
+  const hex = (text2.trim().split(/\s+/)[0] ?? "").toLowerCase();
   if (!/^[0-9a-f]{64}$/.test(hex)) throw new Error(`invalid sha256 sidecar at ${url}`);
   return hex;
 }
@@ -27413,9 +27414,9 @@ function renderScip(scan2, opts = {}) {
       if (!sym.name || REFERENCE_KINDS7.has(sym.kind)) continue;
       const d = { file: f, sym, suffix: suffixOf(sym.kind) };
       defs.push(d);
-      let arr = byName.get(sym.name);
-      if (!arr) byName.set(sym.name, arr = []);
-      arr.push(d);
+      let arr2 = byName.get(sym.name);
+      if (!arr2) byName.set(sym.name, arr2 = []);
+      arr2.push(d);
       if (f.lang === "go" && !sym.parent && d.suffix === "#") {
         const key = goPackageKey(f);
         let types = goTypes.get(key);
@@ -27461,9 +27462,9 @@ function renderScip(scan2, opts = {}) {
       const symbolString = symbolOf(d);
       symbolOfDecl.set(d.sym, symbolString);
       if (!d.sym.exported) continue;
-      let arr = defByName.get(d.sym.name);
-      if (!arr) defByName.set(d.sym.name, arr = []);
-      arr.push({ symbolString, family: familyOf2(d.sym.lang) });
+      let arr2 = defByName.get(d.sym.name);
+      if (!arr2) defByName.set(d.sym.name, arr2 = []);
+      arr2.push({ symbolString, family: familyOf2(d.sym.lang) });
     }
   }
   const relationships = /* @__PURE__ */ new Map();
@@ -27495,8 +27496,8 @@ function renderScip(scan2, opts = {}) {
   const binder = createCallBinder(scan2, importPairsFor(scan2));
   const documents = [];
   for (const f of docs) {
-    const text = readText(join17(scan2.root, f.rel));
-    const lines = text.split("\n").map((l) => l.endsWith("\r") ? l.slice(0, -1) : l);
+    const text2 = readText(join17(scan2.root, f.rel));
+    const lines = text2.split("\n").map((l) => l.endsWith("\r") ? l.slice(0, -1) : l);
     const locate = (lineNo, name2) => {
       const line2 = lines[lineNo - 1];
       if (line2 === void 0) return [lineNo - 1, 0, 0];
@@ -28684,14 +28685,14 @@ ${HELP}`);
       } catch {
         return;
       }
-      const text = renderFreshness(scan2, out2, extraction, { size: cacheStat.size, mtimeMs: cacheStat.mtimeMs });
+      const text2 = renderFreshness(scan2, out2, extraction, { size: cacheStat.size, mtimeMs: cacheStat.mtimeMs });
       let current;
       try {
         current = readFileSync22(freshnessPath, "utf8");
       } catch {
         current = void 0;
       }
-      if (current !== text) writeArtifact(freshnessPath, text);
+      if (current !== text2) writeArtifact(freshnessPath, text2);
     };
     const writeCache = (out2) => {
       const files = /* @__PURE__ */ Object.create(null);
@@ -28816,9 +28817,9 @@ ${HELP}`);
         const coverage = coverageFor(scan2, raw.name, { calls: true });
         emit(JSON.stringify(coverage ? { ...raw, coverage } : raw, null, 2) + "\n", flags2.out);
       } else {
-        const obj = {};
-        for (const [name2, sites] of buildRawCallerIndex(scan2)) obj[name2] = sites;
-        emit(JSON.stringify(obj, null, 2) + "\n", flags2.out);
+        const obj2 = {};
+        for (const [name2, sites] of buildRawCallerIndex(scan2)) obj2[name2] = sites;
+        emit(JSON.stringify(obj2, null, 2) + "\n", flags2.out);
       }
     } else if (ref2) {
       const index = callerIndexForNames(scan2, refNames(ref2), { recall: flags2.recall });
@@ -28837,9 +28838,9 @@ ${HELP}`);
       emit(JSON.stringify(coverage ? { ...result, coverage } : result, null, 2) + "\n", flags2.out);
     } else {
       const index = buildCallerIndex(scan2, void 0, { recall: flags2.recall });
-      const obj = {};
-      for (const [name2, entry2] of index) obj[name2] = flags2.withCaller ? withCallerIds(scan2, entry2) : entry2;
-      emit(JSON.stringify(obj, null, 2) + "\n", flags2.out);
+      const obj2 = {};
+      for (const [name2, entry2] of index) obj2[name2] = flags2.withCaller ? withCallerIds(scan2, entry2) : entry2;
+      emit(JSON.stringify(obj2, null, 2) + "\n", flags2.out);
     }
   } else if (cmd === "hierarchy") {
     const scan2 = await readScan();
@@ -28849,9 +28850,9 @@ ${HELP}`);
       if (!entry2) throw new Error(`no type named ${flags2.positional}`);
       emit(JSON.stringify(entry2, null, 2) + "\n", flags2.out);
     } else {
-      const obj = {};
-      for (const [key, entry2] of hierarchy) obj[key] = entry2;
-      emit(JSON.stringify(obj, null, 2) + "\n", flags2.out);
+      const obj2 = {};
+      for (const [key, entry2] of hierarchy) obj2[key] = entry2;
+      emit(JSON.stringify(obj2, null, 2) + "\n", flags2.out);
     }
   } else if (cmd === "implementations") {
     if (!flags2.positional) throw new Error("implementations needs a type name: cli.mjs implementations <Name> --repo <dir>");
@@ -29293,8 +29294,8 @@ ${r.body}
   });
   return blocks.join("\n\n") + "\n";
 }
-function parseRegions(text) {
-  const lines = text.split(/\r?\n/);
+function parseRegions(text2) {
+  const lines = text2.split(/\r?\n/);
   const regions = [];
   let orphan = [];
   let open = null;
@@ -29329,9 +29330,9 @@ function parseRegions(text) {
   flushOrphan();
   return { regions, ok: true };
 }
-function humanBodies(text) {
+function humanBodies(text2) {
   const out2 = /* @__PURE__ */ new Map();
-  const { regions, ok } = parseRegions(text);
+  const { regions, ok } = parseRegions(text2);
   if (!ok) return out2;
   for (const r of regions) if (r.type === "human") out2.set(r.key, r.body);
   return out2;
@@ -29394,8 +29395,8 @@ function buildEntryEdgeIndex(graph, moduleOf) {
   const inc = /* @__PURE__ */ new Map();
   const dangling = /* @__PURE__ */ new Map();
   const push = (m, key, e) => {
-    const arr = m.get(key);
-    if (arr) arr.push(e);
+    const arr2 = m.get(key);
+    if (arr2) arr2.push(e);
     else m.set(key, [e]);
   };
   for (const e of graph.moduleEdges) {
@@ -29697,9 +29698,9 @@ function proseFreshness(rec, liveDigest, members, hashes) {
   if (rec.baselined) return "unknown";
   return proseSourceHash(members, hashes) === rec.source ? "fresh" : "stale";
 }
-function sortedRecord(obj) {
+function sortedRecord(obj2) {
   const out2 = {};
-  for (const k of Object.keys(obj).sort(byStr)) out2[k] = obj[k];
+  for (const k of Object.keys(obj2).sort(byStr)) out2[k] = obj2[k];
   return out2;
 }
 function buildManifest(scan2, graph, outRel, sync, builtAt, extraNotes = [], filters = {}, prev) {
@@ -29845,9 +29846,9 @@ function syncEntries(outDir, entries, prevModules) {
       removeFile(path);
       continue;
     }
-    const text = readIfExists(path);
-    if (text === void 0) continue;
-    const human = humanBodies(text);
+    const text2 = readIfExists(path);
+    if (text2 === void 0) continue;
+    const human = humanBodies(text2);
     const hasProse2 = [...human.values()].some((b) => b.trim().length > 0);
     if (hasProse2) {
       moveFile(path, join32(orphanDir, `${old}.md`));
@@ -30042,11 +30043,11 @@ var LINE_SUFFIX = /:(\d+)(?:-(\d+))?$/;
 function looksLikePath(s) {
   return /\//.test(s) || /\.[A-Za-z0-9]{1,8}(:\d|$)/.test(s);
 }
-function stripNonProse(text) {
-  return text.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " ")).replace(/```[\s\S]*?```/g, (m) => m.replace(/[^\n]/g, " ")).replace(/~~~[\s\S]*?~~~/g, (m) => m.replace(/[^\n]/g, " ")).replace(/`[^`\n]*`/g, (m) => " ".repeat(m.length)).replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, (m, t) => looksLikePath(t.trim()) ? m : " ".repeat(m.length));
+function stripNonProse(text2) {
+  return text2.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " ")).replace(/```[\s\S]*?```/g, (m) => m.replace(/[^\n]/g, " ")).replace(/~~~[\s\S]*?~~~/g, (m) => m.replace(/[^\n]/g, " ")).replace(/`[^`\n]*`/g, (m) => " ".repeat(m.length)).replace(/\[([^\]\n]*)\]\([^)\n]*\)/g, (m, t) => looksLikePath(t.trim()) ? m : " ".repeat(m.length));
 }
-function parseCitations(text) {
-  const prose = stripNonProse(text);
+function parseCitations(text2) {
+  const prose = stripNonProse(text2);
   const out2 = [];
   const seen = /* @__PURE__ */ new Set();
   const add = (rawIn) => {
@@ -30071,10 +30072,10 @@ function parseCitations(text) {
   while (m = SIMPLE_TOKEN.exec(prose)) add(m[1]);
   return out2;
 }
-function checkCitations(text, fileLines) {
+function checkCitations(text2, fileLines) {
   const resolved = [];
   const unresolved = [];
-  for (const c2 of parseCitations(text)) {
+  for (const c2 of parseCitations(text2)) {
     const lines = fileLines.get(c2.path);
     if (lines === void 0) {
       if (c2.path.includes("/")) unresolved.push({ citation: c2, reason: "no such file in the index" });
@@ -30097,8 +30098,8 @@ function fileLineTable(graph) {
 }
 var VERIFY_MAX = 40;
 var VALID_VERDICTS = ["supported", "partial", "refuted", "unsupported"];
-function stripHtmlComments(text) {
-  return text.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
+function stripHtmlComments(text2) {
+  return text2.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
 }
 function stripInlineCode(line2) {
   return line2.replace(/`[^`\n]*`/g, " ");
@@ -30134,8 +30135,8 @@ function tableCells(line2) {
 function isListItem(line2) {
   return /^\s*([-*+]|\d+\.)\s+\S/.test(line2);
 }
-function extractClaimUnits(text) {
-  const lines = stripHtmlComments(text).split("\n");
+function extractClaimUnits(text2) {
+  const lines = stripHtmlComments(text2).split("\n");
   const code = codeMask(lines);
   const units = [];
   let prose = [];
@@ -30208,9 +30209,9 @@ function extractClaimUnits(text) {
   flush();
   return units;
 }
-function claimPairs(text) {
+function claimPairs(text2) {
   const out2 = [];
-  for (const u of extractClaimUnits(text)) {
+  for (const u of extractClaimUnits(text2)) {
     if (u.kind === "text") out2.push({ parse: u.text, display: u.display });
     else for (let j = 0; j < u.items.length; j++) out2.push({ parse: u.items[j], display: u.itemsD[j] ?? u.items[j] });
   }
@@ -30250,10 +30251,10 @@ function buildClaimPairs(answerText, repo, opts = {}) {
 function unreadableClaimCitations(answerText, repo) {
   return [...new Set(claimPairs(answerText).flatMap(({ parse }) => parseCitations(parse).filter((c2) => !readExcerpt(repo, c2)).map((c2) => c2.raw)))];
 }
-function citationlessClaims(text) {
+function citationlessClaims(text2) {
   const out2 = [];
   const substantive = (masked) => masked.trim().replace(/\s+/g, " ").length > 15;
-  for (const u of extractClaimUnits(text)) {
+  for (const u of extractClaimUnits(text2)) {
     if (u.kind === "text") {
       if (substantive(u.text) && parseCitations(u.text).length === 0) out2.push(u.display.trim());
     } else {
@@ -30450,8 +30451,8 @@ function queryTerms(question) {
 function bump(map, key) {
   map.set(key, (map.get(key) ?? 0) + 1);
 }
-function buildHaystack(text) {
-  const folded = foldText(text);
+function buildHaystack(text2) {
+  const folded = foldText(text2);
   const counts = /* @__PURE__ */ new Map();
   const groups = /* @__PURE__ */ new Map();
   let length = 0;
@@ -30617,9 +30618,9 @@ function loadEnrichedProse(outDir, graph) {
   const enc = indexPaths(outDir).encyclopedia;
   const out2 = /* @__PURE__ */ new Map();
   for (const m of graph.modules) {
-    const text = readIfExists(join36(enc, `${m.slug}.md`));
-    if (!text) continue;
-    const bodies = [...humanBodies(text).values()].filter(isEnrichedBody);
+    const text2 = readIfExists(join36(enc, `${m.slug}.md`));
+    if (!text2) continue;
+    const bodies = [...humanBodies(text2).values()].filter(isEnrichedBody);
     if (!bodies.length) continue;
     out2.set(m.slug, bodies.join(" ").replace(/\[[^\]]*\]/g, " ").toLowerCase());
   }
@@ -30919,9 +30920,9 @@ function staleVectorSlugs(outDir, graph, store) {
   const filesByModule = groupFiles(graph);
   const stale = [];
   for (const m of graph.modules) {
-    const text = moduleEmbedText(m, filesByModule.get(m.slug) ?? [], prose.get(m.slug));
+    const text2 = moduleEmbedText(m, filesByModule.get(m.slug) ?? [], prose.get(m.slug));
     const stored = store.vectors[m.slug];
-    if (!stored || stored.hash !== sha1(text)) stale.push(m.slug);
+    if (!stored || stored.hash !== sha1(text2)) stale.push(m.slug);
   }
   return stale.sort(byStr);
 }
@@ -30984,9 +30985,9 @@ function runCheck(outDir, repo, opts = {}) {
   }
   const fileLines = fileLineTable(graph);
   for (const m of graph.modules) {
-    const text = readIfExists(join37(enc, `${m.slug}.md`));
-    if (!text) continue;
-    const parsed2 = parseRegions(text);
+    const text2 = readIfExists(join37(enc, `${m.slug}.md`));
+    if (!text2) continue;
+    const parsed2 = parseRegions(text2);
     if (!parsed2.ok) {
       errors.push(
         `encyclopedia/${m.slug}.md: unparseable region fences \u2014 each <!-- ui:human key=\u2026 --> / <!-- /ui:human key=\u2026 --> marker must be on its own line; fix the fences and re-run \`ultraindex build\``
@@ -31059,21 +31060,21 @@ function checkAnswer(outDir, answerPath, opts = {}) {
   const errors = [];
   const graph = loadGraph(outDir);
   if (!graph) return { ok: false, citations: 0, resolved: 0, errors: ["no index \u2014 run `ultraindex build` first"] };
-  const text = opts.answerText ?? readIfExists(answerPath);
-  if (text === void 0) return { ok: false, citations: 0, resolved: 0, errors: [`answer file not found: ${answerPath}`] };
-  const cc = checkCitations(text, fileLineTable(graph));
+  const text2 = opts.answerText ?? readIfExists(answerPath);
+  if (text2 === void 0) return { ok: false, citations: 0, resolved: 0, errors: [`answer file not found: ${answerPath}`] };
+  const cc = checkCitations(text2, fileLineTable(graph));
   const attempts = cc.resolved.length + cc.unresolved.length;
   if (attempts === 0) errors.push("answer has no citations \u2014 cite every claim with [file:line] (bare brackets, not a markdown link)");
   for (const u of cc.unresolved) errors.push(`citation [${u.citation.raw}] \u2014 ${u.reason}`);
   const warnings = [];
   if (attempts > 0) {
-    const missing = citationlessClaims(text);
+    const missing = citationlessClaims(text2);
     if (missing.length) (opts.complete ? errors : warnings).push(`${missing.length} claim(s) carry no [file:line] citation \u2014 grounding is not enforced on them`);
   }
   const manifest = loadManifest(outDir);
   const repoRoot2 = opts.repo ?? manifest?.repo;
   if (opts.complete && repoRoot2) {
-    const unreadable = unreadableClaimCitations(text, repoRoot2);
+    const unreadable = unreadableClaimCitations(text2, repoRoot2);
     if (unreadable.length) errors.push(`--complete: empty or unreadable claim excerpt(s): ${unreadable.join(", ")} \u2014 these cited claims cannot be verified`);
   }
   if (manifest && repoRoot2 && cc.resolved.length) {
@@ -31136,7 +31137,7 @@ function checkAnswer(outDir, answerPath, opts = {}) {
         (opts.complete ? errors : warnings).push("--semantic: repo root unknown (no --repo and no manifest) \u2014 excerpt re-validation skipped");
         if (opts.complete) result.ok = false;
       }
-      const currentPairs = repoRoot2 ? buildClaimPairs(text, repoRoot2, { complete: opts.complete }) : [];
+      const currentPairs = repoRoot2 ? buildClaimPairs(text2, repoRoot2, { complete: opts.complete }) : [];
       const expected = currentPairs.length;
       const pairKey = (p) => `${p.claim}\0${p.citation}\0${p.digest}`;
       const adjudicated = new Set(rows.map(pairKey));
@@ -31178,9 +31179,9 @@ function runStatus(outDir) {
     let total = 0;
     let filled = 0;
     let prose = "none";
-    const text = readIfExists(join38(enc, `${m.slug}.md`));
-    if (text) {
-      const parsed2 = parseRegions(text);
+    const text2 = readIfExists(join38(enc, `${m.slug}.md`));
+    if (text2) {
+      const parsed2 = parseRegions(text2);
       if (parsed2.ok) {
         for (const r of parsed2.regions) {
           if (r.type !== "human") continue;
@@ -31295,7 +31296,7 @@ function runDelta(outDir, repo, opts) {
       if (include2 && !include2(f.path)) continue;
       if (exclude2 && exclude2(f.path)) continue;
       const abs = join39(repo, f.path);
-      let text;
+      let text2;
       try {
         const st = statSync14(abs);
         if (!st.isFile()) continue;
@@ -31303,13 +31304,13 @@ function runDelta(outDir, repo, opts) {
           if (manifest.fileHashes[f.path] !== void 0) stale.push(f.path);
           continue;
         }
-        text = readText(abs);
+        text2 = readText(abs);
       } catch {
         continue;
       }
       const recorded = manifest.fileHashes[f.path];
       if (recorded === void 0) absent.push(f.path);
-      else if (sha1(text) !== recorded) stale.push(f.path);
+      else if (sha1(text2) !== recorded) stale.push(f.path);
     }
     if (stale.length) {
       stale.sort(byStr);
@@ -31529,10 +31530,10 @@ function dirOf3(rel2) {
 function baseOf(rel2) {
   return rel2.slice(rel2.lastIndexOf("/") + 1);
 }
-function packageJsonDeps(text) {
+function packageJsonDeps(text2) {
   let pkg;
   try {
-    pkg = JSON.parse(text);
+    pkg = JSON.parse(text2);
   } catch {
     return [];
   }
@@ -31543,9 +31544,9 @@ function packageJsonDeps(text) {
   }
   return out2;
 }
-function requirementsDeps(text) {
+function requirementsDeps(text2) {
   const out2 = [];
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text2.split(/\r?\n/)) {
     const line2 = raw.replace(/(^|\s)#.*$/, "").trim();
     if (!line2 || line2.startsWith("-") || /^[a-z+]+:\/\//i.test(line2)) continue;
     const m = PY_NAME.exec(line2);
@@ -31553,7 +31554,7 @@ function requirementsDeps(text) {
   }
   return out2;
 }
-function pyprojectDeps(text) {
+function pyprojectDeps(text2) {
   const out2 = [];
   let section = "";
   let inArray = false;
@@ -31563,7 +31564,7 @@ function pyprojectDeps(text) {
       if (name2) out2.push(normalizePy(name2));
     }
   };
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text2.split(/\r?\n/)) {
     const line2 = raw.replace(/\s#.*$/, "").trim();
     if (!line2 || line2.startsWith("#")) continue;
     if (inArray) {
@@ -31571,9 +31572,9 @@ function pyprojectDeps(text) {
       if (line2.includes("]")) inArray = false;
       continue;
     }
-    const header = /^\[\[?([^\]]+)\]\]?$/.exec(line2);
-    if (header) {
-      section = header[1].trim();
+    const header2 = /^\[\[?([^\]]+)\]\]?$/.exec(line2);
+    if (header2) {
+      section = header2[1].trim();
       continue;
     }
     const arraySection = section === "project" || section === "project.optional-dependencies" || section === "dependency-groups";
@@ -31612,9 +31613,9 @@ function createRepoContext(files, readText2) {
   for (const rel2 of sorted) {
     const kind = manifestKind(rel2);
     if (!kind) continue;
-    const text = readText2(rel2);
-    if (text === void 0) continue;
-    const names = kind === "npm" ? packageJsonDeps(text) : kind === "pyproject" ? pyprojectDeps(text) : requirementsDeps(text);
+    const text2 = readText2(rel2);
+    if (text2 === void 0) continue;
+    const names = kind === "npm" ? packageJsonDeps(text2) : kind === "pyproject" ? pyprojectDeps(text2) : requirementsDeps(text2);
     const ws = manifestWorkspace(rel2);
     let set = deps.get(ws);
     if (!set) deps.set(ws, set = /* @__PURE__ */ new Set());
@@ -31681,27 +31682,27 @@ function commentSyntaxFor(rel2) {
   if (/^(?:Dockerfile|Containerfile)(?:\..+)?$/.test(base) || ext === ".dockerfile") return "hash";
   return void 0;
 }
-function maskComments(text, syntax, opts = {}) {
+function maskComments(text2, syntax, opts = {}) {
   const strings2 = opts.strings === true;
   switch (syntax) {
     case "js":
-      return maskCLike(text, true, strings2);
+      return maskCLike(text2, true, strings2);
     case "c":
-      return maskCLike(text, false, strings2);
+      return maskCLike(text2, false, strings2);
     case "python":
-      return maskPython2(text, strings2);
+      return maskPython2(text2, strings2);
     case "hash":
-      return maskHash(text, strings2);
+      return maskHash(text2, strings2);
     default:
-      return text;
+      return text2;
   }
 }
-function maskSource(rel2, text, opts = {}) {
-  return maskComments(text, commentSyntaxFor(rel2), opts);
+function maskSource(rel2, text2, opts = {}) {
+  return maskComments(text2, commentSyntaxFor(rel2), opts);
 }
-function lineIndex(text) {
+function lineIndex(text2) {
   const starts = [0];
-  for (let i2 = 0; i2 < text.length; i2++) if (text.charCodeAt(i2) === 10) starts.push(i2 + 1);
+  for (let i2 = 0; i2 < text2.length; i2++) if (text2.charCodeAt(i2) === 10) starts.push(i2 + 1);
   return (offset) => {
     let lo = 0;
     let hi = starts.length - 1;
@@ -31718,23 +31719,23 @@ function blank2(out2, from, to) {
 }
 var REGEX_PREV_PUNCT = /* @__PURE__ */ new Set(["(", ",", "=", ":", "[", "!", "&", "|", "?", "{", "}", ";", "+", "-", "*", "%", "<", ">", "~", "^"]);
 var REGEX_PREV_WORD = /* @__PURE__ */ new Set(["return", "typeof", "case", "do", "else", "in", "of", "new", "delete", "void", "throw", "instanceof", "yield", "await"]);
-function regexAllowed(text, i2) {
+function regexAllowed(text2, i2) {
   let j = i2 - 1;
-  while (j >= 0 && /\s/.test(text[j])) j--;
+  while (j >= 0 && /\s/.test(text2[j])) j--;
   if (j < 0) return true;
-  const ch = text[j];
+  const ch = text2[j];
   if (REGEX_PREV_PUNCT.has(ch)) return true;
   if (/[\w$]/.test(ch)) {
     let k = j;
-    while (k >= 0 && /[\w$]/.test(text[k])) k--;
-    return REGEX_PREV_WORD.has(text.slice(k + 1, j + 1));
+    while (k >= 0 && /[\w$]/.test(text2[k])) k--;
+    return REGEX_PREV_WORD.has(text2.slice(k + 1, j + 1));
   }
   return false;
 }
-function regexEnd(text, i2) {
+function regexEnd(text2, i2) {
   let inClass = false;
-  for (let j = i2 + 1; j < text.length; j++) {
-    const ch = text[j];
+  for (let j = i2 + 1; j < text2.length; j++) {
+    const ch = text2[j];
     if (ch === "\n" || ch === "\r") return -1;
     if (ch === "\\") {
       j++;
@@ -31747,22 +31748,22 @@ function regexEnd(text, i2) {
     if (ch === "[") inClass = true;
     else if (ch === "/") {
       let k = j + 1;
-      while (k < text.length && /[a-z]/i.test(text[k])) k++;
+      while (k < text2.length && /[a-z]/i.test(text2[k])) k++;
       return k;
     }
   }
   return -1;
 }
-function maskCLike(text, js, strings2) {
-  const out2 = text.split("");
-  const n = text.length;
+function maskCLike(text2, js, strings2) {
+  const out2 = text2.split("");
+  const n = text2.length;
   const templates = [];
   let depth = 0;
   let i2 = 0;
   const skipQuoted = (start2, quote) => {
     let j = start2 + 1;
     while (j < n) {
-      const ch = text[j];
+      const ch = text2[j];
       if (ch === "\\") {
         j += 2;
         continue;
@@ -31783,7 +31784,7 @@ function maskCLike(text, js, strings2) {
   const scanTemplate = (start2) => {
     let j = start2;
     while (j < n) {
-      const ch = text[j];
+      const ch = text2[j];
       if (ch === "\\") {
         j += 2;
         continue;
@@ -31792,7 +31793,7 @@ function maskCLike(text, js, strings2) {
         if (strings2) blank2(out2, start2, j);
         return j + 1;
       }
-      if (ch === "$" && text[j + 1] === "{") {
+      if (ch === "$" && text2[j + 1] === "{") {
         if (strings2) blank2(out2, start2, j);
         templates.push(depth);
         depth++;
@@ -31804,17 +31805,17 @@ function maskCLike(text, js, strings2) {
     return n;
   };
   while (i2 < n) {
-    const ch = text[i2];
-    const next = text[i2 + 1];
+    const ch = text2[i2];
+    const next = text2[i2 + 1];
     if (ch === "/" && next === "/") {
       let j = i2;
-      while (j < n && text[j] !== "\n") j++;
+      while (j < n && text2[j] !== "\n") j++;
       blank2(out2, i2, j);
       i2 = j;
       continue;
     }
     if (ch === "/" && next === "*") {
-      const close = text.indexOf("*/", i2 + 2);
+      const close = text2.indexOf("*/", i2 + 2);
       const j = close === -1 ? n : close + 2;
       blank2(out2, i2, j);
       i2 = j;
@@ -31828,8 +31829,8 @@ function maskCLike(text, js, strings2) {
       i2 = scanTemplate(i2 + 1);
       continue;
     }
-    if (js && ch === "/" && regexAllowed(text, i2)) {
-      const end = regexEnd(text, i2);
+    if (js && ch === "/" && regexAllowed(text2, i2)) {
+      const end = regexEnd(text2, i2);
       if (end !== -1) {
         i2 = end;
         continue;
@@ -31848,34 +31849,34 @@ function maskCLike(text, js, strings2) {
   }
   return out2.join("");
 }
-function maskPython2(text, strings2) {
-  const out2 = text.split("");
-  const n = text.length;
+function maskPython2(text2, strings2) {
+  const out2 = text2.split("");
+  const n = text2.length;
   let i2 = 0;
   while (i2 < n) {
-    const ch = text[i2];
+    const ch = text2[i2];
     if (ch === "#") {
       let j = i2;
-      while (j < n && text[j] !== "\n") j++;
+      while (j < n && text2[j] !== "\n") j++;
       blank2(out2, i2, j);
       i2 = j;
       continue;
     }
     if (ch === '"' || ch === "'") {
-      if (text.startsWith(ch.repeat(3), i2)) {
-        const close = text.indexOf(ch.repeat(3), i2 + 3);
+      if (text2.startsWith(ch.repeat(3), i2)) {
+        const close = text2.indexOf(ch.repeat(3), i2 + 3);
         const j2 = close === -1 ? n : close + 3;
         let k = i2 - 1;
-        while (k >= 0 && /[rRbBuUfF]/.test(text[k])) k--;
+        while (k >= 0 && /[rRbBuUfF]/.test(text2[k])) k--;
         let s = k;
-        while (s >= 0 && (text[s] === " " || text[s] === "	")) s--;
-        if (s < 0 || text[s] === "\n") blank2(out2, i2, j2);
+        while (s >= 0 && (text2[s] === " " || text2[s] === "	")) s--;
+        if (s < 0 || text2[s] === "\n") blank2(out2, i2, j2);
         else if (strings2) blank2(out2, i2 + 3, Math.max(i2 + 3, j2 - 3));
         i2 = j2;
         continue;
       }
       let j = i2 + 1;
-      while (j < n && text[j] !== ch && text[j] !== "\n") j += text[j] === "\\" ? 2 : 1;
+      while (j < n && text2[j] !== ch && text2[j] !== "\n") j += text2[j] === "\\" ? 2 : 1;
       if (strings2) blank2(out2, i2 + 1, Math.min(j, n));
       i2 = j + 1;
       continue;
@@ -31884,22 +31885,22 @@ function maskPython2(text, strings2) {
   }
   return out2.join("");
 }
-function maskHash(text, strings2) {
-  const out2 = text.split("");
-  const n = text.length;
+function maskHash(text2, strings2) {
+  const out2 = text2.split("");
+  const n = text2.length;
   let i2 = 0;
   while (i2 < n) {
-    const ch = text[i2];
-    if (ch === "#" && (i2 === 0 || /\s/.test(text[i2 - 1]))) {
+    const ch = text2[i2];
+    if (ch === "#" && (i2 === 0 || /\s/.test(text2[i2 - 1]))) {
       let j = i2;
-      while (j < n && text[j] !== "\n") j++;
+      while (j < n && text2[j] !== "\n") j++;
       blank2(out2, i2, j);
       i2 = j;
       continue;
     }
     if (ch === '"' || ch === "'") {
       let j = i2 + 1;
-      while (j < n && text[j] !== ch && text[j] !== "\n") j += text[j] === "\\" && ch === '"' ? 2 : 1;
+      while (j < n && text2[j] !== ch && text2[j] !== "\n") j += text2[j] === "\\" && ch === '"' ? 2 : 1;
       if (strings2) blank2(out2, i2 + 1, Math.min(j, n));
       i2 = j + 1;
       continue;
@@ -31916,18 +31917,18 @@ function isJsLike(rel2) {
   if (lower.endsWith(".d.ts") || lower.endsWith(".d.mts") || lower.endsWith(".d.cts")) return false;
   return JS_EXTENSIONS.some((ext) => lower.endsWith(ext));
 }
-function skipString(text, i2) {
-  const quote = text[i2];
+function skipString(text2, i2) {
+  const quote = text2[i2];
   let j = i2 + 1;
   let braces = 0;
-  while (j < text.length) {
-    const ch = text[j];
+  while (j < text2.length) {
+    const ch = text2[j];
     if (ch === "\\") {
       j += 2;
       continue;
     }
     if (quote === "`") {
-      if (ch === "$" && text[j + 1] === "{") {
+      if (ch === "$" && text2[j + 1] === "{") {
         braces++;
         j += 2;
         continue;
@@ -31944,20 +31945,20 @@ function skipString(text, i2) {
   }
   return j;
 }
-function readArgs(text, open) {
+function readArgs(text2, open) {
   const args2 = [];
   let depth = 0;
   let argStart = open + 1;
   const push = (to) => {
-    const slice = text.slice(argStart, to);
+    const slice = text2.slice(argStart, to);
     const lead = slice.length - slice.trimStart().length;
     const raw = slice.trim();
     if (raw) args2.push({ raw, start: argStart + lead });
   };
-  for (let i2 = open; i2 < text.length; i2++) {
-    const ch = text[i2];
+  for (let i2 = open; i2 < text2.length; i2++) {
+    const ch = text2[i2];
     if (ch === '"' || ch === "'" || ch === "`") {
-      i2 = skipString(text, i2) - 1;
+      i2 = skipString(text2, i2) - 1;
       continue;
     }
     if (ch === "(" || ch === "[" || ch === "{") depth++;
@@ -32005,10 +32006,10 @@ function moduleFile(target, files) {
   for (const ext of JS_EXTENSIONS) if (files.has(`${target}/index${ext}`)) return `${target}/index${ext}`;
   return void 0;
 }
-function relativeImports(text) {
+function relativeImports(text2) {
   const out2 = /* @__PURE__ */ new Map();
   const IMPORT = /\bimport\s+(?:type\s+)?([\w$\s{},*]+?)\s+from\s+(["'])(\.{1,2}\/[^"']+)\2/g;
-  for (const m of text.matchAll(IMPORT)) {
+  for (const m of text2.matchAll(IMPORT)) {
     const clause = m[1];
     const spec = m[3];
     const named = /\{([^}]*)\}/.exec(clause);
@@ -32029,7 +32030,7 @@ function relativeImports(text) {
     }
   }
   const REQUIRE = /\b(?:const|let|var)\s+(\{[^}]*\}|[\w$]+)\s*=\s*require\s*\(\s*(["'])(\.{1,2}\/[^"']+)\2\s*\)/g;
-  for (const m of text.matchAll(REQUIRE)) {
+  for (const m of text2.matchAll(REQUIRE)) {
     const binding = m[1];
     const spec = m[3];
     if (binding.startsWith("{")) {
@@ -32041,9 +32042,9 @@ function relativeImports(text) {
   }
   return out2;
 }
-function importsModule(text, name2) {
+function importsModule(text2, name2) {
   const esc = name2.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-  return new RegExp(`(?:\\bfrom\\s*|\\brequire\\s*\\(\\s*|\\bimport\\s*\\(\\s*|\\bimport\\s+)["']${esc}(?:/[^"']*)?["']`).test(text);
+  return new RegExp(`(?:\\bfrom\\s*|\\brequire\\s*\\(\\s*|\\bimport\\s*\\(\\s*|\\bimport\\s+)["']${esc}(?:/[^"']*)?["']`).test(text2);
 }
 
 // src/extract/express.ts
@@ -32076,13 +32077,13 @@ function lastHandler(args2) {
   return last ? identifierPath(last.raw) : void 0;
 }
 function extractExpress(input) {
-  const text = maskSource(input.rel, input.text);
+  const text2 = maskSource(input.rel, input.text);
   const skeleton = maskSource(input.rel, input.text, { strings: true });
-  const receivers = receiversOf(skeleton, text);
+  const receivers = receiversOf(skeleton, text2);
   if (!receivers.size) return {};
-  const lineOf = lineIndex(text);
+  const lineOf = lineIndex(text2);
   const names = [...receivers].map((r) => r.replace(/\$/g, "\\$")).join("|");
-  const imports = relativeImports(text);
+  const imports = relativeImports(text2);
   const routes = [];
   const mounts = [];
   const CALL = new RegExp(`(?<![\\w$.])(${names})\\s*\\.\\s*(${VERBS.join("|")}|route|use)\\s*\\(`, "g");
@@ -32090,7 +32091,7 @@ function extractExpress(input) {
     const receiver = m[1];
     const method = m[2];
     const open = m.index + m[0].length - 1;
-    const call2 = readArgs(text, open);
+    const call2 = readArgs(text2, open);
     if (!call2) continue;
     const first = call2.args[0];
     const path = first ? stringLiteral(first.raw) : void 0;
@@ -32107,7 +32108,7 @@ function extractExpress(input) {
         const chain = /^\s*\.\s*([a-z]+)\s*\(/.exec(skeleton.slice(at, at + 200));
         if (!chain || !VERB_SET.has(chain[1])) break;
         const open2 = at + chain[0].length - 1;
-        const inner = readArgs(text, open2);
+        const inner = readArgs(text2, open2);
         if (!inner) break;
         const dot = skeleton.indexOf(".", at);
         routes.push({ receiver, method: chain[1].toUpperCase(), path, line: lineOf(dot), handler: lastHandler(inner.args) });
@@ -32175,11 +32176,11 @@ var expressMountLinker = {
     const parents = /* @__PURE__ */ new Map();
     for (const h of ctx.hints) {
       if (h.kind !== "mount" || h.framework !== FRAMEWORK) continue;
-      const child = moduleFile(h.target, files);
-      if (!child || child === h.file) continue;
-      const list = parents.get(child) ?? [];
+      const child2 = moduleFile(h.target, files);
+      if (!child2 || child2 === h.file) continue;
+      const list = parents.get(child2) ?? [];
       list.push({ file: h.file, prefix: h.prefix });
-      parents.set(child, list);
+      parents.set(child2, list);
     }
     if (!parents.size) return facts;
     const prefixesOf = (file, seen) => {
@@ -32212,15 +32213,15 @@ function baseType(type) {
   return type.replace(/(?:\[\]|\?)+$/, "").replace(/\(.*$/, "");
 }
 function extractSchema(input) {
-  const text = maskSource(input.rel, input.text);
-  const lineOf = lineIndex(text);
+  const text2 = maskSource(input.rel, input.text);
+  const lineOf = lineIndex(text2);
   const entities = [];
   const MODEL = /^[ \t]*model[ \t]+([A-Za-z_][\w]*)[ \t]*\{/gm;
-  for (const m of text.matchAll(MODEL)) {
+  for (const m of text2.matchAll(MODEL)) {
     const name2 = m[1];
     const bodyStart2 = m.index + m[0].length;
-    const close = text.indexOf("}", bodyStart2);
-    const body2 = text.slice(bodyStart2, close === -1 ? text.length : close);
+    const close = text2.indexOf("}", bodyStart2);
+    const body2 = text2.slice(bodyStart2, close === -1 ? text2.length : close);
     const fields = [];
     for (const raw of body2.split("\n")) {
       const line2 = raw.trim();
@@ -32239,15 +32240,15 @@ function modelFromAccessor(accessor) {
   return accessor.charAt(0).toUpperCase() + accessor.slice(1);
 }
 function extractClient(input) {
-  const text = maskSource(input.rel, input.text, { strings: true });
-  const lineOf = lineIndex(text);
+  const text2 = maskSource(input.rel, input.text, { strings: true });
+  const lineOf = lineIndex(text2);
   const ops = [...OP_KIND.keys()].join("|");
   const CALL = new RegExp(
     `(?<![\\w$])(?:(?:this|ctx|context)\\s*\\.\\s*)?(?:prisma|db|tx|client)\\s*\\.\\s*([a-z][A-Za-z0-9_]*)\\s*\\.\\s*(${ops})\\s*\\(`,
     "g"
   );
   const uses = [];
-  for (const m of text.matchAll(CALL)) {
+  for (const m of text2.matchAll(CALL)) {
     const op = OP_KIND.get(m[2]);
     if (!op) continue;
     uses.push({ entity: modelFromAccessor(m[1]), file: input.rel, line: lineOf(m.index), op });
@@ -32367,10 +32368,10 @@ function runExtractors(repo, files, readText2, opts = {}) {
     const test = isTest(rel2);
     const candidates = extractors.filter((e) => !test || e.includeTests);
     if (!candidates.length) continue;
-    const text = read(rel2);
+    const text2 = read(rel2);
     texts.delete(rel2);
-    if (text === void 0 || text === "") continue;
-    const input = { rel: rel2, text, lang: codeindex_engine_exports.extToLang(extOf(rel2)) };
+    if (text2 === void 0 || text2 === "") continue;
+    const input = { rel: rel2, text: text2, lang: codeindex_engine_exports.extToLang(extOf(rel2)) };
     for (const ex of candidates) {
       let got;
       try {
@@ -32393,6 +32394,525 @@ function runExtractors(repo, files, readText2, opts = {}) {
   return normalizeFacts(facts);
 }
 
+// src/model/types.ts
+var MODEL_SCHEMA = 1;
+var VIEW_SCHEMA = 1;
+var SYSTEM_KINDS = ["ui", "service", "worker", "library", "data", "external", "infra", "script", "test", "config"];
+var AUDIENCES = ["everyone", "developers"];
+var NODE_KINDS = ["cap", "sys", "mod", "file", "sym", "route", "screen", "entity", "job", "ext", "infra"];
+var EDGE_KINDS3 = ["import", "call", "http", "data", "event", "queue", "extends", "config", "contains"];
+var TIMELINE_SOURCES = ["agent", "pr", "manual"];
+var CHANGE_KINDS = ["new", "changed", "removed"];
+
+// src/model/ids.ts
+var SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
+var FOUNDATIONS_CAP = "cap:_foundations";
+var FOUNDATIONS_LABEL = "Shared foundations";
+var UNASSIGNED_SYS = "sys:_unassigned";
+var UNASSIGNED_LABEL = "Unassigned";
+var APP_SYS = "sys:app";
+var capId = (slug) => `cap:${slug}`;
+var sysId = (slug) => `sys:${slug}`;
+var modId = (slug) => `mod:${slug}`;
+var fileId = (rel2) => `file:${rel2}`;
+var symId = (rel2, name2) => `sym:${rel2}#${name2}`;
+var routeId = (method, path) => `route:${method.toUpperCase()} ${path}`;
+var screenId = (path) => `screen:${path}`;
+var entityId = (name2) => `entity:${name2}`;
+var jobId = (id) => `job:${id}`;
+var extId = (id) => `ext:${id}`;
+var infraId = (id) => `infra:${id}`;
+function kindOf2(id) {
+  const colon = id.indexOf(":");
+  if (colon <= 0) return void 0;
+  const prefix = id.slice(0, colon);
+  return NODE_KINDS.includes(prefix) ? prefix : void 0;
+}
+function parseId(id) {
+  const kind = kindOf2(id);
+  if (!kind) return void 0;
+  const rest = id.slice(kind.length + 1);
+  if (!rest) return void 0;
+  switch (kind) {
+    case "file":
+      return { kind, path: rest };
+    case "screen":
+      return { kind, path: rest };
+    case "sym": {
+      const hash = rest.lastIndexOf("#");
+      if (hash <= 0 || hash === rest.length - 1) return void 0;
+      return { kind, path: rest.slice(0, hash), name: rest.slice(hash + 1) };
+    }
+    case "route": {
+      const space = rest.indexOf(" ");
+      if (space <= 0 || space === rest.length - 1) return void 0;
+      const method = rest.slice(0, space);
+      if (method !== method.toUpperCase()) return void 0;
+      return { kind, method, path: rest.slice(space + 1) };
+    }
+    default:
+      return { kind, name: rest };
+  }
+}
+function fileOfId(id) {
+  const p = parseId(id);
+  return p && (p.kind === "file" || p.kind === "sym") ? p.path : void 0;
+}
+
+// src/model/assemble.ts
+var SYMBOLS_PER_FILE = 50;
+var cmp2 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var round4 = (x) => Math.round(x * 1e4) / 1e4;
+var zeroMetrics = () => ({ loc: 0, pagerank: 0, churn: 0, tests: 0 });
+var uniqSorted = (xs) => [...new Set(xs)].sort(cmp2);
+function humanizeSegment(path) {
+  const last = path.split("/").filter(Boolean).pop() ?? path;
+  const words = last.replace(/[^A-Za-z0-9]+/g, " ").trim().toLowerCase();
+  return words ? words[0].toUpperCase() + words.slice(1) : path;
+}
+function globSpecificity(glob2) {
+  const i2 = glob2.search(/[*?]/);
+  return i2 === -1 ? glob2.length : i2;
+}
+function globMatcher2(glob2) {
+  const g = glob2.replace(/^\.\//, "").replace(/\/$/, "");
+  const globs = /[*?]/.test(g) ? [g] : [g, `${g}/**`];
+  return codeindex_engine_exports.compileGlobs(globs) ?? (() => false);
+}
+function assignSystems(files, systems, emptyGlobs) {
+  const compiled = systems.map((s) => ({
+    id: sysId(s.id),
+    paths: s.paths.map((g) => ({ glob: g, match: globMatcher2(g), spec: globSpecificity(g), hits: 0 })),
+    exclude: s.exclude?.length ? s.exclude.map(globMatcher2) : []
+  }));
+  const out2 = /* @__PURE__ */ new Map();
+  for (const rel2 of files) {
+    let best;
+    for (const sys of compiled) {
+      if (sys.exclude.some((m) => m(rel2))) continue;
+      for (const p of sys.paths) {
+        if (!p.match(rel2)) continue;
+        p.hits++;
+        if (!best || p.spec > best.spec) best = { id: sys.id, spec: p.spec };
+      }
+    }
+    out2.set(rel2, best?.id ?? UNASSIGNED_SYS);
+  }
+  if (emptyGlobs) {
+    systems.forEach((s, i2) => {
+      compiled[i2].paths.forEach((p, j) => {
+        if (!p.hits) emptyGlobs.push({ path: `systems[${i2}].paths[${j}]`, glob: s.paths[j] });
+      });
+    });
+  }
+  return out2;
+}
+function workspaceSystems(files, workspaces) {
+  const pkgs = workspaces.filter((w) => w.dir).map((w) => ({
+    id: sysId(
+      w.dir.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "app"
+    ),
+    label: w.name || w.dir,
+    dir: w.dir
+  })).sort((a, b) => cmp2(a.dir, b.dir));
+  const of = /* @__PURE__ */ new Map();
+  if (!pkgs.length) {
+    for (const rel2 of files) of.set(rel2, APP_SYS);
+    return { order: [{ id: APP_SYS, label: "App" }], of };
+  }
+  for (const rel2 of files) {
+    let best;
+    for (const p of pkgs) if ((rel2 === p.dir || rel2.startsWith(`${p.dir}/`)) && (!best || p.dir.length > best.dir.length)) best = p;
+    of.set(rel2, best?.id ?? UNASSIGNED_SYS);
+  }
+  return { order: pkgs.map(({ id, label }) => ({ id, label })), of };
+}
+function citesOf(text2) {
+  if (!text2) return [];
+  return [...new Set(parseCitations(text2).map((c2) => c2.raw))];
+}
+function mapEdgeKind(kind) {
+  switch (kind) {
+    case "import":
+    case "use":
+      return "import";
+    case "call":
+      return "call";
+    case "extends":
+    case "implements":
+      return "extends";
+    default:
+      return void 0;
+  }
+}
+var EXTERNAL_EDGE = { sdk: "call", host: "http", env: "config" };
+var LEVEL_FREE = /* @__PURE__ */ new Set(["entity", "ext", "infra"]);
+function assembleWithNotes(inp) {
+  const { graph, facts, model } = inp;
+  const nodes = /* @__PURE__ */ new Map();
+  const add = (n) => {
+    if (!nodes.has(n.id)) nodes.set(n.id, n);
+  };
+  const emptyGlobs = [];
+  const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp2(a.rel, b.rel));
+  const rels = files.map((f) => f.rel);
+  const testMap = codeindex_engine_exports.computeTestMap(graph);
+  let systemOrder;
+  let fileSystems;
+  if (model) {
+    fileSystems = assignSystems(rels, model.systems, emptyGlobs);
+    systemOrder = model.systems.map((s) => ({ id: sysId(s.id), label: s.label, summary: s.summary, role: s.kind }));
+  } else {
+    const ws = workspaceSystems(rels, inp.workspaces);
+    fileSystems = ws.of;
+    systemOrder = ws.order;
+  }
+  const sysRank = new Map(systemOrder.map((s, i2) => [s.id, i2]));
+  sysRank.set(UNASSIGNED_SYS, systemOrder.length);
+  const filesByModule = /* @__PURE__ */ new Map();
+  for (const f of files) {
+    const list = filesByModule.get(f.module) ?? [];
+    list.push(f);
+    filesByModule.set(f.module, list);
+  }
+  const usedSystems = new Set(systemOrder.map((s) => s.id));
+  const modules = [...graph.modules].filter((m) => filesByModule.has(m.slug)).sort((a, b) => cmp2(a.slug, b.slug));
+  const testModules = /* @__PURE__ */ new Set();
+  for (const m of modules) {
+    const members = filesByModule.get(m.slug);
+    const votes = /* @__PURE__ */ new Map();
+    for (const f of members) {
+      const s = fileSystems.get(f.rel);
+      votes.set(s, (votes.get(s) ?? 0) + 1);
+    }
+    let parent = UNASSIGNED_SYS;
+    let bestVotes = -1;
+    for (const [s, n] of votes) {
+      if (n > bestVotes || n === bestVotes && sysRank.get(s) < sysRank.get(parent)) {
+        parent = s;
+        bestVotes = n;
+      }
+    }
+    usedSystems.add(parent);
+    const codeMembers = members.filter((f) => f.fileKind === "code");
+    const isTest = members.every((f) => f.testFile) || codeMembers.length > 0 && codeMembers.every((f) => f.testFile);
+    if (isTest) testModules.add(m.slug);
+    const summary = inp.moduleProse.get(m.slug);
+    add({
+      id: modId(m.slug),
+      kind: "mod",
+      label: humanizeSegment(m.path),
+      parent,
+      ...summary ? { summary } : {},
+      cites: citesOf(summary),
+      metrics: {
+        loc: members.reduce((n, f) => n + f.lines, 0),
+        pagerank: round4(m.pagerank ?? 0),
+        churn: 0,
+        // TODO(churn): from git history (codeindex.gitChurn) once `diff` lands.
+        tests: m.testedBy?.length ?? 0
+      },
+      caps: [],
+      tags: uniqSorted([`tier-${m.tier}`, ...isTest ? ["test"] : []])
+    });
+  }
+  for (const rel2 of rels) usedSystems.add(fileSystems.get(rel2));
+  for (const s of systemOrder) {
+    add({
+      id: s.id,
+      kind: "sys",
+      label: s.label,
+      ...s.summary ? { summary: s.summary } : {},
+      cites: citesOf(s.summary),
+      metrics: zeroMetrics(),
+      caps: [],
+      tags: [],
+      ...s.role ? { role: s.role } : {}
+    });
+  }
+  if (usedSystems.has(UNASSIGNED_SYS)) {
+    add({ id: UNASSIGNED_SYS, kind: "sys", label: UNASSIGNED_LABEL, cites: [], metrics: zeroMetrics(), caps: [], tags: ["derived"] });
+  }
+  for (const f of files) {
+    add({
+      id: fileId(f.rel),
+      kind: "file",
+      label: f.rel.split("/").pop() ?? f.rel,
+      parent: modId(f.module),
+      cites: [],
+      metrics: { loc: f.lines, pagerank: round4(f.pagerank ?? 0), churn: 0, tests: testMap.testedByFile.get(f.rel)?.length ?? 0 },
+      caps: [],
+      tags: uniqSorted([f.fileKind, ...f.testFile ? ["test"] : []])
+    });
+  }
+  const hasFile = (rel2) => nodes.has(fileId(rel2));
+  if (inp.symbols) {
+    const byFile = /* @__PURE__ */ new Map();
+    for (const [name2, defs] of Object.entries(inp.symbols.defs)) {
+      for (const d of defs) {
+        if (!d.exported || d.parent || !hasFile(d.file)) continue;
+        const list = byFile.get(d.file) ?? [];
+        list.push({ name: name2, line: d.line, endLine: d.endLine, kind: d.kind });
+        byFile.set(d.file, list);
+      }
+    }
+    for (const [rel2, defs] of byFile) {
+      defs.sort((a, b) => a.line - b.line || cmp2(a.name, b.name));
+      const seen = /* @__PURE__ */ new Set();
+      const kept = defs.filter((d) => {
+        if (seen.has(d.name)) return false;
+        seen.add(d.name);
+        return true;
+      }).slice(0, SYMBOLS_PER_FILE);
+      for (const d of kept) {
+        add({
+          id: symId(rel2, d.name),
+          kind: "sym",
+          label: d.name,
+          parent: fileId(rel2),
+          cites: [],
+          at: `${rel2}:${d.line}`,
+          metrics: { ...zeroMetrics(), loc: d.endLine ? d.endLine - d.line + 1 : 0 },
+          caps: [],
+          tags: [d.kind]
+        });
+      }
+    }
+  }
+  const factNode = (id, kind, label, file, line2, tags, extra = {}) => add({
+    id,
+    kind,
+    label,
+    ...hasFile(file) && kind !== "ext" && kind !== "infra" ? { parent: fileId(file) } : {},
+    cites: [],
+    at: `${file}:${line2}`,
+    metrics: zeroMetrics(),
+    caps: [],
+    tags: uniqSorted(tags),
+    ...extra
+  });
+  for (const r of facts.routes) factNode(routeId(r.method, r.path), "route", `${r.method.toUpperCase()} ${r.path}`, r.file, r.line, [r.framework]);
+  for (const s of facts.screens) factNode(screenId(s.path), "screen", s.path, s.file, s.line, [s.framework]);
+  for (const e of facts.entities) {
+    factNode(entityId(e.name), "entity", e.name, e.file, e.line, [e.orm], {
+      fields: e.fields.map((f) => ({ name: f.name, type: f.type, ...f.relation ? { relation: f.relation } : {} }))
+    });
+  }
+  for (const j of facts.jobs) factNode(jobId(j.id), "job", j.id, j.file, j.line, [j.kind, ...j.schedule ? [`schedule:${j.schedule}`] : []]);
+  const extVias = /* @__PURE__ */ new Map();
+  for (const x of facts.externals) {
+    factNode(extId(x.id), "ext", x.id, x.file, x.line, []);
+    const vias = extVias.get(x.id) ?? /* @__PURE__ */ new Set();
+    vias.add(x.via);
+    extVias.set(x.id, vias);
+  }
+  for (const [id, vias] of extVias) nodes.get(extId(id)).tags = uniqSorted(vias);
+  for (const i2 of facts.infra) factNode(infraId(i2.id), "infra", i2.id, i2.file, i2.line, [i2.kind]);
+  const children = /* @__PURE__ */ new Map();
+  for (const n of nodes.values()) {
+    if (!n.parent) continue;
+    const list = children.get(n.parent) ?? [];
+    list.push(n.id);
+    children.set(n.parent, list);
+  }
+  const descendants = (id, out2) => {
+    for (const c2 of children.get(id) ?? []) {
+      if (out2.has(c2)) continue;
+      out2.add(c2);
+      descendants(c2, out2);
+    }
+    return out2;
+  };
+  const caps = /* @__PURE__ */ new Map();
+  const claim = (nodeId, cap) => {
+    const set = caps.get(nodeId) ?? /* @__PURE__ */ new Set();
+    set.add(cap);
+    caps.set(nodeId, set);
+  };
+  for (const [i2, c2] of (model?.capabilities ?? []).entries()) {
+    const id = capId(c2.id);
+    add({
+      id,
+      kind: "cap",
+      label: c2.label,
+      ...c2.summary ? { summary: c2.summary } : {},
+      cites: citesOf(c2.summary),
+      metrics: zeroMetrics(),
+      caps: [],
+      tags: uniqSorted(c2.tags ?? []),
+      ...c2.actors?.length ? { actors: [...c2.actors] } : {}
+    });
+    const claimed = /* @__PURE__ */ new Set();
+    for (const m of c2.members ?? []) if (nodes.has(m) && kindOf2(m) !== "cap") claimed.add(m);
+    (c2.paths ?? []).forEach((g, j) => {
+      const match = globMatcher2(g);
+      let hits = 0;
+      for (const rel2 of rels) {
+        if (!match(rel2)) continue;
+        hits++;
+        claimed.add(fileId(rel2));
+      }
+      if (!hits) emptyGlobs.push({ path: `capabilities[${i2}].paths[${j}]`, glob: g });
+    });
+    for (const n of claimed) {
+      claim(n, id);
+      for (const d of descendants(n, /* @__PURE__ */ new Set())) claim(d, id);
+    }
+  }
+  const aggregated = /* @__PURE__ */ new Map();
+  const capsOf = (id) => {
+    const memo = aggregated.get(id);
+    if (memo) return memo;
+    const set = new Set(caps.get(id) ?? []);
+    aggregated.set(id, set);
+    for (const c2 of children.get(id) ?? []) for (const x of capsOf(c2)) set.add(x);
+    return set;
+  };
+  for (const id of nodes.keys()) capsOf(id);
+  const foundations = modules.filter((m) => !testModules.has(m.slug) && capsOf(modId(m.slug)).size === 0).map((m) => modId(m.slug));
+  if (foundations.length) {
+    add({ id: FOUNDATIONS_CAP, kind: "cap", label: FOUNDATIONS_LABEL, cites: [], metrics: zeroMetrics(), caps: [], tags: ["derived"] });
+    for (const m of foundations) {
+      for (const d of [m, ...descendants(m, /* @__PURE__ */ new Set())]) {
+        if (capsOf(d).size === 0) aggregated.get(d).add(FOUNDATIONS_CAP);
+      }
+      const parent = nodes.get(m).parent;
+      if (parent) aggregated.get(parent).add(FOUNDATIONS_CAP);
+    }
+  }
+  for (const n of nodes.values()) n.caps = n.kind === "cap" ? [] : uniqSorted(aggregated.get(n.id) ?? []);
+  const fileNodes = [...nodes.values()].filter((n) => n.kind === "file");
+  const ancestorOfKind = (id, kind) => {
+    let cur = nodes.get(id);
+    while (cur && cur.kind !== kind) cur = cur.parent ? nodes.get(cur.parent) : void 0;
+    return cur?.id;
+  };
+  const rollMetrics = (target, f) => {
+    const m = nodes.get(target).metrics;
+    m.loc += f.metrics.loc;
+    m.pagerank = round4(m.pagerank + f.metrics.pagerank);
+    m.tests += f.metrics.tests;
+  };
+  for (const f of fileNodes) {
+    const sys = ancestorOfKind(f.id, "sys");
+    if (sys) rollMetrics(sys, f);
+    for (const c2 of f.caps) rollMetrics(c2, f);
+  }
+  const base = /* @__PURE__ */ new Map();
+  const addBase = (from, to, kind, weight, label) => {
+    if (from === to || !nodes.has(from) || !nodes.has(to)) return;
+    const key = `${from}
+${to}
+${kind}`;
+    const acc = base.get(key) ?? { from, to, kind, weight: 0, labels: /* @__PURE__ */ new Set() };
+    acc.weight += weight;
+    if (label) acc.labels.add(label);
+    base.set(key, acc);
+  };
+  for (const e of graph.fileEdges) {
+    const kind = mapEdgeKind(e.kind);
+    if (!kind || e.dangling) continue;
+    addBase(fileId(e.from), fileId(e.to), kind, e.weight || 1);
+  }
+  for (const c2 of facts.calls) if (c2.route) addBase(fileId(c2.file), c2.route, "http", 1);
+  for (const u of facts.entityUses) addBase(fileId(u.file), entityId(u.entity), "data", 1, u.op);
+  for (const e of facts.entities) {
+    for (const f of e.fields) if (f.relation) addBase(entityId(e.name), entityId(f.relation), "data", 1, f.name);
+  }
+  for (const x of facts.externals) addBase(fileId(x.file), extId(x.id), EXTERNAL_EDGE[x.via] ?? "call", 1);
+  for (const j of facts.jobs) {
+    const job = nodes.get(jobId(j.id));
+    if (job && job.parent !== fileId(j.file)) addBase(fileId(j.file), job.id, "queue", 1);
+  }
+  const rolled = /* @__PURE__ */ new Map();
+  const addRolled = (from, to, kind, weight) => {
+    if (from === to) return;
+    const key = `${from}
+${to}
+${kind}`;
+    if (base.has(key)) return;
+    const acc = rolled.get(key) ?? { from, to, kind, weight: 0, labels: /* @__PURE__ */ new Set() };
+    acc.weight += weight;
+    rolled.set(key, acc);
+  };
+  const lift = (id, level) => {
+    const kind = kindOf2(id);
+    if (LEVEL_FREE.has(kind) || kind === level) return [id];
+    if (level === "cap") return nodes.get(id).caps;
+    const up = ancestorOfKind(id, level);
+    return up ? [up] : [];
+  };
+  for (const e of base.values()) {
+    for (const level of ["mod", "sys", "cap"]) {
+      const froms = lift(e.from, level);
+      const tos = lift(e.to, level);
+      for (const f of froms) for (const t of tos) if (f !== e.from || t !== e.to) addRolled(f, t, e.kind, e.weight);
+    }
+  }
+  const edges = [];
+  const labelOf = (labels) => labels.size ? uniqSorted(labels).join("+") : void 0;
+  for (const e of base.values()) {
+    const label = labelOf(e.labels);
+    edges.push({ from: e.from, to: e.to, kind: e.kind, weight: e.weight, derived: true, ...label ? { label } : {} });
+  }
+  for (const e of rolled.values()) edges.push({ from: e.from, to: e.to, kind: e.kind, weight: e.weight, derived: true });
+  for (const e of model?.edges ?? []) {
+    if (!nodes.has(e.from) || !nodes.has(e.to)) continue;
+    edges.push({
+      from: e.from,
+      to: e.to,
+      kind: e.kind,
+      weight: 1,
+      derived: false,
+      ...e.label ? { label: e.label } : {},
+      ...e.cite ? { cite: e.cite } : {}
+    });
+  }
+  edges.sort((a, b) => cmp2(a.from, b.from) || cmp2(a.to, b.to) || cmp2(a.kind, b.kind) || Number(a.derived) - Number(b.derived));
+  const codeFiles = files.filter((f) => f.fileKind === "code");
+  const inSystems = codeFiles.filter((f) => fileSystems.get(f.rel) !== UNASSIGNED_SYS).length;
+  const codeModules = modules.filter((m) => !testModules.has(m.slug) && filesByModule.get(m.slug).some((f) => f.fileKind === "code" && !f.testFile));
+  const inCaps = codeModules.filter((m) => nodes.get(modId(m.slug)).caps.some((c2) => c2 !== FOUNDATIONS_CAP)).length;
+  const ratio = (n, d) => d === 0 ? 1 : round4(n / d);
+  const isStale = (sources) => !!sources && Object.entries(sources).some(([path, hash]) => (inp.currentHashes.get(path) ?? null) !== hash);
+  const flows = [...inp.flows].sort((a, b) => cmp2(a.id, b.id));
+  const lenses = [...inp.lenses].sort((a, b) => cmp2(a.id, b.id));
+  const view = {
+    schema: VIEW_SCHEMA,
+    repo: { name: inp.repoName, ...inp.commit ? { commit: inp.commit } : {} },
+    app: {
+      name: model?.app.name ?? inp.repoName,
+      ...model?.app.summary ? { summary: model.app.summary } : {},
+      cites: citesOf(model?.app.summary),
+      audience: model?.app.audience ?? "everyone"
+    },
+    nodes: [...nodes.values()].sort((a, b) => cmp2(a.id, b.id)),
+    edges,
+    flows,
+    lenses,
+    timeline: [...inp.timeline],
+    changes: null,
+    insights: [],
+    glossary: [...model?.glossary ?? []],
+    tour: [...model?.tour ?? []],
+    coverage: { filesInSystems: ratio(inSystems, codeFiles.length), modulesInCapabilities: ratio(inCaps, codeModules.length) },
+    stale: {
+      lenses: lenses.filter((l) => isStale(l.sources)).map((l) => l.id),
+      flows: flows.filter((f) => isStale(f.sources)).map((f) => f.id),
+      prose: uniqSorted(inp.proseStale.map(modId))
+    }
+  };
+  return { view, fileSystems, emptyGlobs };
+}
+function assembleView(inp) {
+  return assembleWithNotes(inp).view;
+}
+
+// src/model/load.ts
+import { createHash as createHash4 } from "crypto";
+import { existsSync as existsSync17, readdirSync as readdirSync6, readFileSync as readFileSync25 } from "fs";
+import { basename as basename9, join as join43 } from "path";
+
 // src/paths.ts
 import { join as join42 } from "path";
 var VIEW_DIR = ".ultraview";
@@ -32412,7 +32932,299 @@ function viewPaths(repo) {
   };
 }
 
+// src/model/validate.ts
+var str2 = (extra = {}) => ({ t: "string", ...extra });
+var text = str2({ nonEmpty: true });
+var arr = (of, extra = {}) => ({ t: "array", of, ...extra });
+var obj = (fields, required) => ({ t: "object", fields, required });
+var ANY_NODE = NODE_KINDS;
+var MEMBER_KINDS = NODE_KINDS.filter((k) => k !== "cap");
+var nodeRef = (kinds2 = ANY_NODE) => str2({ nonEmpty: true, nodeId: kinds2 });
+var glob = str2({ nonEmpty: true });
+var schema = { t: "literal", value: MODEL_SCHEMA };
+var sourcesSpec = { t: "record", of: str2({ nonEmpty: true }) };
+var MODEL_SPEC = obj(
+  {
+    schema,
+    app: obj({ name: text, summary: text, audience: str2({ enum: AUDIENCES }) }, ["name"]),
+    systems: arr(
+      obj(
+        {
+          id: str2({ slug: true }),
+          label: text,
+          kind: str2({ enum: SYSTEM_KINDS }),
+          summary: text,
+          paths: arr(glob, { nonEmpty: true }),
+          exclude: arr(glob)
+        },
+        ["id", "label", "kind", "paths"]
+      )
+    ),
+    capabilities: arr(
+      obj(
+        {
+          id: str2({ slug: true }),
+          label: text,
+          summary: text,
+          actors: arr(text, { unique: true }),
+          members: arr(nodeRef(MEMBER_KINDS), { unique: true }),
+          paths: arr(glob),
+          tags: arr(text, { unique: true })
+        },
+        ["id", "label"]
+      )
+    ),
+    edges: arr(obj({ from: nodeRef(), to: nodeRef(), kind: str2({ enum: EDGE_KINDS3 }), label: text, cite: text }, ["from", "to", "kind"])),
+    tour: arr(obj({ node: nodeRef(), note: text }, ["node", "note"])),
+    glossary: arr(obj({ term: text, meaning: text }, ["term", "meaning"]))
+  },
+  ["schema", "app", "systems", "capabilities"]
+);
+var FLOW_SPEC = obj(
+  {
+    schema,
+    id: str2({ slug: true }),
+    title: text,
+    trigger: nodeRef(),
+    steps: arr(obj({ node: nodeRef(), note: text }, ["node", "note"]), { nonEmpty: true }),
+    sources: sourcesSpec
+  },
+  ["schema", "id", "title", "steps"]
+);
+var LENS_SPEC = obj(
+  {
+    schema,
+    id: str2({ slug: true }),
+    question: text,
+    answer: text,
+    nodes: arr(nodeRef(), { unique: true }),
+    edges: arr(obj({ from: nodeRef(), to: nodeRef(), kind: str2({ enum: EDGE_KINDS3 }) }, ["from", "to"])),
+    focus: nodeRef(),
+    sources: sourcesSpec
+  },
+  ["schema", "id", "question", "answer", "nodes"]
+);
+var TIMELINE_SPEC = obj(
+  {
+    at: text,
+    source: str2({ enum: TIMELINE_SOURCES }),
+    title: text,
+    request: text,
+    summary: text,
+    items: arr(obj({ ref: nodeRef(), change: str2({ enum: CHANGE_KINDS }), note: text }, ["ref", "change"])),
+    base: text,
+    head: text
+  },
+  ["at", "source", "title", "summary", "items"]
+);
+var typeName = (v) => v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
+var child = (base, key) => base ? `${base}.${key}` : key;
+function walkSpec(spec, value, path, out2) {
+  const fail = (message) => {
+    out2.push({ path, message });
+  };
+  switch (spec.t) {
+    case "literal":
+      if (value !== spec.value) fail(`must be ${spec.value} (got ${JSON.stringify(value) ?? "undefined"})`);
+      return;
+    case "string": {
+      if (typeof value !== "string") return fail(`must be a string (got ${typeName(value)})`);
+      if (spec.nonEmpty && value.trim() === "") return fail("must not be empty");
+      if (spec.slug && !SLUG_RE.test(value)) return fail(`"${value}" is not a valid id: lowercase letters, digits and dashes, starting with a letter or digit`);
+      if (spec.enum && !spec.enum.includes(value)) return fail(`"${value}" is not one of ${spec.enum.join(", ")}`);
+      if (spec.nodeId) {
+        const kind = kindOf2(value);
+        if (!kind) return fail(`"${value}" is not a node id: it must start with one of ${NODE_KINDS.map((k) => `${k}:`).join(" ")}`);
+        if (!spec.nodeId.includes(kind)) return fail(`"${value}": a ${kind}: id is not allowed here (expected ${spec.nodeId.map((k) => `${k}:`).join(" ")})`);
+        if (!parseId(value)) return fail(`"${value}" is a malformed ${kind}: id`);
+      }
+      return;
+    }
+    case "array": {
+      if (!Array.isArray(value)) return fail(`must be an array (got ${typeName(value)})`);
+      if (spec.nonEmpty && value.length === 0) fail("must not be empty");
+      const seen = /* @__PURE__ */ new Set();
+      value.forEach((item, i2) => {
+        walkSpec(spec.of, item, `${path}[${i2}]`, out2);
+        if (spec.unique && typeof item === "string") {
+          if (seen.has(item)) out2.push({ path: `${path}[${i2}]`, message: `duplicate "${item}"` });
+          seen.add(item);
+        }
+      });
+      return;
+    }
+    case "record": {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) return fail(`must be an object (got ${typeName(value)})`);
+      for (const [k, v] of Object.entries(value)) walkSpec(spec.of, v, child(path, k), out2);
+      return;
+    }
+    case "object": {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) return fail(`must be an object (got ${typeName(value)})`);
+      const rec = value;
+      for (const key of spec.required) if (!(key in rec)) out2.push({ path: child(path, key), message: "is required" });
+      for (const [key, v] of Object.entries(rec)) {
+        const field = spec.fields[key];
+        if (!field) {
+          out2.push({ path: child(path, key), message: `unknown key "${key}" (allowed: ${Object.keys(spec.fields).join(", ")})` });
+          continue;
+        }
+        walkSpec(field, v, child(path, key), out2);
+      }
+      return;
+    }
+  }
+}
+function uniqueIds(list, path, out2) {
+  if (!Array.isArray(list)) return;
+  const seen = /* @__PURE__ */ new Map();
+  list.forEach((item, i2) => {
+    const id = item?.id;
+    if (typeof id !== "string") return;
+    const first = seen.get(id);
+    if (first !== void 0) out2.push({ path: `${path}[${i2}].id`, message: `duplicate id "${id}" (first at ${path}[${first}])` });
+    else seen.set(id, i2);
+  });
+}
+function validateModel(value) {
+  const out2 = [];
+  walkSpec(MODEL_SPEC, value, "", out2);
+  const rec = value;
+  if (rec && typeof rec === "object") {
+    uniqueIds(rec.systems, "systems", out2);
+    uniqueIds(rec.capabilities, "capabilities", out2);
+  }
+  return out2;
+}
+function validateFlow(value) {
+  const out2 = [];
+  walkSpec(FLOW_SPEC, value, "", out2);
+  return out2;
+}
+function validateLens(value) {
+  const out2 = [];
+  walkSpec(LENS_SPEC, value, "", out2);
+  return out2;
+}
+function validateTimelineEntry(value) {
+  const out2 = [];
+  walkSpec(TIMELINE_SPEC, value, "", out2);
+  return out2;
+}
+function parseJson(text2) {
+  try {
+    return { value: JSON.parse(text2), problems: [] };
+  } catch (e) {
+    return { value: void 0, problems: [{ path: "", message: `invalid JSON: ${e.message}` }] };
+  }
+}
+
+// src/model/load.ts
+var MODEL_FILE = `${VIEW_DIR}/model.json`;
+var FLOWS_DIR = `${VIEW_DIR}/flows`;
+var LENSES_DIR = `${VIEW_DIR}/lenses`;
+var TIMELINE_FILE = `${VIEW_DIR}/timeline.jsonl`;
+function fileSha256(abs) {
+  try {
+    return createHash4("sha256").update(readFileSync25(abs)).digest("hex");
+  } catch {
+    return null;
+  }
+}
+function readAgentJson(repo, rel2, validate, problems, stem3) {
+  const { value, problems: syntax } = parseJson(readFileSync25(join43(repo, rel2), "utf8"));
+  const found = syntax.length ? syntax : validate(value);
+  const id = value?.id;
+  if (!found.length && stem3 !== void 0 && id !== stem3) found.push({ path: "id", message: `"${String(id)}" must match the file name (${stem3}.json)` });
+  for (const p of found) problems.push({ file: rel2, ...p });
+  return found.length ? void 0 : value;
+}
+function readDir(repo, dirRel, validate, problems) {
+  const abs = join43(repo, dirRel);
+  if (!existsSync17(abs)) return [];
+  const out2 = [];
+  for (const name2 of readdirSync6(abs).filter((n) => n.endsWith(".json")).sort()) {
+    const item = readAgentJson(repo, `${dirRel}/${name2}`, validate, problems, basename9(name2, ".json"));
+    if (item) out2.push(item);
+  }
+  return out2;
+}
+function readTimeline(repo, problems) {
+  const abs = join43(repo, TIMELINE_FILE);
+  if (!existsSync17(abs)) return [];
+  const out2 = [];
+  readFileSync25(abs, "utf8").split("\n").forEach((line2, i2) => {
+    if (!line2.trim()) return;
+    const { value, problems: syntax } = parseJson(line2);
+    const found = syntax.length ? syntax : validateTimelineEntry(value);
+    for (const p of found) problems.push({ file: TIMELINE_FILE, path: `line ${i2 + 1}${p.path ? `.${p.path}` : ""}`, message: p.message });
+    if (!found.length) out2.push(value);
+  });
+  return out2;
+}
+var BUSINESS_RE = /<!--\s*ui:human\s+key=business\s*-->\r?\n([\s\S]*?)\r?\n<!--\s*\/ui:human\s+key=business\s*-->/;
+function readModuleProse(indexDir, graph) {
+  const out2 = /* @__PURE__ */ new Map();
+  const enriched = loadEnrichedProse(indexDir, graph);
+  const dir = indexPaths(indexDir).encyclopedia;
+  for (const slug of [...enriched.keys()].sort()) {
+    let text2;
+    try {
+      text2 = readFileSync25(join43(dir, `${slug}.md`), "utf8");
+    } catch {
+      continue;
+    }
+    const body2 = BUSINESS_RE.exec(text2)?.[1]?.trim();
+    if (body2 && !body2.includes("<!-- ui:enrich -->")) out2.set(slug, body2);
+  }
+  return out2;
+}
+function loadViewInputs(repo, overrides = {}) {
+  const paths = viewPaths(repo);
+  const graph = overrides.graph ?? loadGraph(paths.index);
+  if (!graph) throw new Error(`no ultraindex index at ${paths.index}: run \`ultraview build\` first`);
+  const problems = [];
+  let facts = overrides.facts;
+  if (!facts) {
+    facts = emptyFacts();
+    if (existsSync17(paths.facts)) {
+      const parsed2 = parseJson(readFileSync25(paths.facts, "utf8"));
+      if (!parsed2.problems.length) facts = { ...facts, ...parsed2.value };
+    }
+  }
+  const hasModel = existsSync17(paths.model);
+  const model = hasModel ? readAgentJson(repo, MODEL_FILE, validateModel, problems) : void 0;
+  const flows = readDir(repo, FLOWS_DIR, validateFlow, problems);
+  const lenses = readDir(repo, LENSES_DIR, validateLens, problems);
+  const timeline = readTimeline(repo, problems);
+  const currentHashes = /* @__PURE__ */ new Map();
+  for (const item of [...flows, ...lenses]) {
+    for (const path of Object.keys(item.sources ?? {})) if (!currentHashes.has(path)) currentHashes.set(path, fileSha256(join43(repo, path)));
+  }
+  const proseStale = (runStatus(paths.index)?.modules ?? []).filter((m) => m.prose === "stale").map((m) => m.slug);
+  const workspaces = codeindex_engine_exports.detectWorkspaces(repo).packages.map((p) => ({ name: p.name, dir: p.dir }));
+  return {
+    inputs: {
+      repoName: basename9(repo),
+      commit: graph.commit ?? codeindex_engine_exports.headCommit(repo),
+      graph,
+      symbols: loadSymbols(paths.index),
+      facts,
+      model,
+      workspaces,
+      flows,
+      lenses,
+      timeline,
+      moduleProse: readModuleProse(paths.index, graph),
+      proseStale,
+      currentHashes
+    },
+    problems,
+    hasModel
+  };
+}
+
 // src/build.ts
+var VIEW_SIZE_WARN_BYTES = 15 * 1024 * 1024;
 var VIEW_EXCLUDE = `${VIEW_DIR}/**`;
 var GITIGNORE_BODY = `# Written by \`ultraview build\`: regenerable files, never committed.
 ${GENERATED_FILES.join("\n")}
@@ -32429,7 +33241,7 @@ function readSource(abs) {
 }
 async function buildMap(opts) {
   const repo = resolve14(opts.repo);
-  if (!existsSync17(repo) || !statSync15(repo).isDirectory()) throw new Error(`repo not found: ${repo}`);
+  if (!existsSync18(repo) || !statSync15(repo).isDirectory()) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
   const grammars = { ast: false, notes: [] };
   if (opts.ast !== false) {
@@ -32462,11 +33274,16 @@ async function buildMap(opts) {
   mkdirSync6(paths.dir, { recursive: true });
   writeFileSync9(paths.facts, stableJson(facts));
   writeFileSync9(paths.gitignore, GITIGNORE_BODY);
+  const loaded2 = loadViewInputs(repo, { graph, facts });
+  const view = assembleView(loaded2.inputs);
+  const viewText = stableJson(view);
+  writeFileSync9(paths.view, viewText);
+  const bytes = Buffer.byteLength(viewText);
   const ws = codeindex_engine_exports.detectWorkspaces(repo);
   const workspaces = ws.packages.map((p) => ({ name: p.name, dir: p.dir, kind: p.kind })).sort((a, b) => a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : a.name < b.name ? -1 : 1);
   return {
     repo,
-    name: basename9(repo),
+    name: basename10(repo),
     index: {
       out: paths.index,
       files: graph.fileCount,
@@ -32480,9 +33297,601 @@ async function buildMap(opts) {
     topModules: topModules(graph),
     facts,
     failures,
-    hasModel: existsSync17(paths.model),
-    written: [`${VIEW_DIR}/facts.json`, `${VIEW_DIR}/.gitignore`]
+    hasModel: existsSync18(paths.model),
+    view: {
+      nodes: view.nodes.length,
+      edges: view.edges.length,
+      coverage: view.coverage,
+      bytes,
+      oversize: bytes > VIEW_SIZE_WARN_BYTES,
+      problems: loaded2.problems
+    },
+    written: [`${VIEW_DIR}/facts.json`, `${VIEW_DIR}/view.json`, `${VIEW_DIR}/.gitignore`]
   };
+}
+
+// src/check.ts
+import { existsSync as existsSync19 } from "fs";
+import { resolve as resolve15 } from "path";
+
+// src/model/prose.ts
+var FENCE = /^\s*(```|~~~)/;
+var HEADING_OR_RULE = /^(#{1,6}\s|([-*_])\2{2,}\s*$)/;
+var TABLE_SEP = /^[\s:|-]+$/;
+var LIST_ITEM = /^\s*([-*+]|\d+\.)\s+/;
+var SENTENCE_BREAK = /(?<=[.!?]["')]*(?:\s*\[[^[\]\n]+\])*)\s+(?=[A-Z0-9"'(*_`])/;
+function proseUnits(text2) {
+  const units = [];
+  let cur = [];
+  const flush = () => {
+    if (cur.length) units.push(cur.join(" "));
+    cur = [];
+  };
+  let inFence = false;
+  for (const raw of text2.replace(/<!--[\s\S]*?-->/g, " ").split(/\r?\n/)) {
+    if (FENCE.test(raw)) {
+      flush();
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const t = raw.trim();
+    if (!t || HEADING_OR_RULE.test(t) || t.includes("|") && TABLE_SEP.test(t) && t.includes("-")) {
+      flush();
+      continue;
+    }
+    if (LIST_ITEM.test(raw)) {
+      flush();
+      cur.push(raw.replace(LIST_ITEM, "").trim());
+      continue;
+    }
+    cur.push(t);
+  }
+  flush();
+  return units;
+}
+function splitSentences(text2) {
+  return proseUnits(text2).flatMap(
+    (u) => u.split(SENTENCE_BREAK).map((s) => s.trim()).filter(Boolean)
+  );
+}
+function uncitedSentences(text2) {
+  return splitSentences(text2).flatMap((s) => citationlessClaims(s));
+}
+
+// src/check.ts
+var FILES_IN_SYSTEMS_MIN = 0.9;
+var MODULES_IN_CAPABILITIES_MIN = 0.7;
+var THRESHOLDS = { filesInSystems: FILES_IN_SYSTEMS_MIN, modulesInCapabilities: MODULES_IN_CAPABILITIES_MIN };
+function formatIssue(i2) {
+  return `${i2.file}${i2.path ? ` ${i2.path}` : ""}: ${i2.message}`;
+}
+var pct = (x) => `${(x * 100).toFixed(1)}%`;
+function checkMap(repoArg, opts = {}) {
+  const repo = resolve15(repoArg);
+  if (!existsSync19(repo)) throw new Error(`repo not found: ${repo}`);
+  const paths = viewPaths(repo);
+  const errors = [];
+  const warnings = [];
+  let view;
+  const report = () => ({
+    repo,
+    ok: errors.length === 0,
+    errors,
+    warnings,
+    coverage: view?.coverage ?? { filesInSystems: 0, modulesInCapabilities: 0 },
+    thresholds: THRESHOLDS,
+    stale: view?.stale ?? { lenses: [], flows: [], prose: [] }
+  });
+  if (!indexExists(paths.index)) {
+    errors.push({ file: ".ultraindex", path: "", message: "no ultraindex index: run `ultraview build` first" });
+    return report();
+  }
+  const idx = runCheck(paths.index, paths.repo);
+  if (idx.stale) {
+    errors.push({
+      file: ".ultraindex",
+      path: "",
+      message: `index is stale (${idx.changed.length} changed, ${idx.added.length} added, ${idx.removed.length} removed): run \`ultraview build\`, then check again`
+    });
+  }
+  if (!existsSync19(paths.facts)) errors.push({ file: ".ultraview/facts.json", path: "", message: "missing: run `ultraview build`" });
+  if (!existsSync19(paths.model)) errors.push({ file: MODEL_FILE, path: "", message: "missing: write it (systems first, then capabilities)" });
+  const loaded2 = loadViewInputs(repo);
+  errors.push(...loaded2.problems);
+  const assembled = assembleWithNotes(loaded2.inputs);
+  view = assembled.view;
+  const ids = new Set(view.nodes.map((n) => n.id));
+  const { model, flows, lenses, timeline, graph } = loaded2.inputs;
+  const lineTable = fileLineTable(graph);
+  const resolveId = (file, path, id) => {
+    if (id !== void 0 && !ids.has(id))
+      errors.push({ file, path, message: `unknown node "${id}" (run \`ultraview show <id>\` on a known one, or see the build summary)` });
+  };
+  const prose = (file, path, text2) => {
+    if (text2 === void 0) return;
+    for (const u of checkCitations(text2, lineTable).unresolved) errors.push({ file, path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
+    for (const s of uncitedSentences(text2)) errors.push({ file, path, message: `uncited sentence: "${s.length > 120 ? `${s.slice(0, 117)}...` : s}"` });
+  };
+  if (model) {
+    prose(MODEL_FILE, "app.summary", model.app.summary);
+    model.systems.forEach((s, i2) => {
+      if (s.summary === void 0) warnings.push({ file: MODEL_FILE, path: `systems[${i2}]`, message: `system "${s.id}" has no summary` });
+      prose(MODEL_FILE, `systems[${i2}].summary`, s.summary);
+    });
+    model.capabilities.forEach((c2, i2) => {
+      if (c2.summary === void 0) warnings.push({ file: MODEL_FILE, path: `capabilities[${i2}]`, message: `capability "${c2.id}" has no summary` });
+      prose(MODEL_FILE, `capabilities[${i2}].summary`, c2.summary);
+      (c2.members ?? []).forEach((m, j) => resolveId(MODEL_FILE, `capabilities[${i2}].members[${j}]`, m));
+    });
+    (model.edges ?? []).forEach((e, i2) => {
+      resolveId(MODEL_FILE, `edges[${i2}].from`, e.from);
+      resolveId(MODEL_FILE, `edges[${i2}].to`, e.to);
+      if (e.cite === void 0) {
+        errors.push({ file: MODEL_FILE, path: `edges[${i2}]`, message: "a hand-written edge needs a `cite` (path:line it rests on)" });
+        return;
+      }
+      const c2 = checkCitations(`[${e.cite}]`, lineTable);
+      if (c2.unresolved.length) errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `dead citation [${e.cite}]: ${c2.unresolved[0].reason}` });
+      else if (!c2.resolved.length || !lineTable.has(c2.resolved[0].path))
+        errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `"${e.cite}" is not an indexed path:line` });
+    });
+    (model.tour ?? []).forEach((t, i2) => {
+      resolveId(MODEL_FILE, `tour[${i2}].node`, t.node);
+      prose(MODEL_FILE, `tour[${i2}].note`, t.note);
+    });
+    (model.glossary ?? []).forEach((g, i2) => prose(MODEL_FILE, `glossary[${i2}].meaning`, g.meaning));
+    for (const g of assembled.emptyGlobs) warnings.push({ file: MODEL_FILE, path: g.path, message: `glob "${g.glob}" matches no indexed file` });
+    if (view.coverage.filesInSystems < FILES_IN_SYSTEMS_MIN) {
+      errors.push({
+        file: MODEL_FILE,
+        path: "systems",
+        message: `systems hold ${pct(view.coverage.filesInSystems)} of code files, below ${pct(FILES_IN_SYSTEMS_MIN)}: widen \`paths\` (\`ultraview show sys:_unassigned\` lists the rest)`
+      });
+    }
+    if (view.coverage.modulesInCapabilities < MODULES_IN_CAPABILITIES_MIN) {
+      errors.push({
+        file: MODEL_FILE,
+        path: "capabilities",
+        message: `capabilities claim ${pct(view.coverage.modulesInCapabilities)} of non-test code modules, below ${pct(MODULES_IN_CAPABILITIES_MIN)}: add members (\`ultraview show cap:_foundations\` lists the unclaimed)`
+      });
+    }
+  }
+  for (const f of flows) {
+    const file = `${FLOWS_DIR}/${f.id}.json`;
+    resolveId(file, "trigger", f.trigger);
+    f.steps.forEach((s, i2) => {
+      resolveId(file, `steps[${i2}].node`, s.node);
+      prose(file, `steps[${i2}].note`, s.note);
+    });
+    if (!f.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview flow save`" });
+  }
+  for (const l of lenses) {
+    const file = `${LENSES_DIR}/${l.id}.json`;
+    l.nodes.forEach((n, i2) => resolveId(file, `nodes[${i2}]`, n));
+    (l.edges ?? []).forEach((e, i2) => {
+      resolveId(file, `edges[${i2}].from`, e.from);
+      resolveId(file, `edges[${i2}].to`, e.to);
+    });
+    resolveId(file, "focus", l.focus);
+    prose(file, "answer", l.answer);
+    if (!l.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview lens save`" });
+  }
+  timeline.forEach((t, i2) => prose(TIMELINE_FILE, `line ${i2 + 1}.summary`, t.summary));
+  const staleSink = opts.strict ? errors : warnings;
+  for (const id of view.stale.lenses)
+    staleSink.push({
+      file: `${LENSES_DIR}/${id}.json`,
+      path: "",
+      message: "stale: a cited file changed since it was saved; re-ask, then `ultraview lens save`"
+    });
+  for (const id of view.stale.flows)
+    staleSink.push({
+      file: `${FLOWS_DIR}/${id}.json`,
+      path: "",
+      message: "stale: a cited file changed since it was saved; re-check, then `ultraview flow save`"
+    });
+  for (const id of view.stale.prose)
+    warnings.push({ file: ".ultraindex", path: id, message: "ultraindex prose is stale (the module's code changed since it was written)" });
+  return report();
+}
+
+// src/dossier.ts
+import { join as join44, resolve as resolve17 } from "path";
+
+// src/show.ts
+import { resolve as resolve16 } from "path";
+var CARD_EDGES = 10;
+var CARD_LIST = 20;
+function liveView(repo) {
+  const loaded2 = loadViewInputs(resolve16(repo));
+  const assembled = assembleWithNotes(loaded2.inputs);
+  return { ...assembled, loaded: loaded2, byId: new Map(assembled.view.nodes.map((n) => [n.id, n])) };
+}
+var cmp3 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function listOf(nodes) {
+  const byKind = {};
+  for (const n of nodes) byKind[n.kind] = (byKind[n.kind] ?? 0) + 1;
+  const ids = nodes.map((n) => n.id).sort(cmp3);
+  return { total: ids.length, byKind, first: ids.slice(0, CARD_LIST) };
+}
+var byWeight = (key) => (a, b) => b.weight - a.weight || cmp3(a[key], b[key]) || cmp3(a.kind, b.kind);
+function nodeCard(live, id) {
+  const node = live.byId.get(id);
+  if (!node) return void 0;
+  const { view } = live;
+  const outs = view.edges.filter((e) => e.from === id);
+  const ins = view.edges.filter((e) => e.to === id);
+  const card = {
+    id: node.id,
+    kind: node.kind,
+    label: node.label,
+    ...node.parent ? { parent: node.parent } : {},
+    ...node.summary ? { summary: node.summary } : {},
+    cites: node.cites,
+    ...node.at ? { at: node.at } : {},
+    caps: node.caps,
+    tags: node.tags,
+    metrics: node.metrics,
+    ...node.role ? { role: node.role } : {},
+    ...node.actors ? { actors: node.actors } : {},
+    ...node.fields ? { fields: node.fields } : {},
+    children: listOf(view.nodes.filter((n) => n.parent === id)),
+    edges: { in: ins.length, out: outs.length },
+    out: [...outs].sort(byWeight("to")).slice(0, CARD_EDGES),
+    in: [...ins].sort(byWeight("from")).slice(0, CARD_EDGES)
+  };
+  if (node.kind === "cap") {
+    const serving = view.nodes.filter((n) => n.caps.includes(id));
+    const coarse = serving.filter((n) => n.kind !== "file" && n.kind !== "sym");
+    card.members = { ...listOf(serving), first: listOf(coarse.length ? coarse : serving).first };
+  }
+  if (id === UNASSIGNED_SYS) {
+    const codeFiles = new Set(view.nodes.filter((n) => n.kind === "file" && n.tags.includes("code")).map((n) => n.id.slice("file:".length)));
+    card.unassignedFiles = [...live.fileSystems].filter(([rel2, sys]) => sys === UNASSIGNED_SYS && codeFiles.has(rel2)).map(([rel2]) => rel2).sort(cmp3);
+  }
+  return card;
+}
+function similarIds(view, query, n = 5) {
+  const q = query.toLowerCase().replace(/^[a-z]+:/, "");
+  if (!q) return [];
+  return view.nodes.filter((x) => x.id.toLowerCase().includes(q) || x.label.toLowerCase().includes(q)).map((x) => x.id).sort((a, b) => a.length - b.length || cmp3(a, b)).slice(0, n);
+}
+function fmtList(l) {
+  const kinds2 = Object.entries(l.byKind).sort((a, b) => cmp3(a[0], b[0])).map(([k, v]) => `${v} ${k}`).join(", ");
+  return `${l.total}${kinds2 ? ` (${kinds2})` : ""}`;
+}
+function fmtEdge(e, other, arrow) {
+  return `  ${arrow} ${other}  ${e.kind} w${e.weight}${e.derived ? "" : " (model)"}${e.label ? `  "${e.label}"` : ""}${e.cite ? `  [${e.cite}]` : ""}`;
+}
+function formatNodeCard(c2) {
+  const lines = [`${c2.id}  (${c2.kind}${c2.role ? `, ${c2.role}` : ""})  ${c2.label}`];
+  const row2 = (k, v) => lines.push(`${k.padEnd(9)} ${v}`);
+  if (c2.summary) row2("summary", c2.summary.replace(/\s+/g, " "));
+  if (c2.at) row2("at", c2.at);
+  if (c2.cites.length) row2("cites", c2.cites.join(", "));
+  row2("parent", c2.parent ?? "(top level)");
+  if (c2.kind !== "cap") row2("caps", c2.caps.length ? c2.caps.join(", ") : "(none)");
+  if (c2.actors?.length) row2("actors", c2.actors.join(", "));
+  if (c2.tags.length) row2("tags", c2.tags.join(", "));
+  const m = c2.metrics;
+  row2("metrics", `loc ${m.loc} \xB7 pagerank ${m.pagerank} \xB7 tests ${m.tests} \xB7 churn ${m.churn}`);
+  if (c2.fields?.length) row2("fields", c2.fields.map((f) => `${f.name}: ${f.type}${f.relation ? ` -> ${f.relation}` : ""}`).join(", "));
+  if (c2.children.total) {
+    row2("children", fmtList(c2.children));
+    for (const id of c2.children.first) lines.push(`  ${id}`);
+    if (c2.children.total > c2.children.first.length) lines.push(`  \u2026 and ${c2.children.total - c2.children.first.length} more`);
+  }
+  if (c2.members) {
+    row2("members", fmtList(c2.members));
+    for (const id of c2.members.first) lines.push(`  ${id}`);
+  }
+  if (c2.unassignedFiles) {
+    row2("unmatched", `${c2.unassignedFiles.length} code file(s) no system's paths match`);
+    for (const rel2 of c2.unassignedFiles.slice(0, CARD_LIST)) lines.push(`  ${rel2}`);
+    if (c2.unassignedFiles.length > CARD_LIST) lines.push(`  \u2026 and ${c2.unassignedFiles.length - CARD_LIST} more`);
+  }
+  row2("out", `${c2.edges.out} edge(s)${c2.edges.out > c2.out.length ? `, top ${c2.out.length} by weight` : ""}`);
+  for (const e of c2.out) lines.push(fmtEdge(e, e.to, "->"));
+  row2("in", `${c2.edges.in} edge(s)${c2.edges.in > c2.in.length ? `, top ${c2.in.length} by weight` : ""}`);
+  for (const e of c2.in) lines.push(fmtEdge(e, e.from, "<-"));
+  return `${lines.join("\n")}
+`;
+}
+
+// src/dossier.ts
+var DOSSIER_BUDGET = 6e3;
+var CHARS_PER_TOKEN3 = 4;
+var KEY_FILES = 8;
+var HEAD_LINES2 = 60;
+var NEIGHBOURS = 12;
+var FACTS_PER_KIND = 25;
+var SITES = 12;
+var cmp4 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var CITE_RULE = "Every sentence you write cites the file it rests on as `[path:line]` (or `[path:start-end]`); `ultraview check` fails a dead citation and an uncited sentence.";
+function readLines(repo, rel2) {
+  try {
+    return codeindex_engine_exports.readText(join44(repo, rel2)).split(/\r?\n/);
+  } catch {
+    return void 0;
+  }
+}
+function excerpt(repo, rel2, from, to) {
+  const lines = readLines(repo, rel2);
+  if (!lines) return void 0;
+  const a = Math.max(1, from);
+  const b = Math.min(lines.length, to);
+  if (a > b) return void 0;
+  const width = String(b).length;
+  return lines.slice(a - 1, b).map((l, i2) => `${String(a + i2).padStart(width)}  ${l}`).join("\n");
+}
+function atParts(at) {
+  if (!at) return void 0;
+  const i2 = at.lastIndexOf(":");
+  return i2 > 0 ? { file: at.slice(0, i2), line: Number(at.slice(i2 + 1)) } : void 0;
+}
+function withinBudget(sections, budget) {
+  const max = budget * CHARS_PER_TOKEN3;
+  const out2 = [];
+  let used = 0;
+  for (let i2 = 0; i2 < sections.length; i2++) {
+    const s = sections[i2];
+    if (used + s.length + 2 <= max) {
+      out2.push(s);
+      used += s.length + 2;
+      continue;
+    }
+    const room = max - used;
+    const nl = room > 0 ? s.lastIndexOf("\n", room) : -1;
+    if (nl > 0) {
+      let kept = s.slice(0, nl);
+      if ((kept.match(/```/g)?.length ?? 0) % 2 === 1) kept += "\n```";
+      out2.push(kept);
+    }
+    out2.push(`\u2026 (cut to the ~${budget}-token budget: ${sections.length - i2 - (nl > 0 ? 1 : 0)} more section(s); pass --budget to see more)`);
+    break;
+  }
+  return `${out2.join("\n\n")}
+`;
+}
+function neighbourLines(live, id, leafOnly = false) {
+  const label = (x) => live.byId.get(x)?.label ?? x;
+  const coarse = /* @__PURE__ */ new Set(["cap", "sys", "mod"]);
+  const keep = (other) => !leafOnly || !coarse.has(kindOf2(other) ?? "");
+  const byW = (key) => (a, b) => b.weight - a.weight || cmp4(a[key], b[key]) || cmp4(a.kind, b.kind);
+  const outs = live.view.edges.filter((e) => e.from === id && keep(e.to)).sort(byW("to"));
+  const ins = live.view.edges.filter((e) => e.to === id && keep(e.from)).sort(byW("from"));
+  const lines = [];
+  for (const e of outs.slice(0, NEIGHBOURS)) lines.push(`- -> ${e.to} (${label(e.to)})  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`);
+  if (outs.length > NEIGHBOURS) lines.push(`- \u2026 and ${outs.length - NEIGHBOURS} more outgoing`);
+  for (const e of ins.slice(0, NEIGHBOURS)) lines.push(`- <- ${e.from} (${label(e.from)})  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`);
+  if (ins.length > NEIGHBOURS) lines.push(`- \u2026 and ${ins.length - NEIGHBOURS} more incoming`);
+  return lines.length ? ["## Neighbours", ...lines] : [];
+}
+function factLines(nodes) {
+  const order = [
+    ["route", "routes"],
+    ["screen", "screens"],
+    ["entity", "entities"],
+    ["job", "jobs"],
+    ["ext", "externals"],
+    ["infra", "infra"]
+  ];
+  const lines = [];
+  for (const [kind, plural2] of order) {
+    const of = nodes.filter((n) => n.kind === kind).sort((a, b) => cmp4(a.id, b.id));
+    if (!of.length) continue;
+    lines.push(`${plural2} (${of.length}):`);
+    for (const n of of.slice(0, FACTS_PER_KIND)) lines.push(`- ${n.id}${n.tags.length ? ` (${n.tags.join(", ")})` : ""}${n.at ? `  [${n.at}]` : ""}`);
+    if (of.length > FACTS_PER_KIND) lines.push(`- \u2026 and ${of.length - FACTS_PER_KIND} more`);
+  }
+  return lines.length ? ["## Facts", ...lines] : [];
+}
+function evidenceBlocks(repo, rels) {
+  return gatherEvidence(repo, rels, HEAD_LINES2).map((e) => {
+    const parts2 = [`### ${e.rel} (${e.lines} lines)`];
+    if (e.exported.length) {
+      parts2.push("Exported:");
+      for (const s of e.exported) parts2.push(`- ${s.kind} ${s.name} @ line ${s.line}`);
+    }
+    parts2.push(`Source (lines 1-${e.headTo}${e.headTo < e.lines ? ", file continues" : ""}):`, "```", excerpt(repo, e.rel, 1, e.headTo) ?? e.head, "```");
+    return parts2.join("\n");
+  });
+}
+function header(n, task) {
+  const lines = [`# Dossier \u2014 ${n.id}  "${n.label}"`, "", `Task: ${task} ${CITE_RULE}`];
+  if (n.summary) lines.push("", `Current summary: ${n.summary.replace(/\s+/g, " ")}`);
+  const meta = [n.parent ? `parent ${n.parent}` : "", n.caps.length ? `caps ${n.caps.join(", ")}` : "", n.at ? `defined at ${n.at}` : ""].filter(Boolean);
+  if (meta.length) lines.push("", meta.join(" \xB7 "));
+  return lines.join("\n");
+}
+function topFiles(files) {
+  const isCode2 = (f) => f.tags.includes("code") ? 0 : 1;
+  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode2(a) - isCode2(b) || b.metrics.pagerank - a.metrics.pagerank || cmp4(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
+}
+function groupDossier(live, repo, n, budget) {
+  const nodes = live.view.nodes;
+  let members;
+  if (n.kind === "cap") members = nodes.filter((x) => x.caps.includes(n.id));
+  else {
+    const under = /* @__PURE__ */ new Set([n.id]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const x of nodes) {
+        if (x.parent && under.has(x.parent) && !under.has(x.id)) {
+          under.add(x.id);
+          grew = true;
+        }
+      }
+    }
+    under.delete(n.id);
+    for (const [rel2, sys] of live.fileSystems) if (sys === n.id) under.add(fileId(rel2));
+    members = nodes.filter((x) => under.has(x.id));
+  }
+  const files = members.filter((x) => x.kind === "file");
+  const fileSet = new Set(files.map((f) => f.id));
+  const exts = new Set(live.view.edges.filter((e) => fileSet.has(e.from) && kindOf2(e.to) === "ext").map((e) => e.to));
+  const factNodes = [...members, ...[...exts].map((x) => live.byId.get(x))].filter((x) => x && x.kind !== "file" && x.kind !== "sym" && x.kind !== "mod");
+  const mods = members.filter((x) => x.kind === "mod").sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp4(a.id, b.id));
+  const modLines = mods.map(
+    (m) => `- ${m.id} (${m.label}): ${nodes.filter((x) => x.parent === m.id && x.kind === "file").length} file(s), pagerank ${m.metrics.pagerank}`
+  );
+  const memberSection = [
+    `## Members: ${mods.length} module(s), ${files.length} file(s)`,
+    ...modLines.length ? modLines : files.slice(0, 20).map((f) => `- ${f.id}`)
+  ].join("\n");
+  const task = n.kind === "cap" ? `write this capability's \`summary\` in .ultraview/model.json: what it does for the people using the app, in plain words, from the evidence below.` : `write this system's \`summary\` in .ultraview/model.json: what it is and what it does for the app, in plain words, from the evidence below.`;
+  const sections = [header(n, task), memberSection];
+  const facts = factLines(factNodes);
+  if (facts.length) sections.push(facts.join("\n"));
+  const neigh = neighbourLines(live, n.id);
+  if (neigh.length) sections.push(neigh.join("\n"));
+  const key = topFiles(files);
+  if (key.length) sections.push(`## Key source (top ${key.length} file(s) by PageRank)`, ...evidenceBlocks(repo, key));
+  return withinBudget(sections, budget);
+}
+function sitesOf(facts, n) {
+  const p = parseId(n.id);
+  if (!p) return [];
+  switch (p.kind) {
+    case "route":
+      return facts.calls.filter((c2) => c2.route === n.id).map((c2) => ({ file: c2.file, line: c2.line, what: `${c2.method} ${c2.url}` }));
+    case "entity":
+      return facts.entityUses.filter((u) => u.entity === p.name).map((u) => ({ file: u.file, line: u.line, what: u.op }));
+    case "ext":
+      return facts.externals.filter((x) => x.id === p.name).map((x) => ({ file: x.file, line: x.line, what: `via ${x.via}` }));
+    case "job":
+      return facts.jobs.filter((j) => j.id === p.name).map((j) => ({ file: j.file, line: j.line, what: j.kind }));
+    default:
+      return [];
+  }
+}
+function leafDossier(live, repo, n, budget) {
+  const sections = [
+    header(n, `explain what \`${n.id}\` does and who relies on it, from the evidence below (a flow step, a lens answer or a capability summary).`)
+  ];
+  const at = atParts(n.at);
+  if (n.kind === "file") {
+    sections.push(...evidenceBlocks(repo, [fileOfId(n.id)]));
+  } else if (at) {
+    const end = n.metrics.loc > 0 ? at.line + n.metrics.loc - 1 : at.line + 15;
+    const ex = excerpt(repo, at.file, at.line - 3, Math.min(end + 2, at.line + 60));
+    if (ex) sections.push(`## Definition [${n.at}]
+\`\`\`
+${ex}
+\`\`\``);
+  }
+  if (n.fields?.length)
+    sections.push(["## Fields", ...n.fields.map((f) => `- ${f.name}: ${f.type}${f.relation ? ` -> entity:${f.relation}` : ""}`)].join("\n"));
+  const sites = sitesOf(live.loaded.inputs.facts, n).sort((a, b) => cmp4(a.file, b.file) || a.line - b.line);
+  const neigh = neighbourLines(live, n.id, true);
+  if (neigh.length) sections.push(neigh.join("\n"));
+  if (sites.length) {
+    sections.push(`## Used at (${sites.length} site(s))`);
+    for (const s of sites.slice(0, SITES)) {
+      const ex = excerpt(repo, s.file, s.line - 2, s.line + 3);
+      sections.push(`### [${s.file}:${s.line}] ${s.what}${ex ? `
+\`\`\`
+${ex}
+\`\`\`` : ""}`);
+    }
+    if (sites.length > SITES) sections.push(`\u2026 and ${sites.length - SITES} more site(s)`);
+  }
+  return withinBudget(sections, budget);
+}
+function renderNodeDossier(live, repo, id, opts = {}) {
+  const n = live.byId.get(id);
+  if (!n) return void 0;
+  const budget = opts.budget ?? DOSSIER_BUDGET;
+  if (n.kind === "mod") {
+    const slug = id.slice("mod:".length);
+    const module2 = live.loaded.inputs.graph.modules.find((m) => m.slug === slug);
+    if (!module2) return void 0;
+    const base = renderModuleDossier(repo, live.loaded.inputs.graph, module2, budget).trimEnd();
+    const under = live.view.nodes.filter((x) => x.parent && (x.parent === id || live.byId.get(x.parent)?.parent === id));
+    const facts = factLines(under);
+    const extra = [`## ultraview`, `node ${id} \xB7 parent ${n.parent ?? "-"} \xB7 caps ${n.caps.join(", ") || "(none)"}`, ...facts].join("\n");
+    return `${base}
+
+${extra}
+`;
+  }
+  if (n.kind === "cap" || n.kind === "sys") return groupDossier(live, repo, n, budget);
+  return leafDossier(live, repo, n, budget);
+}
+
+// src/save.ts
+import { existsSync as existsSync20, mkdirSync as mkdirSync7, readFileSync as readFileSync26, statSync as statSync16, writeFileSync as writeFileSync10 } from "fs";
+import { dirname as dirname13, join as join45, relative as relative13, resolve as resolve18, sep as sep9 } from "path";
+var LENS = {
+  dir: LENSES_DIR,
+  validate: validateLens,
+  prose: (l) => [{ path: "answer", text: l.answer }],
+  identity: (l) => l.question,
+  noun: "question"
+};
+var FLOW = {
+  dir: FLOWS_DIR,
+  validate: validateFlow,
+  prose: (f) => f.steps.map((s, i2) => ({ path: `steps[${i2}].note`, text: s.note })),
+  identity: (f) => f.title,
+  noun: "title"
+};
+function save(kind, repoArg, input, opts) {
+  const repo = resolve18(repoArg);
+  const fail = (errors2, extra = {}) => ({ ok: false, sources: {}, replaced: false, errors: errors2, ...extra });
+  let value = input;
+  if (typeof input === "string") {
+    const parsed2 = parseJson(input);
+    if (parsed2.problems.length) return fail(parsed2.problems);
+    value = parsed2.value;
+  }
+  const schemaErrors = kind.validate(value);
+  if (schemaErrors.length) return fail(schemaErrors);
+  const item = value;
+  const file = `${kind.dir}/${item.id}.json`;
+  const errors = [];
+  const graph = loadGraph(viewPaths(repo).index);
+  const lineTable = graph ? fileLineTable(graph) : void 0;
+  const cited = /* @__PURE__ */ new Set();
+  for (const { path, text: text2 } of kind.prose(item)) {
+    if (lineTable) for (const u of checkCitations(text2, lineTable).unresolved) errors.push({ path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
+    for (const c2 of parseCitations(text2)) {
+      const abs2 = resolve18(repo, c2.path);
+      const inside = abs2.startsWith(repo + sep9);
+      if (!inside || !existsSync20(abs2) || !statSync16(abs2).isFile()) {
+        if (inside && !c2.path.includes("/") && !existsSync20(abs2)) continue;
+        errors.push({ path, message: `cites ${c2.path}, which is not a file in the repo` });
+        continue;
+      }
+      cited.add(relative13(repo, abs2).split(sep9).join("/"));
+    }
+  }
+  if (errors.length) return fail(errors, { file, id: item.id });
+  const sources = {};
+  for (const rel2 of [...cited].sort()) sources[rel2] = fileSha256(join45(repo, rel2));
+  const abs = join45(repo, file);
+  let replaced = false;
+  if (existsSync20(abs)) {
+    const prev = parseJson(readFileSync26(abs, "utf8")).value;
+    const prevIdentity = prev && kind.validate(prev).length === 0 ? kind.identity(prev) : void 0;
+    if (prevIdentity !== void 0 && prevIdentity !== kind.identity(item) && !opts.force) {
+      return fail(
+        [{ path: "id", message: `${file} already holds a different ${kind.noun} ("${prevIdentity}"): pick another id, or pass --force to replace it` }],
+        { file, id: item.id }
+      );
+    }
+    replaced = true;
+  }
+  mkdirSync7(dirname13(abs), { recursive: true });
+  writeFileSync10(abs, stableJson({ ...item, sources }));
+  return { ok: true, file, id: item.id, sources, replaced, errors: [] };
+}
+function saveLens(repo, input, opts = {}) {
+  return save(LENS, repo, input, opts);
+}
+function saveFlow(repo, input, opts = {}) {
+  return save(FLOW, repo, input, opts);
 }
 
 // src/summary.ts
@@ -32550,9 +33959,19 @@ function formatBuildSummary(r) {
     for (const f of r.failures.slice(0, EXAMPLES)) push(`  ${f.extractor} on ${f.file}: ${f.message}`);
   }
   push();
+  const cov = r.view.coverage;
+  push(
+    `view       ${r.view.nodes} nodes, ${r.view.edges} edges, ${(r.view.bytes / 1024).toFixed(0)} KB; coverage: files in systems ${(cov.filesInSystems * 100).toFixed(1)}%, modules in capabilities ${(cov.modulesInCapabilities * 100).toFixed(1)}%`
+  );
+  if (r.view.oversize) push(`WARNING    view.json is over ${VIEW_SIZE_WARN_BYTES / 1024 / 1024} MB: the viewer will be slow (narrow the index with --exclude)`);
+  if (r.view.problems.length) {
+    const files = [...new Set(r.view.problems.map((p) => p.file))];
+    push(`WARNING    ${r.view.problems.length} problem(s) in ${files.join(", ")}: left out of the view; run \`ultraview check\``);
+  }
+  push();
   push(`written    ${r.written.join(", ")}`);
   push(
-    r.hasModel ? "next step: run `ultraview status` to see what is stale, then re-describe only that." : "next step: read README, manifests and entrypoints, then write .ultraview/model.json (systems covering >= 90% of code files, then capabilities; every sentence cites [path:line])."
+    r.hasModel ? "next step: run `ultraview check` and fix what it reports; `ultraview status` says what is stale." : "next step: read README, manifests and entrypoints, then write .ultraview/model.json (systems covering >= 90% of code files, then capabilities; every sentence cites [path:line])."
   );
   if (lines.length > SUMMARY_MAX_LINES) {
     const kept = lines.slice(0, SUMMARY_MAX_LINES - 2);
@@ -32566,8 +33985,8 @@ function formatBuildSummary(r) {
 }
 
 // src/status.ts
-import { existsSync as existsSync18 } from "fs";
-import { resolve as resolve15 } from "path";
+import { existsSync as existsSync21 } from "fs";
+import { resolve as resolve19 } from "path";
 var build = (s) => `run \`ultraview build --repo ${s.paths.repo}\``;
 var noIndex = (s) => s.index.exists ? void 0 : { situation: "no-index", reasons: ["no ultraindex index at .ultraindex/"], worklist: [build(s)] };
 var indexStale = (s) => {
@@ -32582,7 +34001,37 @@ var noModel = (s) => s.model.exists ? void 0 : {
   reasons: ["no .ultraview/model.json"],
   worklist: ["read the build summary, then write .ultraview/model.json (systems first, then capabilities, every sentence citing [path:line])"]
 };
-var PROBES = [noIndex, indexStale, noModel];
+var WORKLIST_MAX = 10;
+var worklistOf = (issues, tail) => {
+  const items = issues.slice(0, WORKLIST_MAX).map(formatIssue);
+  if (issues.length > WORKLIST_MAX) items.push(`\u2026 and ${issues.length - WORKLIST_MAX} more: run \`ultraview check\``);
+  items.push(tail);
+  return items;
+};
+var modelIncomplete = (s) => {
+  const c2 = s.check();
+  if (c2.ok) return void 0;
+  return {
+    situation: "model-incomplete",
+    reasons: [
+      `check fails with ${c2.errors.length} error(s)`,
+      `coverage: files in systems ${(c2.coverage.filesInSystems * 100).toFixed(1)}% (min ${c2.thresholds.filesInSystems * 100}%), modules in capabilities ${(c2.coverage.modulesInCapabilities * 100).toFixed(1)}% (min ${c2.thresholds.modulesInCapabilities * 100}%)`
+    ],
+    worklist: worklistOf(c2.errors, "run `ultraview check` until it passes")
+  };
+};
+var staleViews = (s) => {
+  const c2 = s.check();
+  const stale = c2.stale.lenses.length + c2.stale.flows.length + c2.stale.prose.length;
+  if (!stale) return void 0;
+  const reasons = [];
+  if (c2.stale.lenses.length) reasons.push(`stale lenses: ${c2.stale.lenses.join(", ")}`);
+  if (c2.stale.flows.length) reasons.push(`stale flows: ${c2.stale.flows.join(", ")}`);
+  if (c2.stale.prose.length) reasons.push(`stale module prose: ${c2.stale.prose.join(", ")}`);
+  const staleWarnings = c2.warnings.filter((w) => w.message.includes("stale"));
+  return { situation: "stale-views", reasons, worklist: worklistOf(staleWarnings, "re-ask only what is stale, save it, then `ultraview check`") };
+};
+var PROBES = [noIndex, indexStale, noModel, modelIncomplete, staleViews];
 function indexState(paths) {
   if (!indexExists(paths.index)) return { exists: false, stale: false, changed: 0, added: 0, removed: 0, errors: [] };
   const check = runCheck(paths.index, paths.repo);
@@ -32596,16 +34045,18 @@ function indexState(paths) {
   };
 }
 function readStatus(repoArg, probes = PROBES) {
-  const repo = resolve15(repoArg);
-  if (!existsSync18(repo)) throw new Error(`repo not found: ${repo}`);
+  const repo = resolve19(repoArg);
+  if (!existsSync21(repo)) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
+  let report;
   const inputs = {
     paths,
     index: indexState(paths),
-    facts: { exists: existsSync18(paths.facts) },
-    model: { exists: existsSync18(paths.model) }
+    facts: { exists: existsSync21(paths.facts) },
+    model: { exists: existsSync21(paths.model) },
+    check: () => report ??= checkMap(repo)
   };
-  let hit = { situation: "ready", reasons: ["index fresh, model present"], worklist: [] };
+  let hit = { situation: "ready", reasons: ["index fresh, model checks clean, nothing stale"], worklist: [] };
   for (const probe of probes) {
     const h = probe(inputs);
     if (h) {
@@ -32613,7 +34064,14 @@ function readStatus(repoArg, probes = PROBES) {
       break;
     }
   }
-  return { repo, ...hit, index: inputs.index, facts: inputs.facts, model: inputs.model };
+  return {
+    repo,
+    ...hit,
+    index: inputs.index,
+    facts: inputs.facts,
+    model: inputs.model,
+    ...report ? { check: { ok: report.ok, errors: report.errors.length, warnings: report.warnings.length, coverage: report.coverage } } : {}
+  };
 }
 
 // src/version.ts
@@ -32626,20 +34084,37 @@ var EXIT_USAGE = 2;
 var HELP2 = `ultraview v${ULTRAVIEW_VERSION} (ultraindex ${VERSION}, codeindex ${codeindex_engine_exports.ENGINE_VERSION})
 See your app instead of reading its code: a cited map of a repository, built
 from the ultraindex index plus deterministic extractors (routes, data models,
-\u2026). Under construction: build and status only.
+\u2026) and the meaning the agent writes into .ultraview/ (model, flows, lenses).
+Under construction: no viewer yet.
 
 Usage:
   ultraview <command> [options]
 
 Commands:
-  build      Refresh the ultraindex index (incremental, into <repo>/.ultraindex),
-             run the extractors over every indexed file, and write
-             <repo>/.ultraview/facts.json and <repo>/.ultraview/.gitignore.
-             Prints a short summary for the agent: files, languages,
-             workspaces, top modules by PageRank, fact counts with examples,
-             externals, and the next step.
-  status     Where the repo stands and what to do next: no-index, index-stale,
-             no-model, model-incomplete, stale-views or ready, with a worklist.
+  build              Refresh the ultraindex index (incremental, into
+                     <repo>/.ultraindex), run the extractors over every indexed
+                     file, merge everything into the view-model, and write
+                     <repo>/.ultraview/facts.json, view.json and .gitignore.
+                     Prints a short summary for the agent: files, languages,
+                     workspaces, top modules by PageRank, fact counts with
+                     examples, externals, view size and coverage, next step.
+  status             Where the repo stands and what to do next: no-index,
+                     index-stale, no-model, model-incomplete, stale-views or
+                     ready, with a worklist.
+  check              The gate for what the agent wrote: schema, node ids that
+                     resolve, citations that resolve (ultraindex
+                     checkCitations), one citation per sentence, coverage
+                     (systems >= 90% of code files, capabilities >= 70% of
+                     non-test modules), stale lenses / flows (warnings).
+                     Exit 1 on failure.
+  dossier <node-id>  Evidence pack to write about one node: real source,
+                     facts with file:line, neighbours. Cut to --budget tokens.
+  show <node-id>     Compact card for one node: kind, label, parent,
+                     capabilities, summary, citations, metrics, top edges.
+  lens save <file>   Validate a lens (one saved question and its cited
+                     answer), stamp the hashes of the files it cites, write
+                     .ultraview/lenses/<id>.json.
+  flow save <file>   Same for a flow: .ultraview/flows/<id>.json.
 
 Options:
   --repo <dir>   Repository to map (default: the current directory)
@@ -32647,13 +34122,29 @@ Options:
                  no network). Grammars are otherwise pulled once per machine
                  into the shared codeindex cache; CODEINDEX_NO_GRAMMARS_PULL=1
                  forbids the download.
+  --strict       check: stale lenses / flows fail instead of warning
+  --budget <n>   dossier: token budget (default ${DOSSIER_BUDGET}, ~4 characters a token)
+  --force        lens save / flow save: replace a different question / title
+                 saved under the same id
   --json         Machine-readable output (the full result object)
   -h, --help     Show this help
   -v, --version  Show the version
+
+Exit codes: 0 ok, 1 failure (check failed, save refused), 2 usage error or
+unknown node id.
 `;
-var COMMANDS = ["build", "status"];
-var VALUE_FLAGS2 = ["repo"];
-var BOOL_FLAGS = ["json", "no-ast"];
+var COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow"];
+var VALUE_FLAGS2 = ["repo", "budget"];
+var BOOL_FLAGS = ["json", "no-ast", "strict", "force"];
+var ARITY = {
+  build: { min: 0, max: 0, usage: "build" },
+  status: { min: 0, max: 0, usage: "status" },
+  check: { min: 0, max: 0, usage: "check" },
+  dossier: { min: 1, max: 1, usage: "dossier <node-id>" },
+  show: { min: 1, max: 1, usage: "show <node-id>" },
+  lens: { min: 2, max: 2, usage: "lens save <file>" },
+  flow: { min: 2, max: 2, usage: "flow save <file>" }
+};
 var processIo = {
   out: (s) => process.stdout.write(s),
   err: (s) => process.stderr.write(s)
@@ -32725,6 +34216,92 @@ async function cmdStatus(p, io) {
   io.out(p.bools.has("json") ? json(report) : formatStatus(report));
   return EXIT_OK;
 }
+function formatCheck(r) {
+  const pct2 = (x) => `${(x * 100).toFixed(1)}%`;
+  const lines = [
+    `check      ${r.ok ? "ok" : `FAILED (${r.errors.length} error(s))`}${r.warnings.length ? `, ${r.warnings.length} warning(s)` : ""}`,
+    `coverage   files in systems ${pct2(r.coverage.filesInSystems)} (min ${pct2(r.thresholds.filesInSystems)}), modules in capabilities ${pct2(r.coverage.modulesInCapabilities)} (min ${pct2(r.thresholds.modulesInCapabilities)})`
+  ];
+  if (r.errors.length) {
+    lines.push("errors");
+    for (const e of r.errors) lines.push(`  ${formatIssue(e)}`);
+  }
+  if (r.warnings.length) {
+    lines.push("warnings");
+    for (const w of r.warnings) lines.push(`  ${formatIssue(w)}`);
+  }
+  return `${lines.join("\n")}
+`;
+}
+async function cmdCheck(p, io) {
+  const report = checkMap(p.values.repo ?? ".", { strict: p.bools.has("strict") });
+  io.out(p.bools.has("json") ? json(report) : formatCheck(report));
+  return report.ok ? EXIT_OK : EXIT_FAILURE;
+}
+function unknownId(p, io, id, suggestions) {
+  const hint = suggestions.length ? ` (did you mean: ${suggestions.join(", ")}?)` : "";
+  if (p.bools.has("json")) io.out(json({ error: `unknown node id: ${id}`, suggestions }));
+  io.err(`ultraview: unknown node id: ${id}${hint}
+`);
+  return EXIT_USAGE;
+}
+async function cmdShow(p, io) {
+  const id = p.positional[0];
+  const live = liveView(p.values.repo ?? ".");
+  const card = nodeCard(live, id);
+  if (!card) return unknownId(p, io, id, similarIds(live.view, id));
+  io.out(p.bools.has("json") ? json(card) : formatNodeCard(card));
+  return EXIT_OK;
+}
+async function cmdDossier(p, io) {
+  const id = p.positional[0];
+  let budget;
+  if (p.values.budget !== void 0) {
+    budget = Number(p.values.budget);
+    if (!Number.isInteger(budget) || budget <= 0) {
+      io.err(`ultraview: --budget must be a positive integer (got ${p.values.budget})
+`);
+      return EXIT_USAGE;
+    }
+  }
+  const repo = resolve20(p.values.repo ?? ".");
+  const live = liveView(repo);
+  const text2 = renderNodeDossier(live, repo, id, { budget });
+  if (text2 === void 0) return unknownId(p, io, id, similarIds(live.view, id));
+  io.out(p.bools.has("json") ? json({ id, budget: budget ?? DOSSIER_BUDGET, text: text2 }) : text2);
+  return EXIT_OK;
+}
+async function cmdSave(p, io, what) {
+  const [action, file] = p.positional;
+  if (action !== "save") {
+    io.err(`ultraview: unknown ${what} action: ${action} (only \`${what} save <file>\` for now)
+`);
+    return EXIT_USAGE;
+  }
+  let text2;
+  try {
+    text2 = readFileSync27(resolve20(file), "utf8");
+  } catch (e) {
+    io.err(`ultraview: cannot read ${file}: ${e.message}
+`);
+    return EXIT_FAILURE;
+  }
+  const repo = p.values.repo ?? ".";
+  const opts = { force: p.bools.has("force") };
+  const r = what === "lens" ? saveLens(repo, text2, opts) : saveFlow(repo, text2, opts);
+  if (p.bools.has("json")) io.out(json(r));
+  else if (r.ok) {
+    const n = Object.keys(r.sources).length;
+    io.out(`saved      ${r.file}${r.replaced ? " (replaced)" : ""}; sources: ${n} cited file(s) hashed
+next step: run \`ultraview check\`
+`);
+  } else {
+    io.err(`ultraview: ${what} not saved${r.file ? ` (${r.file})` : ""}:
+${r.errors.map((e) => `  ${e.path || "(root)"}: ${e.message}`).join("\n")}
+`);
+  }
+  return r.ok ? EXIT_OK : EXIT_FAILURE;
+}
 async function main(argv, io = processIo) {
   const p = parseArgs(argv);
   if ("error" in p) {
@@ -32743,14 +34320,33 @@ async function main(argv, io = processIo) {
     io.out(HELP2);
     return EXIT_OK;
   }
-  if (p.positional.length) {
-    io.err(`ultraview: unexpected argument: ${p.positional[0]}
+  const arity2 = ARITY[p.command];
+  if (p.positional.length > arity2.max) {
+    io.err(`ultraview: unexpected argument: ${p.positional[arity2.max]} (usage: ultraview ${arity2.usage})
+`);
+    return EXIT_USAGE;
+  }
+  if (p.positional.length < arity2.min) {
+    io.err(`ultraview: missing argument (usage: ultraview ${arity2.usage})
 `);
     return EXIT_USAGE;
   }
   try {
-    if (p.command === "build") return await cmdBuild(p, io);
-    return await cmdStatus(p, io);
+    switch (p.command) {
+      case "build":
+        return await cmdBuild(p, io);
+      case "check":
+        return await cmdCheck(p, io);
+      case "show":
+        return await cmdShow(p, io);
+      case "dossier":
+        return await cmdDossier(p, io);
+      case "lens":
+      case "flow":
+        return await cmdSave(p, io, p.command);
+      default:
+        return await cmdStatus(p, io);
+    }
   } catch (e) {
     const message = e.message;
     if (p.bools.has("json")) io.out(json({ error: message }));
@@ -32792,6 +34388,7 @@ export {
   EXIT_USAGE,
   HELP2 as HELP,
   VALUE_FLAGS2 as VALUE_FLAGS,
+  formatCheck,
   formatStatus,
   main,
   parseArgs

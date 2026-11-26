@@ -1,6 +1,7 @@
 // `ultraview build`, as a library call: refresh the ultraindex index
-// (incremental), run the extractors over the files it indexed, and write
-// `.ultraview/facts.json` plus `.ultraview/.gitignore`.
+// (incremental), run the extractors over the files it indexed, merge
+// everything into the view-model, and write `.ultraview/facts.json`,
+// `.ultraview/view.json` plus `.ultraview/.gitignore`.
 //
 // Never prints, never exits: the result comes back as a value and the CLI
 // decides what to say (src/cli.ts, src/summary.ts).
@@ -10,6 +11,9 @@ import { basename, resolve } from "node:path";
 import { codeindex, type Graph, loadManifest, prepareGrammars, runBuild } from "./engine.js";
 import { type ExtractorFailure, type Facts, runExtractors } from "./extract/index.js";
 import { stableJson } from "./json.js";
+import { assembleView } from "./model/assemble.js";
+import { type FileProblem, loadViewInputs } from "./model/load.js";
+import type { ViewCoverage } from "./model/types.js";
 import { GENERATED_FILES, VIEW_DIR, viewPaths } from "./paths.js";
 
 export interface MapBuildOptions {
@@ -51,9 +55,25 @@ export interface MapBuildResult {
   failures: ExtractorFailure[];
   /** Whether .ultraview/model.json exists (decides the next step). */
   hasModel: boolean;
+  /** What went into .ultraview/view.json. */
+  view: ViewBuildSummary;
   /** Files written, repo-relative. */
   written: string[];
 }
+
+export interface ViewBuildSummary {
+  nodes: number;
+  edges: number;
+  coverage: ViewCoverage;
+  bytes: number;
+  /** view.json is over VIEW_SIZE_WARN_BYTES: the viewer will be slow. */
+  oversize: boolean;
+  /** Agent-authored files left out of the view because they are invalid (run `check`). */
+  problems: FileProblem[];
+}
+
+/** Warn past this view.json size (docs/design.md §6). */
+export const VIEW_SIZE_WARN_BYTES = 15 * 1024 * 1024;
 
 /** Our own files never enter the index: model edits must not make it stale. */
 const VIEW_EXCLUDE = `${VIEW_DIR}/**`;
@@ -120,6 +140,12 @@ export async function buildMap(opts: MapBuildOptions): Promise<MapBuildResult> {
   writeFileSync(paths.facts, stableJson(facts));
   writeFileSync(paths.gitignore, GITIGNORE_BODY);
 
+  const loaded = loadViewInputs(repo, { graph, facts });
+  const view = assembleView(loaded.inputs);
+  const viewText = stableJson(view);
+  writeFileSync(paths.view, viewText);
+  const bytes = Buffer.byteLength(viewText);
+
   const ws = codeindex.detectWorkspaces(repo);
   const workspaces = ws.packages
     .map((p) => ({ name: p.name, dir: p.dir, kind: p.kind }))
@@ -142,6 +168,14 @@ export async function buildMap(opts: MapBuildOptions): Promise<MapBuildResult> {
     facts,
     failures,
     hasModel: existsSync(paths.model),
-    written: [`${VIEW_DIR}/facts.json`, `${VIEW_DIR}/.gitignore`],
+    view: {
+      nodes: view.nodes.length,
+      edges: view.edges.length,
+      coverage: view.coverage,
+      bytes,
+      oversize: bytes > VIEW_SIZE_WARN_BYTES,
+      problems: loaded.problems,
+    },
+    written: [`${VIEW_DIR}/facts.json`, `${VIEW_DIR}/view.json`, `${VIEW_DIR}/.gitignore`],
   };
 }

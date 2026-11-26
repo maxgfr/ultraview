@@ -4,8 +4,8 @@
 //   no-index          no ultraindex index yet                → build
 //   index-stale       sources changed since the index, or facts.json missing → build
 //   no-model          .ultraview/model.json absent          → write the model
-//   model-incomplete  model fails coverage / citations      (M2)
-//   stale-views       lenses / flows cite changed files     (M3)
+//   model-incomplete  `check` fails: schema, ids, citations or coverage → fix the model
+//   stale-views       `check` passes but warns: lenses / flows / prose went stale → re-ask
 //   ready             nothing to do
 //
 // Each situation is a probe; a later milestone adds its probe to PROBES and
@@ -13,6 +13,7 @@
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { type CheckReport, checkMap, formatIssue } from "./check.js";
 import { indexExists, runCheck } from "./engine.js";
 import { viewPaths, type ViewPaths } from "./paths.js";
 
@@ -38,6 +39,8 @@ export interface StatusReport {
   index: IndexState;
   facts: { exists: boolean };
   model: { exists: boolean };
+  /** The check gate's verdict, when status ran it. */
+  check?: { ok: boolean; errors: number; warnings: number; coverage: CheckReport["coverage"] };
 }
 
 /** What every probe can look at, computed once. */
@@ -46,6 +49,8 @@ export interface StatusInputs {
   index: IndexState;
   facts: { exists: boolean };
   model: { exists: boolean };
+  /** The check gate's report, computed on first use (only once the index is fresh and a model exists). */
+  check: () => CheckReport;
 }
 
 export interface ProbeHit {
@@ -77,8 +82,43 @@ const noModel: Probe = (s) =>
         worklist: ["read the build summary, then write .ultraview/model.json (systems first, then capabilities, every sentence citing [path:line])"],
       };
 
-/** Routing order. M2 adds `model-incomplete` after `noModel`; M3 adds `stale-views`. */
-export const PROBES: readonly Probe[] = [noIndex, indexStale, noModel];
+/** Worklist items shown per situation, at most. */
+export const WORKLIST_MAX = 10;
+
+const worklistOf = (issues: CheckReport["errors"], tail: string): string[] => {
+  const items = issues.slice(0, WORKLIST_MAX).map(formatIssue);
+  if (issues.length > WORKLIST_MAX) items.push(`… and ${issues.length - WORKLIST_MAX} more: run \`ultraview check\``);
+  items.push(tail);
+  return items;
+};
+
+const modelIncomplete: Probe = (s) => {
+  const c = s.check();
+  if (c.ok) return undefined;
+  return {
+    situation: "model-incomplete",
+    reasons: [
+      `check fails with ${c.errors.length} error(s)`,
+      `coverage: files in systems ${(c.coverage.filesInSystems * 100).toFixed(1)}% (min ${c.thresholds.filesInSystems * 100}%), modules in capabilities ${(c.coverage.modulesInCapabilities * 100).toFixed(1)}% (min ${c.thresholds.modulesInCapabilities * 100}%)`,
+    ],
+    worklist: worklistOf(c.errors, "run `ultraview check` until it passes"),
+  };
+};
+
+const staleViews: Probe = (s) => {
+  const c = s.check();
+  const stale = c.stale.lenses.length + c.stale.flows.length + c.stale.prose.length;
+  if (!stale) return undefined;
+  const reasons: string[] = [];
+  if (c.stale.lenses.length) reasons.push(`stale lenses: ${c.stale.lenses.join(", ")}`);
+  if (c.stale.flows.length) reasons.push(`stale flows: ${c.stale.flows.join(", ")}`);
+  if (c.stale.prose.length) reasons.push(`stale module prose: ${c.stale.prose.join(", ")}`);
+  const staleWarnings = c.warnings.filter((w) => w.message.includes("stale"));
+  return { situation: "stale-views", reasons, worklist: worklistOf(staleWarnings, "re-ask only what is stale, save it, then `ultraview check`") };
+};
+
+/** Routing order: the first probe that hits wins. */
+export const PROBES: readonly Probe[] = [noIndex, indexStale, noModel, modelIncomplete, staleViews];
 
 function indexState(paths: ViewPaths): IndexState {
   if (!indexExists(paths.index)) return { exists: false, stale: false, changed: 0, added: 0, removed: 0, errors: [] };
@@ -97,13 +137,15 @@ export function readStatus(repoArg: string, probes: readonly Probe[] = PROBES): 
   const repo = resolve(repoArg);
   if (!existsSync(repo)) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
+  let report: CheckReport | undefined;
   const inputs: StatusInputs = {
     paths,
     index: indexState(paths),
     facts: { exists: existsSync(paths.facts) },
     model: { exists: existsSync(paths.model) },
+    check: () => (report ??= checkMap(repo)),
   };
-  let hit: ProbeHit = { situation: "ready", reasons: ["index fresh, model present"], worklist: [] };
+  let hit: ProbeHit = { situation: "ready", reasons: ["index fresh, model checks clean, nothing stale"], worklist: [] };
   for (const probe of probes) {
     const h = probe(inputs);
     if (h) {
@@ -111,5 +153,12 @@ export function readStatus(repoArg: string, probes: readonly Probe[] = PROBES): 
       break;
     }
   }
-  return { repo, ...hit, index: inputs.index, facts: inputs.facts, model: inputs.model };
+  return {
+    repo,
+    ...hit,
+    index: inputs.index,
+    facts: inputs.facts,
+    model: inputs.model,
+    ...(report ? { check: { ok: report.ok, errors: report.errors.length, warnings: report.warnings.length, coverage: report.coverage } } : {}),
+  };
 }
