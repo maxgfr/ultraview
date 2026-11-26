@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.3.0](https://github.com/maxgfr/ultraview/compare/v1.2.0...v1.3.0) (2026-11-26)
+
+
+### Features
+
+* **extract:** JS/TS routes, HTTP calls, screens and ORMs ([1b6e596](https://github.com/maxgfr/ultraview/commit/1b6e596399fe293a4cb6b4f2e2b1ba451a9bc9d6)), closes [#1](https://github.com/maxgfr/ultraview/issues/1)
+
 # [1.2.0](https://github.com/maxgfr/ultraview/compare/v1.1.0...v1.2.0) (2026-11-26)
 
 
