@@ -3,7 +3,7 @@ name: ultraview
 description: See your app instead of reading its code. Builds an interactive, cited map of a repository for the business and for developers (capabilities, systems, data, flows, saved questions and every change the agent makes), on top of the ultraindex index. The engine extracts the facts (routes, data models, jobs, externals, imports, diffs, insights); you write only the meaning (systems, capabilities, flows, answers), every sentence cited and checked. Use only when the user explicitly asks for ultraview or for a visual map of their codebase, e.g. "map my app with ultraview", "show me how this app fits together", "save this answer as a view", "what did you change, on the map", "explain the app to the business", "fais-moi une carte de l'app".
 license: MIT
 metadata:
-  version: 1.13.2
+  version: 1.13.3
 ---
 
 # ultraview — see your app instead of reading its code

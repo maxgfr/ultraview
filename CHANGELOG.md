@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.3](https://github.com/maxgfr/ultraview/compare/v1.13.2...v1.13.3) (2026-11-26)
+
+
+### Bug Fixes
+
+* **engine:** pin ultraindex 7.16.2 ([3f3b83f](https://github.com/maxgfr/ultraview/commit/3f3b83fbb51e3fa48035b30907cbc68f3dd9c21b)), closes [prisma/schema.prisma#OrderStatus](https://github.com/prisma/schema.prisma/issues/OrderStatus)
+* **lens:** keep the CJK bigrams of a bridged question with --terms ([2f7f525](https://github.com/maxgfr/ultraview/commit/2f7f525529f2b697ede0f73b91ed5f6e0b7c3d43))
+
 ## [1.13.2](https://github.com/maxgfr/ultraview/compare/v1.13.1...v1.13.2) (2026-11-26)
 
 
