@@ -45,7 +45,7 @@ describe("cli", () => {
     const facts = readFileSync(join(repo, ".ultraview", "facts.json"), "utf8");
     await expect(facts).toMatchFileSnapshot("./__snapshots__/shop-express-prisma.facts.json");
     expect(readFileSync(join(repo, ".ultraview", ".gitignore"), "utf8")).toBe(GITIGNORE_BODY);
-    expect(GITIGNORE_BODY.split("\n").filter((l) => l && !l.startsWith("#"))).toEqual(["facts.json", "view.json", "index.html", "hook.log"]);
+    expect(GITIGNORE_BODY.split("\n").filter((l) => l && !l.startsWith("#"))).toEqual(["facts.json", "view.json", "index.html", "hook.log", "ask.log"]);
     expect(existsSync(join(repo, ".ultraindex", "graph.json"))).toBe(true);
 
     expect(r.out).toContain("ultraview build: shop-express-prisma");

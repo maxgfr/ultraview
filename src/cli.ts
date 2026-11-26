@@ -22,6 +22,11 @@ import type { Problem } from "./model/validate.js";
 import { viewPaths } from "./paths.js";
 import { type SaveResult, saveFlow, saveLens } from "./save.js";
 import { openFile, renderMap } from "./render.js";
+// --- serve / lens new / lens list (issue #10) ---
+import { ASK_MODES, type AskMode } from "./ask.js";
+import { formatLensList, LENS_BUDGET, lensList, lensNew } from "./lens.js";
+import { isLoopbackHost, SERVE_HOST, SERVE_PORT, startServe } from "./serve.js";
+// --- end serve / lens ---
 import { formatNodeCard, liveView, nodeCard, similarIds } from "./show.js";
 import { formatBuildSummary } from "./summary.js";
 import { readStatus, type StatusReport } from "./status.js";
@@ -63,6 +68,13 @@ Commands:
                      facts with file:line, neighbours. Cut to --budget tokens.
   show <node-id>     Compact card for one node: kind, label, parent,
                      capabilities, summary, citations, metrics, top edges.
+  lens new "<question>"
+                     Evidence pack to answer a question as a lens: the
+                     proposed id and target path, the JSON template, candidate
+                     nodes (ultraindex find + names matching the question),
+                     their strongest edges, source excerpts cut to --budget
+                     tokens, then the steps to write and save it.
+  lens list          Saved lenses: id, question, node count, stale flag.
   lens save <file>   Validate a lens (one saved question and its cited
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
@@ -104,6 +116,13 @@ Commands:
                      --svg (laid-out diagram) at --level cap|sys|mod or of one
                      --lens <id> / --flow <id>, or --md (an architecture brief).
                      --out <file> writes it (atomically) instead of printing.
+  serve              Local server for the map with live data: the page, its
+                     view.json, an event stream that pushes every change
+                     under .ultraview/ (and a stale notice when source files
+                     change), /api/node, /api/search, /api/callgraph, and the
+                     optional Ask bridge (POST /api/ask: a read-only run of
+                     the claude or codex CLI whose answer is saved as a lens).
+                     Binds ${SERVE_HOST}:${SERVE_PORT}; Ctrl-C stops it.
 
 Options:
   --repo <dir>   Repository to map (default: the current directory)
@@ -112,10 +131,19 @@ Options:
                  into the shared codeindex cache; CODEINDEX_NO_GRAMMARS_PULL=1
                  forbids the download.
   --strict       check: stale lenses / flows fail instead of warning
-  --budget <n>   dossier: token budget (default ${DOSSIER_BUDGET}, ~4 characters a token)
+  --budget <n>   dossier / lens new: token budget (default ${DOSSIER_BUDGET} / ${LENS_BUDGET},
+                 ~4 characters a token)
+  --id <slug>    lens new: the lens id (default: a slug of the question,
+                 made unique against the saved lenses)
   --force        lens save / flow save: replace a different question / title
                  saved under the same id
-  --open         render: open the page with the OS opener afterwards
+  --open         render / serve: open the page with the OS opener afterwards
+  --port <n>     serve: port (default ${SERVE_PORT}; 0 picks a free one)
+  --host <addr>  serve: address to bind (default ${SERVE_HOST}). A non-loopback
+                 address serves the map to the network: only when asked for
+                 explicitly, with a warning
+  --ask <agent>  serve: the Ask bridge, ${ASK_MODES.join("|")} (default auto:
+                 claude, then codex, if installed; none turns it off)
   --base <ref>   diff: the ref to compare with (its merge-base with HEAD)
   --staged       diff: staged changes only, against HEAD
   --worktree     diff: everything uncommitted, against HEAD
@@ -157,7 +185,7 @@ Exit codes: 0 ok, 1 failure (check failed, save / record / timeline entry
 refused), 2 usage error or unknown node id. diff --hook always exits 0.
 `;
 
-export const COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render", "diff", "timeline", "hook", "insights", "export"];
+export const COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render", "diff", "timeline", "hook", "insights", "export", "serve"];
 export const VALUE_FLAGS = [
   "repo",
   "budget",
@@ -176,6 +204,10 @@ export const VALUE_FLAGS = [
   "lens",
   "flow",
   "out",
+  "id",
+  "port",
+  "host",
+  "ask",
 ];
 export const BOOL_FLAGS = [
   "json",
@@ -203,7 +235,7 @@ const ARITY: Record<string, { min: number; max: number; usage: string }> = {
   check: { min: 0, max: 0, usage: "check" },
   dossier: { min: 1, max: 1, usage: "dossier <node-id>" },
   show: { min: 1, max: 1, usage: "show <node-id>" },
-  lens: { min: 2, max: 2, usage: "lens save <file>" },
+  lens: { min: 1, max: 2, usage: 'lens new "<question>" | lens list | lens save <file>' },
   flow: { min: 2, max: 2, usage: "flow save <file>" },
   render: { min: 0, max: 0, usage: "render [--out <file>] [--open]" },
   diff: { min: 0, max: 0, usage: "diff [--base <ref> | --staged | --worktree] [--record] [--markdown]" },
@@ -211,6 +243,7 @@ const ARITY: Record<string, { min: number; max: number; usage: string }> = {
   hook: { min: 1, max: 1, usage: "hook install|uninstall [--agent claude]" },
   insights: { min: 0, max: 0, usage: "insights" },
   export: { min: 0, max: 0, usage: "export --mermaid|--svg|--md [--level cap|sys|mod] [--lens <id>] [--flow <id>] [--out <file>]" },
+  serve: { min: 0, max: 0, usage: "serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--open]" },
 };
 
 export interface Io {
@@ -583,6 +616,104 @@ async function cmdExport(p: Parsed, io: Io): Promise<number> {
   return EXIT_OK;
 }
 
+// --- serve / lens new / lens list (issue #10) ---
+
+function positiveInt(p: Parsed, io: Io, flag: string): number | undefined | null {
+  const raw = p.values[flag];
+  if (raw === undefined) return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) {
+    io.err(`ultraview: --${flag} must be a positive integer (got ${raw})\n`);
+    return null;
+  }
+  return n;
+}
+
+async function cmdLens(p: Parsed, io: Io): Promise<number> {
+  const [action, arg] = p.positional as [string, string | undefined];
+  const repo = p.values.repo ?? ".";
+  if (action === "new") {
+    if (arg === undefined) {
+      io.err('ultraview: missing argument (usage: ultraview lens new "<question>")\n');
+      return EXIT_USAGE;
+    }
+    const budget = positiveInt(p, io, "budget");
+    if (budget === null) return EXIT_USAGE;
+    const pack = lensNew(repo, arg, { budget, id: p.values.id });
+    io.out(p.bools.has("json") ? json(pack) : pack.text);
+    return EXIT_OK;
+  }
+  if (action === "list") {
+    if (arg !== undefined) {
+      io.err(`ultraview: unexpected argument: ${arg} (usage: ultraview lens list)\n`);
+      return EXIT_USAGE;
+    }
+    const r = lensList(repo);
+    io.out(p.bools.has("json") ? json(r) : formatLensList(r));
+    return EXIT_OK;
+  }
+  if (action === "save") {
+    if (arg === undefined) {
+      io.err("ultraview: missing argument (usage: ultraview lens save <file>)\n");
+      return EXIT_USAGE;
+    }
+    return cmdSave(p, io, "lens");
+  }
+  io.err(`ultraview: unknown lens action: ${action} (lens new "<question>", lens list, lens save <file>)\n`);
+  return EXIT_USAGE;
+}
+
+async function cmdServe(p: Parsed, io: Io): Promise<number> {
+  const ask = (p.values.ask ?? "auto") as AskMode;
+  if (!(ASK_MODES as readonly string[]).includes(ask)) {
+    io.err(`ultraview: --ask must be one of ${ASK_MODES.join(", ")} (got ${ask})\n`);
+    return EXIT_USAGE;
+  }
+  let port = SERVE_PORT;
+  if (p.values.port !== undefined) {
+    port = Number(p.values.port);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) {
+      io.err(`ultraview: --port must be 0-65535 (got ${p.values.port})\n`);
+      return EXIT_USAGE;
+    }
+  }
+  const host = p.values.host;
+  const handle = await startServe({
+    repo: p.values.repo ?? ".",
+    port,
+    host,
+    hostExplicit: host !== undefined,
+    ask,
+    onWarning: (m) => io.err(`ultraview: ${m}\n`),
+  });
+  if (!isLoopbackHost(handle.host))
+    io.err(
+      `ultraview: WARNING: serving on ${handle.host}, beyond this machine: anyone who can reach port ${handle.port} reads the map and its source excerpts (asking stays local-only)\n`,
+    );
+  const opened = p.bools.has("open") ? await openFile(handle.url) : undefined;
+  if (p.bools.has("json"))
+    io.out(
+      json({ url: handle.url, host: handle.host, port: handle.port, repo: handle.repo, ask: handle.ask ?? null, ...(opened !== undefined ? { opened } : {}) }),
+    );
+  else {
+    io.out(`serving    ${handle.url}  (live: every change under .ultraview/ shows up without a reload)\n`);
+    io.out(
+      `ask        ${handle.ask ? `${handle.ask.name} (${handle.ask.path}), read-only; answers saved as lenses` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}\n`,
+    );
+    if (opened === false) io.out("open       no opener found: open the address in a browser\n");
+    io.out("stop       Ctrl-C\n");
+  }
+  const stop = () => void handle.close();
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
+  await handle.closed;
+  process.off("SIGINT", stop);
+  process.off("SIGTERM", stop);
+  return EXIT_OK;
+}
+
+// --- end serve / lens ---
+
 export async function main(argv: readonly string[], io: Io = processIo): Promise<number> {
   const p = parseArgs(argv);
   if ("error" in p) {
@@ -621,6 +752,7 @@ export async function main(argv: readonly string[], io: Io = processIo): Promise
       case "dossier":
         return await cmdDossier(p, io);
       case "lens":
+        return await cmdLens(p, io);
       case "flow":
         return await cmdSave(p, io, p.command);
       case "render":
@@ -635,6 +767,8 @@ export async function main(argv: readonly string[], io: Io = processIo): Promise
         return await cmdInsights(p, io);
       case "export":
         return await cmdExport(p, io);
+      case "serve":
+        return await cmdServe(p, io);
       default:
         return await cmdStatus(p, io);
     }

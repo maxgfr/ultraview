@@ -111,7 +111,7 @@ describe("cli: check, lens save, flow save", () => {
     expect(refused.code).toBe(1);
     expect(refused.err).toContain("already holds a different question");
     expect((await run(["lens", "save", draft, "--repo", repo, "--force"])).code).toBe(0);
-    expect((await run(["lens", "list", "--repo", repo])).code).toBe(2);
+    expect((await run(["lens", "bogus", "--repo", repo])).code).toBe(2);
     expect((await run(["lens", "save", "/definitely/missing.json", "--repo", repo])).code).toBe(1);
   });
 });

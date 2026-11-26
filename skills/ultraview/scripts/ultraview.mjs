@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import { appendFileSync as appendFileSync2, existsSync as existsSync26, mkdirSync as mkdirSync11, readFileSync as readFileSync30, realpathSync as realpathSync8 } from "fs";
-import { relative as relative16, resolve as resolve28 } from "path";
-import { fileURLToPath as fileURLToPath4, pathToFileURL as pathToFileURL4 } from "url";
+import { appendFileSync as appendFileSync2, existsSync as existsSync29, mkdirSync as mkdirSync12, readFileSync as readFileSync33, realpathSync as realpathSync8 } from "fs";
+import { relative as relative17, resolve as resolve31 } from "path";
+import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL4 } from "url";
 
 // src/build.ts
 import { existsSync as existsSync18, mkdirSync as mkdirSync7, statSync as statSync15, writeFileSync as writeFileSync10 } from "fs";
@@ -17294,7 +17294,7 @@ function buildGraph(scan2, ctx, modules, moduleOf, meta) {
     degOut.set(e.from, (degOut.get(e.from) ?? 0) + 1);
     degIn.set(e.to, (degIn.get(e.to) ?? 0) + 1);
   }
-  const KIND_RANK2 = {
+  const KIND_RANK3 = {
     import: 7,
     extends: 6,
     implements: 5,
@@ -17314,7 +17314,7 @@ function buildGraph(scan2, ctx, modules, moduleOf, meta) {
     const prev = modEdgeMap.get(k);
     if (prev) {
       prev.weight += e.weight;
-      if ((KIND_RANK2[e.kind] ?? 0) > (KIND_RANK2[prev.kind] ?? 0)) prev.kind = e.kind;
+      if ((KIND_RANK3[e.kind] ?? 0) > (KIND_RANK3[prev.kind] ?? 0)) prev.kind = e.kind;
     } else {
       modEdgeMap.set(k, { from, to, kind: e.kind, weight: e.weight });
     }
@@ -25575,7 +25575,7 @@ async function runMcpServer(opts = {}) {
 `)) : void 0;
   const walkRepo = async (repo) => watcher && repo === defaultRepo ? watcher.walk() : { walked: walk(repo, {}), reused: false };
   const lspPool = new LspSessionPool();
-  const send = (msg) => {
+  const send2 = (msg) => {
     const wire = Array.isArray(msg) ? msg.map((entry2) => ({ jsonrpc: "2.0", ...entry2 })) : { jsonrpc: "2.0", ...msg };
     process.stdout.write(JSON.stringify(wire) + "\n");
   };
@@ -25591,7 +25591,7 @@ async function runMcpServer(opts = {}) {
   try {
     for await (const line2 of boundedLines(process.stdin, MAX_MESSAGE_CHARS)) {
       if (line2 === void 0) {
-        send({ id: null, error: { code: -32600, message: `invalid request: a message is limited to ${MAX_MESSAGE_CHARS} characters` } });
+        send2({ id: null, error: { code: -32600, message: `invalid request: a message is limited to ${MAX_MESSAGE_CHARS} characters` } });
         continue;
       }
       const trimmed = line2.trim();
@@ -25600,25 +25600,25 @@ async function runMcpServer(opts = {}) {
       try {
         parsed2 = JSON.parse(trimmed);
       } catch {
-        send({ id: null, error: { code: -32700, message: "parse error" } });
+        send2({ id: null, error: { code: -32700, message: "parse error" } });
         continue;
       }
       if (Array.isArray(parsed2) && parsed2.length === 0) {
-        send({ id: null, error: { code: -32600, message: "invalid request" } });
+        send2({ id: null, error: { code: -32600, message: "invalid request" } });
         continue;
       }
       if (Array.isArray(parsed2)) {
         const replies = parsed2.map(dispatch);
         const sendBatch = (settled) => {
           const answered = settled.filter((r) => r !== void 0);
-          if (answered.length > 0) send(answered);
+          if (answered.length > 0) send2(answered);
         };
         if (replies.some((r) => r instanceof Promise)) track(Promise.all(replies).then(sendBatch));
         else sendBatch(replies);
       } else {
         const reply = dispatch(parsed2);
-        if (reply instanceof Promise) track(reply.then((r) => r ? send(r) : void 0));
-        else if (reply) send(reply);
+        if (reply instanceof Promise) track(reply.then((r) => r ? send2(r) : void 0));
+        else if (reply) send2(reply);
       }
     }
     while (outstanding.size > 0) await Promise.all(outstanding);
@@ -25695,7 +25695,7 @@ async function runMcpServer(opts = {}) {
     const progress = typeof token === "string" || typeof token === "number" ? (message) => {
       if (id !== void 0 && cancelledCalls.has(id)) return;
       const detail = version >= PROGRESS_MESSAGE_SINCE ? { message } : {};
-      send({ method: "notifications/progress", params: { progressToken: token, progress: ++step, ...detail } });
+      send2({ method: "notifications/progress", params: { progressToken: token, progress: ++step, ...detail } });
     } : void 0;
     const run2 = callQueue.then(async () => {
       if (id !== void 0 && cancelledCalls.has(id)) return void 0;
@@ -28398,7 +28398,7 @@ function parseMcpFlags(argv) {
   let name2;
   let maxResponseBytes;
   let profile;
-  let watch = false;
+  let watch2 = false;
   let trustLspConfig = false;
   for (let i2 = 0; i2 < argv.length; i2++) {
     const a = argv[i2];
@@ -28422,7 +28422,7 @@ function parseMcpFlags(argv) {
       if (toolsInProfiles(v).size === 0) throw new Error(`--tools names no profile: ${profileNames().join(", ")}`);
       profile = v === "all" ? void 0 : v;
     } else if (a === "--watch") {
-      watch = true;
+      watch2 = true;
     } else if (a === "--trust-lsp-config") {
       trustLspConfig = true;
     } else {
@@ -28431,9 +28431,9 @@ function parseMcpFlags(argv) {
   }
   if (defaultRepo && !existsSync13(defaultRepo)) throw new Error(`--repo path does not exist: ${defaultRepo}`);
   if (defaultRepo && !statSync13(defaultRepo).isDirectory()) throw new Error(`--repo path is not a directory: ${defaultRepo}`);
-  if (watch && !defaultRepo) throw new Error("--watch requires --repo <dir>");
+  if (watch2 && !defaultRepo) throw new Error("--watch requires --repo <dir>");
   if (trustLspConfig && !defaultRepo) throw new Error("--trust-lsp-config requires --repo <dir>: it trusts the pinned repository's lsp.json, not any repository a call names");
-  return { defaultRepo, serverInfo: name2 ? { name: name2 } : void 0, maxResponseBytes, profile, watch, ...trustLspConfig ? { trustLspConfig } : {} };
+  return { defaultRepo, serverInfo: name2 ? { name: name2 } : void 0, maxResponseBytes, profile, watch: watch2, ...trustLspConfig ? { trustLspConfig } : {} };
 }
 var VALUE_FLAGS = /* @__PURE__ */ new Set([
   "--repo",
@@ -32031,11 +32031,11 @@ function joinRoutePath(prefix, path) {
   const joined = `${prefix.replace(/\/+$/, "")}${p}`.replace(/\/{2,}/g, "/");
   return joined || "/";
 }
-function applyMounts(facts, hints, framework, resolve29) {
+function applyMounts(facts, hints, framework, resolve32) {
   const parents = /* @__PURE__ */ new Map();
   for (const h of hints) {
     if (h.kind !== "mount" || h.framework !== framework) continue;
-    const child2 = resolve29(h);
+    const child2 = resolve32(h);
     if (!child2 || child2 === h.file) continue;
     const list = parents.get(child2) ?? [];
     list.push({ file: h.file, prefix: h.prefix });
@@ -34590,9 +34590,9 @@ var pythonMountLinker = {
   id: "python-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve29 = (h) => pyModuleFile(h.target, h.file, files);
+    const resolve32 = (h) => pyModuleFile(h.target, h.file, files);
     let out2 = facts;
-    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve29);
+    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve32);
     return out2;
   }
 };
@@ -34772,15 +34772,15 @@ function resolveLocalModule(ctx, fromRel, spec) {
   if (rel2 !== void 0) return tryTarget(rel2);
   if (!isLocalSpecifier(spec)) return void 0;
   const ws = workspaceDirOf(ctx, fromRel);
-  const join49 = (dir, p) => dir ? `${dir}/${p}` : p;
+  const join52 = (dir, p) => dir ? `${dir}/${p}` : p;
   let rest;
   let roots;
   if (spec.startsWith("$lib")) {
     rest = spec.slice(4).replace(/^\//, "");
-    roots = [join49(ws, "src/lib")];
+    roots = [join52(ws, "src/lib")];
   } else {
     rest = spec.replace(/^(?:@\/|~~?\/|#\/?)/, "");
-    roots = [join49(ws, "src"), ws, join49(ws, "app")];
+    roots = [join52(ws, "src"), ws, join52(ws, "app")];
   }
   for (const root of roots) {
     const hit = tryTarget(root ? rest ? `${root}/${rest}` : root : rest);
@@ -36533,8 +36533,8 @@ var jsMountLinker = {
   id: "js-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve29 = (h) => moduleFile(h.target, files);
-    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve29), ctx.hints, "fastify", resolve29);
+    const resolve32 = (h) => moduleFile(h.target, files);
+    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve32), ctx.hints, "fastify", resolve32);
   }
 };
 
@@ -36973,14 +36973,14 @@ function composeTrpcRoutes(hints) {
     byKey2.set(k, h);
     for (const e of h.exports) if (!byExport.has(key(h.file, e))) byExport.set(key(h.file, e), k);
   }
-  const resolve29 = (c2) => {
+  const resolve32 = (c2) => {
     const local = key(c2.module, c2.name);
     return byKey2.has(local) ? local : byExport.get(local);
   };
   const parents = /* @__PURE__ */ new Map();
   for (const [k, h] of byKey2) {
     for (const c2 of h.children) {
-      const child2 = resolve29(c2);
+      const child2 = resolve32(c2);
       if (!child2 || child2 === k) continue;
       const list = parents.get(child2) ?? [];
       list.push({ parent: k, prefix: c2.prefix });
@@ -37322,7 +37322,7 @@ function fileOfId(id) {
 import { join as join42 } from "path";
 var VIEW_DIR = ".ultraview";
 var INDEX_DIR_NAME = ".ultraindex";
-var GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log"];
+var GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log", "ask.log"];
 function viewPaths(repo) {
   const dir = join42(repo, VIEW_DIR);
   return {
@@ -40242,6 +40242,1099 @@ function openFile(file, platform = process.platform) {
   return spawnDetached(cmd, args2);
 }
 
+// src/ask.ts
+import { spawn as spawn3 } from "child_process";
+import { accessSync as accessSync2, constants, createWriteStream, existsSync as existsSync26, mkdirSync as mkdirSync11, mkdtempSync as mkdtempSync4, readFileSync as readFileSync31, rmSync as rmSync8, statSync as statSync19 } from "fs";
+import { tmpdir as tmpdir2 } from "os";
+import { delimiter, dirname as dirname17, join as join50, resolve as resolve28 } from "path";
+import { fileURLToPath as fileURLToPath4 } from "url";
+
+// src/lens.ts
+import { existsSync as existsSync25, readdirSync as readdirSync7, readFileSync as readFileSync30, statSync as statSync18 } from "fs";
+import { join as join49, resolve as resolve27 } from "path";
+var LENS_BUDGET = 6e3;
+var CHARS_PER_TOKEN4 = 4;
+var FIND_K = 6;
+var MATCHES = 25;
+var EDGES = 30;
+var EVIDENCE_FILES = 10;
+var HEAD_LINES3 = 60;
+var AROUND = 8;
+var ID_MAX = 48;
+var cmp11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function savedQuestions(repo) {
+  const dir = join49(repo, LENSES_DIR);
+  const out2 = /* @__PURE__ */ new Map();
+  if (!existsSync25(dir)) return out2;
+  for (const name2 of readdirSync7(dir).filter((n) => n.endsWith(".json")).sort()) {
+    let question;
+    try {
+      const v = JSON.parse(readFileSync30(join49(dir, name2), "utf8"));
+      if (typeof v.question === "string") question = v.question;
+    } catch {
+    }
+    out2.set(name2.slice(0, -".json".length), question);
+  }
+  return out2;
+}
+function questionSlug(question) {
+  const words = codeindex_engine_exports.foldText(question).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  let slug = "";
+  for (const w of words) {
+    const next = slug ? `${slug}-${w}` : w;
+    if (next.length > ID_MAX) break;
+    slug = next;
+  }
+  if (!slug && words.length) slug = words[0].slice(0, ID_MAX);
+  return SLUG_RE.test(slug) ? slug : "lens";
+}
+function proposeLensId(repo, question) {
+  const saved = savedQuestions(resolve27(repo));
+  for (const [id, q] of saved) if (q === question) return { id, reask: true };
+  const base = questionSlug(question);
+  for (let n = 1; ; n++) {
+    const id = n === 1 ? base : `${base}-${n}`;
+    if (!saved.has(id)) return { id, reask: false };
+  }
+}
+function questionTerms(question) {
+  const out2 = /* @__PURE__ */ new Set();
+  for (const raw of codeindex_engine_exports.keywords(question)) {
+    let t = raw.toLowerCase();
+    if (!/^[a-z0-9]+$/.test(t)) continue;
+    if (t.length > 5 && t.endsWith("ies")) t = `${t.slice(0, -3)}y`;
+    else if (t.length > 5 && t.endsWith("ing")) t = t.slice(0, -3);
+    else if (t.length > 4 && t.endsWith("ed")) t = t.slice(0, -2);
+    else if (t.length > 3 && t.endsWith("s") && !t.endsWith("ss")) t = t.slice(0, -1);
+    if (t.length > 4 && t[t.length - 1] === t[t.length - 2] && !/[aeiou]/.test(t[t.length - 1])) t = t.slice(0, -1);
+    if (t.length >= 3) out2.add(t);
+  }
+  return [...out2].sort();
+}
+var NAME_KINDS = /* @__PURE__ */ new Set(["cap", "route", "screen", "entity", "job", "sym"]);
+var KIND_ORDER = ["cap", "route", "screen", "entity", "job", "sym", "mod"];
+function nameMatches(view, terms) {
+  if (!terms.length) return [];
+  const out2 = [];
+  for (const n of view.nodes) {
+    if (!NAME_KINDS.has(n.kind) || n.id === "cap:_foundations") continue;
+    const hay = `${n.label} ${n.id.slice(n.kind.length + 1)}`.toLowerCase();
+    const matched = terms.filter((t) => hay.includes(t));
+    if (!matched.length) continue;
+    out2.push({ id: n.id, kind: n.kind, label: n.label, ...n.at ? { at: n.at } : {}, via: "name", score: matched.length, matched });
+  }
+  return out2.sort((a, b) => b.score - a.score || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || cmp11(a.id, b.id)).slice(0, MATCHES);
+}
+function findMatches(live, indexDir, question) {
+  const found = runFind(indexDir, question, FIND_K) ?? [];
+  const candidates = [];
+  const files = [];
+  for (const r of found) {
+    if (r.score <= 0) continue;
+    const whole = modId(r.slug);
+    const ids = [whole, ...live.view.nodes.filter((n) => n.slice?.of === whole).map((n) => n.id)].filter((id) => live.byId.has(id));
+    for (const id of ids) {
+      const n = live.byId.get(id);
+      candidates.push({
+        id,
+        kind: n.kind,
+        label: n.slice ? `${n.label} ${n.slice.qualifier}` : n.label,
+        via: "find",
+        score: r.score,
+        matched: [...r.matched].sort()
+      });
+    }
+    files.push(...r.files);
+  }
+  return { candidates, files };
+}
+function topEdges(view, ids) {
+  const seen = /* @__PURE__ */ new Set();
+  const out2 = [];
+  for (const e of view.edges) {
+    if (!ids.has(e.from) && !ids.has(e.to)) continue;
+    const key = `${e.from}\0${e.to}\0${e.kind}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out2.push(e);
+  }
+  return out2.sort((a, b) => b.weight - a.weight || cmp11(a.from, b.from) || cmp11(a.to, b.to) || cmp11(a.kind, b.kind)).slice(0, EDGES);
+}
+function numbered(lines, from, to) {
+  const width = String(to).length;
+  return lines.slice(from - 1, to).map((l, i2) => `${String(from + i2).padStart(width)}  ${l}`).join("\n");
+}
+function readLines2(repo, rel2) {
+  try {
+    return codeindex_engine_exports.readText(join49(repo, rel2)).split(/\r?\n/);
+  } catch {
+    return void 0;
+  }
+}
+function collectEvidence(repo, candidates, findFiles) {
+  const out2 = [];
+  const headed = /* @__PURE__ */ new Set();
+  for (const c2 of candidates) {
+    if (!c2.at || c2.kind === "cap") continue;
+    const i2 = c2.at.lastIndexOf(":");
+    const rel2 = c2.at.slice(0, i2);
+    const line2 = Number(c2.at.slice(i2 + 1));
+    const lines = readLines2(repo, rel2);
+    if (!lines || !Number.isInteger(line2)) continue;
+    const from = Math.max(1, line2 - 2);
+    const to = Math.min(lines.length, line2 + AROUND);
+    if (from > to) continue;
+    out2.push({ rel: rel2, range: `${rel2}:${from}-${to}`, text: `### ${c2.id}  [${rel2}:${from}-${to}]
+\`\`\`
+${numbered(lines, from, to)}
+\`\`\`` });
+  }
+  const rels = [];
+  for (const c2 of candidates) {
+    const rel2 = fileOfId(c2.id) ?? (c2.at ? c2.at.slice(0, c2.at.lastIndexOf(":")) : void 0);
+    if (rel2 && c2.kind !== "cap") rels.push(rel2);
+  }
+  rels.push(...findFiles);
+  const unique = [];
+  for (const r of rels) {
+    if (headed.has(r)) continue;
+    headed.add(r);
+    unique.push(r);
+  }
+  unique.splice(EVIDENCE_FILES);
+  for (const e of gatherEvidence(repo, unique, HEAD_LINES3)) {
+    const lines = readLines2(repo, e.rel);
+    const body2 = lines ? numbered(lines, 1, Math.min(lines.length, e.headTo)) : e.head;
+    const parts2 = [`### ${e.rel} (${e.lines} lines)  [${e.rel}:1-${e.headTo}]`];
+    if (e.exported.length) parts2.push(`Exported: ${e.exported.map((s) => `${s.kind} ${s.name} @ ${s.line}`).join(", ")}`);
+    parts2.push("```", body2, "```");
+    out2.push({ rel: e.rel, range: `${e.rel}:1-${e.headTo}`, text: parts2.join("\n") });
+  }
+  return out2;
+}
+function fmtCandidate(c2) {
+  const score = c2.via === "find" ? `score ${c2.score}` : `${c2.score} term(s)`;
+  return `- ${c2.id}  (${c2.label})${c2.at ? `  [${c2.at}]` : ""}  ${score}: ${c2.matched.join(", ") || "-"}`;
+}
+function instructions(pack) {
+  const lines = [
+    "## Next",
+    `1. Answer the question from the evidence above (open more files if you need to); \`ultraview show <node-id>\` and \`ultraview dossier <node-id>\` give more about one node.`,
+    "2. Every sentence of `answer` cites the file it rests on as `[path:line]` (or `[path:start-end]`): `ultraview check` fails a dead citation and an uncited sentence.",
+    "3. `nodes`: the node ids the answer is about (pick from the candidates, or any id `ultraview show` knows); `edges` (optional): the links between them that matter; `focus`: the one node to centre the map on.",
+    `4. Write the JSON above, filled in, to ${pack.file}${pack.reask ? " (it already holds this question: the new answer replaces the old one)" : ""}. Leave \`sources\` out: \`lens save\` stamps it.`,
+    `5. Run \`ultraview lens save ${pack.file}\`${pack.conflict ? " --force (the id holds a different question)" : ""}, then \`ultraview check\`, and fix what they report.`,
+    `6. Point the user at \`#lens=${pack.id}\` in the map (live when \`ultraview serve\` runs).`
+  ];
+  return lines.join("\n");
+}
+function lensNew(repoArg, question, opts = {}) {
+  const repo = resolve27(repoArg);
+  const q = question.trim();
+  if (!q) throw new Error("the question is empty");
+  if (opts.id !== void 0 && !SLUG_RE.test(opts.id)) throw new Error(`--id must be a slug (lowercase letters, digits, dashes): ${opts.id}`);
+  const live = liveView(repo);
+  const budget = opts.budget ?? LENS_BUDGET;
+  let id;
+  let reask;
+  let conflict;
+  if (opts.id !== void 0) {
+    id = opts.id;
+    const saved = savedQuestions(repo);
+    reask = saved.has(id) && saved.get(id) === q;
+    if (saved.has(id) && !reask) conflict = saved.get(id) ?? "(unreadable file)";
+  } else ({ id, reask } = proposeLensId(repo, q));
+  const file = `${LENSES_DIR}/${id}.json`;
+  const terms = questionTerms(q);
+  const found = findMatches(live, viewPaths(repo).index, q);
+  const named = nameMatches(live.view, terms);
+  const candidates = [...found.candidates, ...named.filter((n) => !found.candidates.some((f) => f.id === n.id))];
+  const capIds = /* @__PURE__ */ new Set();
+  for (const c2 of candidates) {
+    if (c2.kind === "cap") capIds.add(c2.id);
+    for (const cap of live.byId.get(c2.id)?.caps ?? []) capIds.add(cap);
+  }
+  capIds.delete("cap:_foundations");
+  const capabilities = [...capIds].sort(cmp11).map((cid) => ({ id: cid, label: live.byId.get(cid)?.label ?? cid }));
+  const neighbourhood = topEdges(live.view, new Set(candidates.map((c2) => c2.id)));
+  const focus = named.find((c2) => c2.kind !== "cap")?.id ?? candidates[0]?.id ?? "";
+  const template = {
+    schema: 1,
+    id,
+    question: q,
+    answer: "Markdown. Every sentence cites [path:line].",
+    nodes: (named.some((c2) => c2.kind !== "cap") ? named.filter((c2) => c2.kind !== "cap") : candidates.filter((c2) => c2.kind !== "mod")).slice(0, 5).map((c2) => c2.id),
+    edges: [],
+    focus
+  };
+  const head = [
+    `# Lens evidence \u2014 "${q}"`,
+    "",
+    `id        ${id}${reask ? "  (re-ask: a saved lens holds this question)" : ""}`,
+    `file      ${file}`,
+    ...conflict !== void 0 ? [`conflict  ${file} holds a different question ("${conflict}"): pick another --id, or save with --force`] : [],
+    `terms     ${terms.join(", ") || "(none)"}`
+  ].join("\n");
+  const cand = ["## Candidate nodes"];
+  const fromFind = candidates.filter((c2) => c2.via === "find");
+  const fromName = candidates.filter((c2) => c2.via === "name");
+  if (fromFind.length) cand.push("Modules (ultraindex find):", ...fromFind.map(fmtCandidate));
+  if (fromName.length) cand.push("Named like the question (routes, screens, entities, jobs, symbols, capabilities):", ...fromName.map(fmtCandidate));
+  if (!candidates.length) cand.push("(nothing matched: try other words, or `ultraview show` / `dossier` on a node you know)");
+  if (capabilities.length) cand.push(`Capabilities touched: ${capabilities.map((c2) => `${c2.id} (${c2.label})`).join(", ")}`);
+  const neigh = neighbourhood.length ? ["## Neighbourhood (strongest edges)", ...neighbourhood.map((e) => `- ${e.from} -> ${e.to}  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`)].join(
+    "\n"
+  ) : "";
+  const tmpl = ["## Template", "```json", stableJson(template).trimEnd(), "```"].join("\n");
+  const close = instructions({ id, file, reask, conflict });
+  const fixed = [head, cand.join("\n"), neigh, tmpl, close].filter(Boolean);
+  const max = budget * CHARS_PER_TOKEN4;
+  let room = max - fixed.reduce((n, s) => n + s.length + 2, 0) - "## Source\n".length;
+  const all = collectEvidence(repo, candidates, found.files);
+  const evidence = [];
+  for (const e of all) {
+    if (e.text.length + 2 > room) break;
+    evidence.push(e);
+    room -= e.text.length + 2;
+  }
+  const source = ["## Source", ...evidence.map((e) => e.text)];
+  if (evidence.length < all.length)
+    source.push(`\u2026 (cut to the ~${budget}-token budget: ${all.length - evidence.length} more excerpt(s); pass --budget to see more)`);
+  if (!all.length) source.push("(no readable source matched)");
+  const text2 = `${[head, cand.join("\n"), neigh, source.join("\n\n"), tmpl, close].filter(Boolean).join("\n\n")}
+`;
+  return {
+    question: q,
+    id,
+    file,
+    reask,
+    ...conflict !== void 0 ? { conflict } : {},
+    terms,
+    template,
+    candidates,
+    capabilities,
+    neighbourhood,
+    evidence,
+    budget,
+    text: text2
+  };
+}
+function lensList(repoArg) {
+  const repo = resolve27(repoArg);
+  const live = liveView(repo);
+  const stale = new Set(live.view.stale.lenses);
+  const lenses = live.view.lenses.map((l) => {
+    let saved;
+    try {
+      saved = statSync18(join49(repo, LENSES_DIR, `${l.id}.json`)).mtime.toISOString();
+    } catch {
+      saved = void 0;
+    }
+    return { id: l.id, question: l.question, nodes: l.nodes.length, stale: stale.has(l.id), stamped: !!l.sources, ...saved ? { saved } : {} };
+  });
+  const invalid = live.loaded.problems.filter((p) => p.file.startsWith(`${LENSES_DIR}/`)).map((p) => ({ file: p.file, message: `${p.path ? `${p.path}: ` : ""}${p.message}` }));
+  return { repo, lenses, invalid };
+}
+function formatLensList(r) {
+  if (!r.lenses.length && !r.invalid.length) return 'lenses     none saved yet: `ultraview lens new "<question>"` starts one\n';
+  const lines = [`lenses     ${r.lenses.length} saved${r.lenses.some((l) => l.stale) ? `, ${r.lenses.filter((l) => l.stale).length} stale` : ""}`];
+  for (const l of r.lenses) {
+    const flags2 = [l.stale ? "STALE" : "", l.stamped ? "" : "unstamped"].filter(Boolean).join(", ");
+    lines.push(`  ${l.id}  ${l.nodes} node(s)${l.saved ? `  saved ${l.saved.slice(0, 10)}` : ""}${flags2 ? `  [${flags2}]` : ""}`);
+    lines.push(`    ${l.question}`);
+  }
+  if (r.invalid.length) {
+    lines.push("invalid (left out of the map; run `ultraview check`)");
+    for (const p of r.invalid) lines.push(`  ${p.file}: ${p.message}`);
+  }
+  if (r.lenses.some((l) => l.stale))
+    lines.push("next step: re-ask the stale ones (`ultraview lens new` with the same question keeps the id), then `ultraview lens save`");
+  return `${lines.join("\n")}
+`;
+}
+
+// src/ask.ts
+var ASK_AGENTS = ["claude", "codex"];
+var ASK_MODES = ["auto", ...ASK_AGENTS, "none"];
+var ASK_TIMEOUT_MS = 18e4;
+var ASK_QUESTION_MAX = 500;
+var OUTPUT_MAX = 4 * 1024 * 1024;
+var ASK_LOG = `${VIEW_DIR}/ask.log`;
+function findOnPath(name2, pathEnv, platform = process.platform) {
+  const exts = platform === "win32" ? ["", ".exe", ".cmd", ".bat"] : [""];
+  for (const dir of (pathEnv ?? "").split(platform === "win32" ? ";" : delimiter)) {
+    if (!dir) continue;
+    for (const ext of exts) {
+      const abs = join50(dir, name2 + ext);
+      try {
+        if (!statSync19(abs).isFile()) continue;
+        if (platform !== "win32") accessSync2(abs, constants.X_OK);
+        return abs;
+      } catch {
+      }
+    }
+  }
+  return void 0;
+}
+function resolveAskAgent(mode, pathEnv, platform = process.platform) {
+  if (mode === "none") return void 0;
+  const names = mode === "auto" ? ASK_AGENTS : [mode];
+  for (const name2 of names) {
+    const path = findOnPath(name2, pathEnv, platform);
+    if (path) return { name: name2, path };
+  }
+  return void 0;
+}
+function ultraviewScript() {
+  const here = fileURLToPath4(import.meta.url);
+  if (here.endsWith(".mjs")) return here;
+  return resolve28(dirname17(here), "../scripts/ultraview.mjs");
+}
+function scriptCommand(script) {
+  return /^[A-Za-z0-9_./:\\-]+$/.test(script) ? `node ${script}` : `node "${script}"`;
+}
+var READ_ONLY_COMMANDS = ["lens new", "lens list", "show", "dossier", "status", "check"];
+function askPrompt(question, id, script) {
+  const uv = scriptCommand(script);
+  return [
+    "You answer one question about the repository in the current directory for ultraview, a cited map of the app.",
+    "You are read-only: never create, edit, move or delete any file, and never run a command that writes. ultraview saves your answer itself.",
+    "",
+    `Question: ${question}`,
+    "",
+    "Steps:",
+    `1. Gather the evidence with ultraview: ${uv} lens new ${JSON.stringify(question)} --id ${id}`,
+    "   It prints candidate nodes, their edges, source excerpts and the JSON template to fill.",
+    `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
+    "3. Reply with ONLY the lens JSON object (no prose before or after it), filled in from the template:",
+    `   {"schema": 1, "id": "${id}", "question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "..."}`,
+    "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
+    "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
+    "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
+    ""
+  ].join("\n");
+}
+function agentInvocation(agent, ctx) {
+  const uv = scriptCommand(ctx.script);
+  if (agent.name === "claude") {
+    return {
+      cmd: agent.path,
+      args: [
+        "-p",
+        "--output-format",
+        "text",
+        "--no-session-persistence",
+        "--permission-mode",
+        "dontAsk",
+        "--tools",
+        "Bash,Read,Glob,Grep",
+        "--allowedTools",
+        // Prefix rules: `Bash(<command>:*)` allows that command with any arguments, nothing else.
+        ...READ_ONLY_COMMANDS.map((c2) => `Bash(${uv} ${c2}:*)`),
+        "Read",
+        "Glob",
+        "Grep",
+        "--disallowedTools",
+        "Write",
+        "Edit",
+        "NotebookEdit",
+        "WebFetch",
+        "WebSearch"
+      ]
+    };
+  }
+  const lastMessageFile = join50(ctx.tmpDir, "last-message.txt");
+  return {
+    cmd: agent.path,
+    args: [
+      "exec",
+      "--sandbox",
+      "read-only",
+      "--ephemeral",
+      "--skip-git-repo-check",
+      "--color",
+      "never",
+      "--cd",
+      ctx.repo,
+      "--output-last-message",
+      lastMessageFile,
+      "-"
+    ],
+    lastMessageFile
+  };
+}
+var ENV_KEEP = [
+  "PATH",
+  "HOME",
+  "USER",
+  "LOGNAME",
+  "SHELL",
+  "TMPDIR",
+  "TMP",
+  "TEMP",
+  "LANG",
+  "LC_ALL",
+  "LC_CTYPE",
+  "TERM",
+  "TZ",
+  "SystemRoot",
+  "ComSpec",
+  "PATHEXT",
+  "WINDIR",
+  "APPDATA",
+  "LOCALAPPDATA",
+  "USERPROFILE",
+  "XDG_CONFIG_HOME",
+  "XDG_DATA_HOME",
+  "XDG_CACHE_HOME",
+  "XDG_STATE_HOME",
+  "HTTPS_PROXY",
+  "HTTP_PROXY",
+  "NO_PROXY",
+  "NODE_EXTRA_CA_CERTS",
+  "CODEINDEX_NO_GRAMMARS_PULL"
+];
+var ENV_KEEP_PREFIXES = ["ANTHROPIC_", "CLAUDE_", "OPENAI_", "CODEX_"];
+function agentEnv(parent) {
+  const env = {};
+  for (const [k, v] of Object.entries(parent)) {
+    if (v === void 0) continue;
+    if (ENV_KEEP.includes(k) || ENV_KEEP_PREFIXES.some((p) => k.startsWith(p))) env[k] = v;
+  }
+  env.NO_COLOR = "1";
+  return env;
+}
+function extractLensJson(text2) {
+  const tries = [text2.trim()];
+  const fence2 = /```(?:json)?\s*\n([\s\S]*?)\n\s*```/.exec(text2);
+  if (fence2) tries.push(fence2[1].trim());
+  const a = text2.indexOf("{");
+  const b = text2.lastIndexOf("}");
+  if (a !== -1 && b > a) tries.push(text2.slice(a, b + 1));
+  for (const t of tries) {
+    try {
+      const v = JSON.parse(t);
+      if (v && typeof v === "object" && !Array.isArray(v)) return v;
+    } catch {
+    }
+  }
+  return void 0;
+}
+function checkQuestion(q) {
+  if (typeof q !== "string") return { error: "`question` must be a string" };
+  const question = q.replace(/\s+/g, " ").trim();
+  if (!question) return { error: "`question` is empty" };
+  if (question.length > ASK_QUESTION_MAX) return { error: `\`question\` is longer than ${ASK_QUESTION_MAX} characters` };
+  return { question };
+}
+function askLensId(repo, question) {
+  return proposeLensId(repo, question).id;
+}
+function askAgent(req, id = askLensId(req.repo, req.question)) {
+  const repo = resolve28(req.repo);
+  const { question, agent } = req;
+  const base = { id, question };
+  const tmpDir = mkdtempSync4(join50(tmpdir2(), "ultraview-ask-"));
+  const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir });
+  mkdirSync11(join50(repo, VIEW_DIR), { recursive: true });
+  const log = createWriteStream(join50(repo, ASK_LOG), { flags: "a" });
+  log.on("error", () => {
+  });
+  log.write(
+    `=== ${(/* @__PURE__ */ new Date()).toISOString()} ask ${id} (${agent.name})
+question: ${question}
+$ ${[inv.cmd, ...inv.args].map((a) => /\s/.test(a) ? JSON.stringify(a) : a).join(" ")}
+`
+  );
+  return new Promise((done) => {
+    let finished = false;
+    let out2 = "";
+    let bytes = 0;
+    let lastProgress = 0;
+    let timer;
+    let killTimer;
+    const finish2 = (o) => {
+      if (finished) return;
+      finished = true;
+      if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      req.onChild?.(void 0);
+      log.write(
+        `--- ${o.ok ? `saved ${o.file}` : `failed: ${o.error}${o.problems?.length ? `
+${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : ""}`}
+
+`
+      );
+      log.end();
+      rmSync8(tmpDir, { recursive: true, force: true });
+      done(o);
+    };
+    let child2;
+    try {
+      child2 = spawn3(inv.cmd, inv.args, { cwd: repo, env: agentEnv(req.env), stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+    } catch (e) {
+      finish2({ ...base, ok: false, error: `cannot start ${agent.name}: ${e.message}` });
+      return;
+    }
+    req.onChild?.(child2);
+    req.onProgress?.("started", {});
+    const onData = (stream) => (chunk) => {
+      if (finished) return;
+      log.write(stream === "stderr" ? `[stderr] ${chunk.toString("utf8")}` : chunk);
+      bytes += chunk.length;
+      if (stream === "stdout" && out2.length < OUTPUT_MAX) out2 += chunk.toString("utf8");
+      const now = Date.now();
+      if (now - lastProgress >= 1e3) {
+        lastProgress = now;
+        req.onProgress?.("running", { bytes });
+      }
+    };
+    child2.stdout.on("data", onData("stdout"));
+    child2.stderr.on("data", onData("stderr"));
+    child2.stdin.on("error", () => {
+    });
+    child2.stdin.end(askPrompt(question, id, ultraviewScript()));
+    child2.once("error", (e) => finish2({ ...base, ok: false, error: `cannot start ${agent.name}: ${e.message}` }));
+    const timeoutMs = req.timeoutMs ?? ASK_TIMEOUT_MS;
+    timer = setTimeout(() => {
+      log.write(`--- timed out after ${Math.round(timeoutMs / 1e3)} s: stopping ${agent.name}
+`);
+      child2.kill("SIGTERM");
+      killTimer = setTimeout(() => child2.kill("SIGKILL"), 3e3);
+      finish2({ ...base, ok: false, error: `${agent.name} did not answer within ${Math.round(timeoutMs / 1e3)} s` });
+    }, timeoutMs);
+    child2.once("close", (code, signal) => {
+      if (finished) return;
+      log.write(`
+--- exit ${code ?? signal}
+`);
+      if (code !== 0) {
+        finish2({ ...base, ok: false, error: `${agent.name} exited with ${code ?? signal} (see ${ASK_LOG})` });
+        return;
+      }
+      req.onProgress?.("validating", { bytes });
+      let reply = out2;
+      if (inv.lastMessageFile && existsSync26(inv.lastMessageFile)) reply = readFileSync31(inv.lastMessageFile, "utf8");
+      const lens = extractLensJson(reply);
+      if (!lens) {
+        finish2({ ...base, ok: false, error: `${agent.name} replied without a lens JSON object (see ${ASK_LOG})` });
+        return;
+      }
+      const { sources: _ignored, ...rest } = lens;
+      const r = saveLens(repo, { schema: 1, ...rest, id, question });
+      if (!r.ok) {
+        finish2({ ...base, ok: false, error: "the answer did not pass `lens save`", problems: r.errors });
+        return;
+      }
+      finish2({ ...base, ok: true, file: r.file, replaced: r.replaced, sources: r.sources });
+    });
+  });
+}
+
+// src/serve.ts
+import { existsSync as existsSync27, readdirSync as readdirSync8, readFileSync as readFileSync32, renameSync as renameSync9, statSync as statSync20, watch, writeFileSync as writeFileSync13 } from "fs";
+import { createServer } from "http";
+import { isIP } from "net";
+import { dirname as dirname18, join as join51, relative as relative16, resolve as resolve29, sep as sep11 } from "path";
+var SERVE_PORT = 4178;
+var SERVE_HOST = "127.0.0.1";
+var SERVE_DEBOUNCE_MS = 150;
+var HEARTBEAT_MS = 15e3;
+var AGENT_POLL_MS = 1e3;
+var SOURCE_DEBOUNCE_MS = 1e3;
+var SOURCE_POLL_MS = 3e4;
+var WATCH_DIRS_MAX = 2e3;
+var SSE_CLIENTS_MAX = 32;
+var BODY_MAX = 16 * 1024;
+var QUERY_MAX = 300;
+var SEARCH_NODES = 25;
+var SEARCH_MODULES = 8;
+var CALLGRAPH_NODES = 200;
+var CALLGRAPH_EDGES = 400;
+var IGNORED_VIEW_FILES = /* @__PURE__ */ new Set(["index.html", "ask.log", ".gitignore"]);
+var AGENT_DIRS = ["flows", "lenses", "changes"];
+var NOT_SOURCE = [VIEW_DIR, INDEX_DIR_NAME, ".git", "node_modules"];
+function isLoopbackHost(host) {
+  const h = host.replace(/^\[|\]$/g, "").toLowerCase();
+  return h === "localhost" || h === "::1" || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h) || /^::ffff:127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h);
+}
+function hostnameOf(header2) {
+  const h = header2.trim().toLowerCase();
+  if (h.startsWith("[")) return h.slice(1, h.indexOf("]") === -1 ? void 0 : h.indexOf("]"));
+  const colon = h.lastIndexOf(":");
+  return colon === -1 ? h : h.slice(0, colon);
+}
+function allowedHostHeader(header2, boundHost) {
+  if (!header2) return false;
+  const name2 = hostnameOf(header2);
+  if (!name2) return false;
+  return isLoopbackHost(name2) || isIP(name2) !== 0 || name2 === boundHost.replace(/^\[|\]$/g, "").toLowerCase();
+}
+var SECURITY_HEADERS = {
+  "Cache-Control": "no-store",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "X-Frame-Options": "DENY",
+  "Content-Security-Policy": "frame-ancestors 'none'",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Resource-Policy": "same-origin"
+};
+function send(res, status, type, body2, head = false, extra = {}) {
+  const buf = typeof body2 === "string" ? Buffer.from(body2) : body2;
+  res.writeHead(status, { ...SECURITY_HEADERS, "Content-Type": type, "Content-Length": String(buf.length), ...extra });
+  res.end(head ? void 0 : buf);
+}
+function sendJson(res, status, value, head = false) {
+  send(res, status, "application/json; charset=utf-8", JSON.stringify(value), head);
+}
+function readBody(req, max) {
+  return new Promise((done) => {
+    const chunks = [];
+    let size = 0;
+    let over = false;
+    req.on("data", (c2) => {
+      size += c2.length;
+      if (size > max) over = true;
+      else chunks.push(c2);
+    });
+    req.on("end", () => done(over ? void 0 : Buffer.concat(chunks).toString("utf8")));
+    req.on("error", () => done(void 0));
+  });
+}
+var KIND_RANK2 = { cap: 0, sys: 1, route: 2, screen: 3, entity: 4, job: 5, ext: 6, infra: 7, mod: 8, sym: 9, file: 10 };
+function searchNodes(view, q, n = SEARCH_NODES) {
+  const needle = q.toLowerCase();
+  const scored = [];
+  for (const node of view.nodes) {
+    const label = node.label.toLowerCase();
+    const id = node.id.toLowerCase();
+    const s = label === needle ? 0 : label.startsWith(needle) ? 1 : label.includes(needle) ? 2 : id.includes(needle) ? 3 : -1;
+    if (s >= 0) scored.push({ node, s });
+  }
+  return scored.sort(
+    (a, b) => a.s - b.s || (KIND_RANK2[a.node.kind] ?? 99) - (KIND_RANK2[b.node.kind] ?? 99) || a.node.id.length - b.node.id.length || (a.node.id < b.node.id ? -1 : a.node.id > b.node.id ? 1 : 0)
+  ).slice(0, n).map(({ node }) => ({
+    id: node.id,
+    kind: node.kind,
+    label: node.label,
+    ...node.parent ? { parent: node.parent } : {},
+    ...node.at ? { at: node.at } : {}
+  }));
+}
+async function startServe(opts) {
+  const repo = resolve29(opts.repo);
+  if (!existsSync27(repo) || !statSync20(repo).isDirectory()) throw new Error(`repo not found: ${repo}`);
+  const paths = viewPaths(repo);
+  if (!indexExists(paths.index)) throw new Error("no ultraindex index: run `ultraview build` first");
+  const host = opts.host ?? SERVE_HOST;
+  if (!isLoopbackHost(host) && !opts.hostExplicit)
+    throw new Error(`refusing to bind ${host}: not a loopback address (pass --host ${host} explicitly to serve the map beyond this machine)`);
+  const loopbackOnly = isLoopbackHost(host);
+  const env = opts.env ?? process.env;
+  const warn = opts.onWarning ?? (() => {
+  });
+  const debounceMs = opts.debounceMs ?? SERVE_DEBOUNCE_MS;
+  const agent = resolveAskAgent(opts.ask ?? "auto", env.PATH ?? env.Path);
+  const template = readFileSync32(opts.template ?? viewerTemplatePath(), "utf8");
+  const assemble2 = () => {
+    const loaded2 = loadViewInputs(repo);
+    const assembled = assembleWithNotes(loaded2.inputs);
+    const view = assembled.view;
+    return { view, text: stableJson(view), assembled, loaded: loaded2, byId: new Map(view.nodes.map((n) => [n.id, n])) };
+  };
+  const writeView = (text2) => {
+    const tmp = `${paths.view}.${process.pid}.tmp`;
+    writeFileSync13(tmp, text2);
+    renameSync9(tmp, paths.view);
+  };
+  let state = { ...assemble2(), version: 1 };
+  const onDisk = existsSync27(paths.view) ? readFileSync32(paths.view, "utf8") : void 0;
+  if (onDisk !== state.text) writeView(state.text);
+  let html;
+  const clients = /* @__PURE__ */ new Set();
+  const broadcast = (event, data) => {
+    const frame = `event: ${event}
+data: ${JSON.stringify(data)}
+
+`;
+    for (const c2 of clients) c2.write(frame);
+  };
+  const heartbeat = setInterval(() => {
+    for (const c2 of clients) c2.write(": ping\n\n");
+  }, opts.heartbeatMs ?? HEARTBEAT_MS);
+  heartbeat.unref();
+  const refresh = () => {
+    signature = agentSignature();
+    let next;
+    try {
+      next = assemble2();
+    } catch (e) {
+      warn(`could not re-assemble the view: ${e.message}`);
+      return false;
+    }
+    if (next.text === state.text) return false;
+    state = { ...next, version: state.version + 1 };
+    try {
+      writeView(state.text);
+    } catch (e) {
+      warn(`could not write ${paths.view}: ${e.message}`);
+    }
+    broadcast("view", { version: state.version, bytes: Buffer.byteLength(state.text) });
+    return true;
+  };
+  let viewTimer;
+  let firstPending = 0;
+  const scheduleRefresh = () => {
+    const now = Date.now();
+    if (!viewTimer) firstPending = now;
+    if (viewTimer) clearTimeout(viewTimer);
+    const wait = Math.max(0, Math.min(debounceMs, firstPending + debounceMs * 6 - now));
+    viewTimer = setTimeout(() => {
+      viewTimer = void 0;
+      refresh();
+    }, wait);
+  };
+  const agentSignature = () => {
+    const parts2 = [];
+    const stamp = (abs, name2) => {
+      try {
+        const st = statSync20(abs);
+        parts2.push(`${name2}:${st.size}:${st.mtimeMs}`);
+      } catch {
+      }
+    };
+    for (const f of ["model.json", "facts.json", "timeline.jsonl"]) stamp(join51(paths.dir, f), f);
+    for (const d of AGENT_DIRS) {
+      const abs = join51(paths.dir, d);
+      let names = [];
+      try {
+        names = readdirSync8(abs).sort();
+      } catch {
+        continue;
+      }
+      for (const n of names) stamp(join51(abs, n), `${d}/${n}`);
+    }
+    for (const f of ["graph.json", "manifest.json"]) stamp(join51(paths.index, f), `index/${f}`);
+    return parts2.join("\n");
+  };
+  let signature = agentSignature();
+  const agentPoll = setInterval(() => {
+    const next = agentSignature();
+    if (next === signature) return;
+    signature = next;
+    scheduleRefresh();
+  }, opts.pollMs ?? AGENT_POLL_MS);
+  agentPoll.unref();
+  let stale = { index: false, changed: 0, added: 0, removed: 0, files: [] };
+  const checkIndex = () => {
+    let next;
+    try {
+      const r = runCheck(paths.index, repo);
+      next = {
+        index: r.stale,
+        changed: r.changed.length,
+        added: r.added.length,
+        removed: r.removed.length,
+        files: [...r.changed, ...r.added, ...r.removed].slice(0, 20)
+      };
+    } catch (e) {
+      warn(`could not check the index: ${e.message}`);
+      return;
+    }
+    if (JSON.stringify(next) === JSON.stringify(stale)) return;
+    stale = next;
+    broadcast("stale", stale);
+  };
+  checkIndex();
+  let sourceTimer;
+  const scheduleCheck = () => {
+    if (sourceTimer) clearTimeout(sourceTimer);
+    sourceTimer = setTimeout(() => {
+      sourceTimer = void 0;
+      checkIndex();
+    }, SOURCE_DEBOUNCE_MS);
+  };
+  const watchers = /* @__PURE__ */ new Map();
+  const watchDir = (abs, recursive, on) => {
+    if (watchers.has(abs)) return true;
+    try {
+      const w = watch(abs, { recursive, persistent: false }, (_type, file) => on(file === null ? null : String(file)));
+      w.on("error", () => {
+        w.close();
+        watchers.delete(abs);
+      });
+      watchers.set(abs, w);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const onViewDirEvent = (file) => {
+    if (file !== null) {
+      const name2 = file.split(/[\\/]/).pop();
+      if (IGNORED_VIEW_FILES.has(name2) || name2.endsWith(".tmp")) return;
+      if (AGENT_DIRS.includes(name2)) {
+        const sub = join51(paths.dir, name2);
+        if (existsSync27(sub)) watchDir(sub, false, onViewDirEvent);
+      }
+      if (name2 === "view.json") {
+        let disk;
+        try {
+          disk = readFileSync32(paths.view, "utf8");
+        } catch {
+          disk = void 0;
+        }
+        if (disk === state.text) return;
+      }
+    }
+    scheduleRefresh();
+  };
+  if (!watchDir(paths.dir, false, onViewDirEvent)) warn(`cannot watch ${paths.dir}: live updates are off`);
+  for (const d of AGENT_DIRS) if (existsSync27(join51(paths.dir, d))) watchDir(join51(paths.dir, d), false, onViewDirEvent);
+  watchDir(paths.index, false, () => {
+    scheduleRefresh();
+    scheduleCheck();
+  });
+  const isSource = (rel2) => !NOT_SOURCE.some((d) => rel2 === d || rel2.startsWith(`${d}/`) || rel2.startsWith(`${d}${sep11}`));
+  let poll;
+  const recursiveOk = process.platform === "darwin" || process.platform === "win32";
+  const watchedRecursively = recursiveOk && watchDir(repo, true, (file) => {
+    if (file === null || isSource(file.split(sep11).join("/"))) scheduleCheck();
+  });
+  if (!watchedRecursively) {
+    const dirs = /* @__PURE__ */ new Set([repo]);
+    for (const f of state.loaded.inputs.graph.files) dirs.add(dirname18(join51(repo, f.rel)));
+    if (dirs.size <= WATCH_DIRS_MAX) {
+      for (const d of [...dirs].sort())
+        watchDir(d, false, (file) => {
+          if (file === null) return scheduleCheck();
+          const rel2 = relative16(repo, join51(d, file)).split(sep11).join("/");
+          if (isSource(rel2)) scheduleCheck();
+        });
+    } else {
+      poll = setInterval(checkIndex, SOURCE_POLL_MS);
+      poll.unref();
+    }
+  }
+  let symCache;
+  const symbolGraph = () => {
+    const graphFile = join51(paths.index, "graph.json");
+    const key = existsSync27(graphFile) ? String(statSync20(graphFile).mtimeMs) : "none";
+    if (symCache?.key === key) return symCache.graph;
+    const scan2 = loadManifest(paths.index)?.scan;
+    const s = codeindex_engine_exports.scanRepo(repo, {
+      include: scan2?.include,
+      exclude: scan2?.exclude,
+      maxBytes: scan2?.maxBytes,
+      maxFiles: scan2?.maxFiles,
+      ...scan2?.gitignore === false ? { gitignore: false } : {},
+      out: paths.index,
+      cache: loadCache(paths.index)
+    });
+    const graph = codeindex_engine_exports.buildSymbolGraph(s, codeindex_engine_exports.computeImportPairs(s));
+    symCache = { key, graph };
+    return graph;
+  };
+  let asking;
+  const startAsk = (question) => {
+    const id = askLensId(repo, question);
+    const current = { id, question };
+    asking = current;
+    const who = agent.name;
+    void askAgent(
+      {
+        repo,
+        question,
+        agent,
+        env,
+        timeoutMs: opts.askTimeoutMs,
+        onProgress: (stage, detail) => broadcast("ask-progress", { id, question, agent: who, stage, ...detail }),
+        onChild: (child2) => {
+          current.child = child2;
+        }
+      },
+      id
+    ).then((o) => {
+      if (asking === current) asking = void 0;
+      if (o.ok) {
+        refresh();
+        broadcast("ask-done", { id, question, agent: who, file: o.file, replaced: o.replaced, sources: o.sources });
+      } else broadcast("ask-error", { id, question, agent: who, error: o.error, ...o.problems ? { problems: o.problems } : {} });
+    });
+    return id;
+  };
+  const handle2 = async (req, res) => {
+    if (!allowedHostHeader(req.headers.host, host)) return send(res, 403, "text/plain; charset=utf-8", "forbidden host\n");
+    const url = new URL(req.url ?? "/", "http://localhost");
+    const method = req.method ?? "GET";
+    const head = method === "HEAD";
+    const getOnly = () => {
+      if (method === "GET" || head) return true;
+      send(res, 405, "text/plain; charset=utf-8", "method not allowed\n", false, { Allow: "GET, HEAD" });
+      return false;
+    };
+    const param = (name2) => {
+      const v = url.searchParams.get(name2);
+      return v === null ? void 0 : v.slice(0, QUERY_MAX);
+    };
+    switch (url.pathname) {
+      case "/":
+      case "/index.html": {
+        if (!getOnly()) return;
+        if (html?.version !== state.version) html = { version: state.version, text: renderHtml(template, state.view, { root: repo }) };
+        return send(res, 200, "text/html; charset=utf-8", html.text, head);
+      }
+      case "/view.json":
+        if (!getOnly()) return;
+        return send(res, 200, "application/json; charset=utf-8", state.text, head);
+      case "/events": {
+        if (!getOnly()) return;
+        if (clients.size >= SSE_CLIENTS_MAX) return send(res, 503, "text/plain; charset=utf-8", "too many event streams\n");
+        res.writeHead(200, { ...SECURITY_HEADERS, "Content-Type": "text/event-stream; charset=utf-8", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+        res.write(
+          `retry: 3000
+
+event: hello
+data: ${JSON.stringify({ version: state.version, stale, ask: agent ? { agent: agent.name, busy: !!asking } : null })}
+
+`
+        );
+        clients.add(res);
+        req.on("close", () => clients.delete(res));
+        return;
+      }
+      case "/api/node": {
+        if (!getOnly()) return;
+        const id = param("id");
+        if (!id) return sendJson(res, 400, { error: "missing ?id=" }, head);
+        const card = nodeCard({ view: state.view, byId: state.byId, fileSystems: state.assembled.fileSystems }, id);
+        if (!card) return sendJson(res, 404, { error: `unknown node id: ${id}`, suggestions: similarIds(state.view, id) }, head);
+        return sendJson(res, 200, card, head);
+      }
+      case "/api/search": {
+        if (!getOnly()) return;
+        const q = param("q")?.trim();
+        if (!q) return sendJson(res, 400, { error: "missing ?q=" }, head);
+        const modules = (runFind(paths.index, q, SEARCH_MODULES) ?? []).filter((r) => r.score > 0).map((r) => {
+          const whole = modId(r.slug);
+          const ids = [whole, ...state.view.nodes.filter((n) => n.slice?.of === whole).map((n) => n.id)].filter((x) => state.byId.has(x));
+          return { slug: r.slug, ids, score: r.score, matched: r.matched, files: r.files.slice(0, 10) };
+        });
+        return sendJson(res, 200, { q, nodes: searchNodes(state.view, q), modules }, head);
+      }
+      case "/api/callgraph": {
+        if (!getOnly()) return;
+        const raw = param("sym");
+        if (!raw) return sendJson(res, 400, { error: "missing ?sym=" }, head);
+        const depth = Number(param("depth") ?? "1");
+        if (!Number.isInteger(depth) || depth < 1 || depth > 3) return sendJson(res, 400, { error: "depth must be 1, 2 or 3" }, head);
+        const dir = param("dir") ?? "both";
+        if (dir !== "in" && dir !== "out" && dir !== "both") return sendJson(res, 400, { error: "dir must be in, out or both" }, head);
+        const sym = raw.startsWith("sym:") ? raw.slice(4) : raw;
+        let n;
+        try {
+          n = codeindex_engine_exports.neighborhood(symbolGraph(), sym, { depth, direction: dir });
+        } catch (e) {
+          return sendJson(res, 500, { error: `callgraph unavailable: ${e.message}` }, head);
+        }
+        if (!n.root.length) return sendJson(res, 404, { error: `unknown symbol: ${raw}` }, head);
+        const viewId = (id) => `sym:${id}`;
+        const nodes = n.nodes.slice(0, CALLGRAPH_NODES).map((x) => ({
+          id: viewId(x.id),
+          name: x.name,
+          kind: x.kind,
+          file: x.file,
+          line: x.line,
+          depth: x.depth,
+          inView: state.byId.has(viewId(x.id))
+        }));
+        const kept = new Set(nodes.map((x) => x.id));
+        const edges = n.edges.filter((e) => kept.has(viewId(e.from)) && kept.has(viewId(e.to))).slice(0, CALLGRAPH_EDGES).map((e) => ({ from: viewId(e.from), to: viewId(e.to), kind: e.kind, weight: e.weight }));
+        const truncated = !!n.truncated || n.nodes.length > nodes.length || n.edges.length > edges.length;
+        return sendJson(
+          res,
+          200,
+          { sym: raw, depth, dir, root: n.root.map((r) => viewId(r.id)), nodes, edges, ...truncated ? { truncated: true } : {} },
+          head
+        );
+      }
+      case "/api/ask": {
+        if (!agent) return sendJson(res, 404, { error: "the Ask bridge is off (no agent CLI found, or --ask none)" });
+        if (method !== "POST") return send(res, 405, "text/plain; charset=utf-8", "method not allowed\n", false, { Allow: "POST" });
+        if (!loopbackOnly && !isLoopbackHost(req.socket.remoteAddress ?? "")) return sendJson(res, 403, { error: "asking is only allowed from this machine" });
+        const origin = req.headers.origin;
+        if (origin !== void 0 && origin !== `http://${req.headers.host}`) return sendJson(res, 403, { error: "cross-origin request refused" });
+        const site = req.headers["sec-fetch-site"];
+        if (site !== void 0 && site !== "same-origin" && site !== "none") return sendJson(res, 403, { error: "cross-site request refused" });
+        if (!(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) return sendJson(res, 415, { error: "send application/json" });
+        const body2 = await readBody(req, BODY_MAX);
+        if (body2 === void 0) return sendJson(res, 413, { error: `body over ${BODY_MAX} bytes` });
+        let parsed2;
+        try {
+          parsed2 = JSON.parse(body2);
+        } catch {
+          return sendJson(res, 400, { error: "body is not JSON" });
+        }
+        const q = checkQuestion(parsed2?.question);
+        if ("error" in q) return sendJson(res, 400, { error: q.error });
+        if (asking) return sendJson(res, 409, { error: "an ask is already running", id: asking.id });
+        const id = startAsk(q.question);
+        return sendJson(res, 202, { id, question: q.question, agent: agent.name });
+      }
+      default:
+        return send(res, 404, "text/plain; charset=utf-8", "not found\n", head);
+    }
+  };
+  const server = createServer((req, res) => {
+    handle2(req, res).catch((e) => {
+      if (!res.headersSent) sendJson(res, 500, { error: e.message });
+      else res.end();
+    });
+  });
+  server.headersTimeout = 1e4;
+  server.requestTimeout = 3e4;
+  await new Promise((ok, fail) => {
+    const onError = (e) => {
+      fail(e.code === "EADDRINUSE" ? new Error(`port ${opts.port ?? SERVE_PORT} is in use on ${host}: pass --port <n>`) : e);
+    };
+    server.once("error", onError);
+    server.listen(opts.port ?? SERVE_PORT, host, () => {
+      server.off("error", onError);
+      ok();
+    });
+  });
+  const address = server.address();
+  const port = typeof address === "object" && address ? address.port : opts.port ?? SERVE_PORT;
+  const urlHost = host.includes(":") ? `[${host}]` : host;
+  let closing;
+  let markClosed = () => {
+  };
+  const closed = new Promise((ok) => {
+    markClosed = ok;
+  });
+  const close = () => {
+    closing ??= new Promise((ok) => {
+      clearInterval(heartbeat);
+      if (poll) clearInterval(poll);
+      clearInterval(agentPoll);
+      if (viewTimer) clearTimeout(viewTimer);
+      if (sourceTimer) clearTimeout(sourceTimer);
+      for (const w of watchers.values()) w.close();
+      watchers.clear();
+      asking?.child?.kill("SIGTERM");
+      for (const c2 of clients) c2.end();
+      clients.clear();
+      server.close(() => {
+        markClosed();
+        ok();
+      });
+      server.closeAllConnections?.();
+    });
+    return closing;
+  };
+  return { url: `http://${urlHost}:${port}/`, host, port, repo, ...agent ? { ask: agent } : {}, refresh, close, closed };
+}
+
 // src/summary.ts
 var SUMMARY_MAX_LINES = 150;
 var EXAMPLES = 5;
@@ -40336,8 +41429,8 @@ function formatBuildSummary(r) {
 }
 
 // src/status.ts
-import { existsSync as existsSync25 } from "fs";
-import { resolve as resolve27 } from "path";
+import { existsSync as existsSync28 } from "fs";
+import { resolve as resolve30 } from "path";
 var build = (s) => `run \`ultraview build --repo ${s.paths.repo}\``;
 var noIndex = (s) => s.index.exists ? void 0 : { situation: "no-index", reasons: ["no ultraindex index at .ultraindex/"], worklist: [build(s)] };
 var indexStale = (s) => {
@@ -40396,15 +41489,15 @@ function indexState(paths) {
   };
 }
 function readStatus(repoArg, probes = PROBES) {
-  const repo = resolve27(repoArg);
-  if (!existsSync25(repo)) throw new Error(`repo not found: ${repo}`);
+  const repo = resolve30(repoArg);
+  if (!existsSync28(repo)) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
   let report;
   const inputs = {
     paths,
     index: indexState(paths),
-    facts: { exists: existsSync25(paths.facts) },
-    model: { exists: existsSync25(paths.model) },
+    facts: { exists: existsSync28(paths.facts) },
+    model: { exists: existsSync28(paths.model) },
     check: () => report ??= checkMap(repo)
   };
   let hit = { situation: "ready", reasons: ["index fresh, model checks clean, nothing stale"], worklist: [] };
@@ -40469,6 +41562,13 @@ Commands:
                      facts with file:line, neighbours. Cut to --budget tokens.
   show <node-id>     Compact card for one node: kind, label, parent,
                      capabilities, summary, citations, metrics, top edges.
+  lens new "<question>"
+                     Evidence pack to answer a question as a lens: the
+                     proposed id and target path, the JSON template, candidate
+                     nodes (ultraindex find + names matching the question),
+                     their strongest edges, source excerpts cut to --budget
+                     tokens, then the steps to write and save it.
+  lens list          Saved lenses: id, question, node count, stale flag.
   lens save <file>   Validate a lens (one saved question and its cited
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
@@ -40510,6 +41610,13 @@ Commands:
                      --svg (laid-out diagram) at --level cap|sys|mod or of one
                      --lens <id> / --flow <id>, or --md (an architecture brief).
                      --out <file> writes it (atomically) instead of printing.
+  serve              Local server for the map with live data: the page, its
+                     view.json, an event stream that pushes every change
+                     under .ultraview/ (and a stale notice when source files
+                     change), /api/node, /api/search, /api/callgraph, and the
+                     optional Ask bridge (POST /api/ask: a read-only run of
+                     the claude or codex CLI whose answer is saved as a lens).
+                     Binds ${SERVE_HOST}:${SERVE_PORT}; Ctrl-C stops it.
 
 Options:
   --repo <dir>   Repository to map (default: the current directory)
@@ -40518,10 +41625,19 @@ Options:
                  into the shared codeindex cache; CODEINDEX_NO_GRAMMARS_PULL=1
                  forbids the download.
   --strict       check: stale lenses / flows fail instead of warning
-  --budget <n>   dossier: token budget (default ${DOSSIER_BUDGET}, ~4 characters a token)
+  --budget <n>   dossier / lens new: token budget (default ${DOSSIER_BUDGET} / ${LENS_BUDGET},
+                 ~4 characters a token)
+  --id <slug>    lens new: the lens id (default: a slug of the question,
+                 made unique against the saved lenses)
   --force        lens save / flow save: replace a different question / title
                  saved under the same id
-  --open         render: open the page with the OS opener afterwards
+  --open         render / serve: open the page with the OS opener afterwards
+  --port <n>     serve: port (default ${SERVE_PORT}; 0 picks a free one)
+  --host <addr>  serve: address to bind (default ${SERVE_HOST}). A non-loopback
+                 address serves the map to the network: only when asked for
+                 explicitly, with a warning
+  --ask <agent>  serve: the Ask bridge, ${ASK_MODES.join("|")} (default auto:
+                 claude, then codex, if installed; none turns it off)
   --base <ref>   diff: the ref to compare with (its merge-base with HEAD)
   --staged       diff: staged changes only, against HEAD
   --worktree     diff: everything uncommitted, against HEAD
@@ -40562,7 +41678,7 @@ Options:
 Exit codes: 0 ok, 1 failure (check failed, save / record / timeline entry
 refused), 2 usage error or unknown node id. diff --hook always exits 0.
 `;
-var COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render", "diff", "timeline", "hook", "insights", "export"];
+var COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render", "diff", "timeline", "hook", "insights", "export", "serve"];
 var VALUE_FLAGS2 = [
   "repo",
   "budget",
@@ -40580,7 +41696,11 @@ var VALUE_FLAGS2 = [
   "level",
   "lens",
   "flow",
-  "out"
+  "out",
+  "id",
+  "port",
+  "host",
+  "ask"
 ];
 var BOOL_FLAGS = [
   "json",
@@ -40606,14 +41726,15 @@ var ARITY = {
   check: { min: 0, max: 0, usage: "check" },
   dossier: { min: 1, max: 1, usage: "dossier <node-id>" },
   show: { min: 1, max: 1, usage: "show <node-id>" },
-  lens: { min: 2, max: 2, usage: "lens save <file>" },
+  lens: { min: 1, max: 2, usage: 'lens new "<question>" | lens list | lens save <file>' },
   flow: { min: 2, max: 2, usage: "flow save <file>" },
   render: { min: 0, max: 0, usage: "render [--out <file>] [--open]" },
   diff: { min: 0, max: 0, usage: "diff [--base <ref> | --staged | --worktree] [--record] [--markdown]" },
   timeline: { min: 1, max: 1, usage: "timeline add --title \u2026 --summary \u2026" },
   hook: { min: 1, max: 1, usage: "hook install|uninstall [--agent claude]" },
   insights: { min: 0, max: 0, usage: "insights" },
-  export: { min: 0, max: 0, usage: "export --mermaid|--svg|--md [--level cap|sys|mod] [--lens <id>] [--flow <id>] [--out <file>]" }
+  export: { min: 0, max: 0, usage: "export --mermaid|--svg|--md [--level cap|sys|mod] [--lens <id>] [--flow <id>] [--out <file>]" },
+  serve: { min: 0, max: 0, usage: "serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--open]" }
 };
 var processIo = {
   out: (s) => process.stdout.write(s),
@@ -40735,7 +41856,7 @@ async function cmdDossier(p, io) {
       return EXIT_USAGE;
     }
   }
-  const repo = resolve28(p.values.repo ?? ".");
+  const repo = resolve31(p.values.repo ?? ".");
   const live = liveView(repo);
   const text2 = renderNodeDossier(live, repo, id, { budget });
   if (text2 === void 0) return unknownId(p, io, id, similarIds(live.view, id));
@@ -40751,7 +41872,7 @@ async function cmdSave(p, io, what) {
   }
   let text2;
   try {
-    text2 = readFileSync30(resolve28(file), "utf8");
+    text2 = readFileSync33(resolve31(file), "utf8");
   } catch (e) {
     io.err(`ultraview: cannot read ${file}: ${e.message}
 `);
@@ -40779,7 +41900,7 @@ async function cmdRender(p, io) {
   if (p.bools.has("json")) io.out(json({ ...r, ...opened !== void 0 ? { opened } : {} }));
   else {
     const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
-    const shown = relative16(process.cwd(), r.out);
+    const shown = relative17(process.cwd(), r.out);
     io.out(`rendered   ${shown && !shown.startsWith("..") ? shown : r.out} (${kb(r.bytes)}: view ${kb(r.viewBytes)} + viewer ${kb(r.viewerBytes)})
 `);
     if (opened === false) io.out("open       no opener found: open the file in a browser\n");
@@ -40854,7 +41975,7 @@ ${problemLines(recorded.errors)}
   return EXIT_OK;
 }
 async function cmdDiff(p, io) {
-  const repo = resolve28(p.values.repo ?? ".");
+  const repo = resolve31(p.values.repo ?? ".");
   if (!p.bools.has("hook")) return runDiff(p, io, repo, false);
   const pull = process.env.CODEINDEX_NO_GRAMMARS_PULL;
   process.env.CODEINDEX_NO_GRAMMARS_PULL = "1";
@@ -40872,7 +41993,7 @@ async function cmdDiff(p, io) {
   if (errs.length) {
     try {
       const log = viewPaths(repo).hookLog;
-      if (!existsSync26(viewPaths(repo).dir)) mkdirSync11(viewPaths(repo).dir, { recursive: true });
+      if (!existsSync29(viewPaths(repo).dir)) mkdirSync12(viewPaths(repo).dir, { recursive: true });
       appendFileSync2(log, errs.map((e) => `${(/* @__PURE__ */ new Date()).toISOString()} ${e.replace(/^ultraview: /, "")}`).join(""));
     } catch {
     }
@@ -40904,7 +42025,7 @@ ${problemLines(r.errors)}
   return r.ok ? EXIT_OK : EXIT_FAILURE;
 }
 function scriptPath() {
-  const self = fileURLToPath4(import.meta.url);
+  const self = fileURLToPath5(import.meta.url);
   try {
     return realpathSync8(self);
   } catch {
@@ -40959,9 +42080,109 @@ async function cmdExport(p, io) {
   const content = format === "md" ? exportBrief(view) : format === "svg" ? exportSvg(view, opts) : exportMermaid(view, opts);
   if (p.values.out !== void 0) {
     writeFileAtomic(p.values.out, content);
-    io.out(p.bools.has("json") ? json({ format, file: resolve28(p.values.out) }) : `wrote      ${p.values.out}
+    io.out(p.bools.has("json") ? json({ format, file: resolve31(p.values.out) }) : `wrote      ${p.values.out}
 `);
   } else io.out(p.bools.has("json") ? json({ format, content }) : content);
+  return EXIT_OK;
+}
+function positiveInt(p, io, flag) {
+  const raw = p.values[flag];
+  if (raw === void 0) return void 0;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) {
+    io.err(`ultraview: --${flag} must be a positive integer (got ${raw})
+`);
+    return null;
+  }
+  return n;
+}
+async function cmdLens(p, io) {
+  const [action, arg] = p.positional;
+  const repo = p.values.repo ?? ".";
+  if (action === "new") {
+    if (arg === void 0) {
+      io.err('ultraview: missing argument (usage: ultraview lens new "<question>")\n');
+      return EXIT_USAGE;
+    }
+    const budget = positiveInt(p, io, "budget");
+    if (budget === null) return EXIT_USAGE;
+    const pack = lensNew(repo, arg, { budget, id: p.values.id });
+    io.out(p.bools.has("json") ? json(pack) : pack.text);
+    return EXIT_OK;
+  }
+  if (action === "list") {
+    if (arg !== void 0) {
+      io.err(`ultraview: unexpected argument: ${arg} (usage: ultraview lens list)
+`);
+      return EXIT_USAGE;
+    }
+    const r = lensList(repo);
+    io.out(p.bools.has("json") ? json(r) : formatLensList(r));
+    return EXIT_OK;
+  }
+  if (action === "save") {
+    if (arg === void 0) {
+      io.err("ultraview: missing argument (usage: ultraview lens save <file>)\n");
+      return EXIT_USAGE;
+    }
+    return cmdSave(p, io, "lens");
+  }
+  io.err(`ultraview: unknown lens action: ${action} (lens new "<question>", lens list, lens save <file>)
+`);
+  return EXIT_USAGE;
+}
+async function cmdServe(p, io) {
+  const ask = p.values.ask ?? "auto";
+  if (!ASK_MODES.includes(ask)) {
+    io.err(`ultraview: --ask must be one of ${ASK_MODES.join(", ")} (got ${ask})
+`);
+    return EXIT_USAGE;
+  }
+  let port = SERVE_PORT;
+  if (p.values.port !== void 0) {
+    port = Number(p.values.port);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) {
+      io.err(`ultraview: --port must be 0-65535 (got ${p.values.port})
+`);
+      return EXIT_USAGE;
+    }
+  }
+  const host = p.values.host;
+  const handle2 = await startServe({
+    repo: p.values.repo ?? ".",
+    port,
+    host,
+    hostExplicit: host !== void 0,
+    ask,
+    onWarning: (m) => io.err(`ultraview: ${m}
+`)
+  });
+  if (!isLoopbackHost(handle2.host))
+    io.err(
+      `ultraview: WARNING: serving on ${handle2.host}, beyond this machine: anyone who can reach port ${handle2.port} reads the map and its source excerpts (asking stays local-only)
+`
+    );
+  const opened = p.bools.has("open") ? await openFile(handle2.url) : void 0;
+  if (p.bools.has("json"))
+    io.out(
+      json({ url: handle2.url, host: handle2.host, port: handle2.port, repo: handle2.repo, ask: handle2.ask ?? null, ...opened !== void 0 ? { opened } : {} })
+    );
+  else {
+    io.out(`serving    ${handle2.url}  (live: every change under .ultraview/ shows up without a reload)
+`);
+    io.out(
+      `ask        ${handle2.ask ? `${handle2.ask.name} (${handle2.ask.path}), read-only; answers saved as lenses` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}
+`
+    );
+    if (opened === false) io.out("open       no opener found: open the address in a browser\n");
+    io.out("stop       Ctrl-C\n");
+  }
+  const stop2 = () => void handle2.close();
+  process.once("SIGINT", stop2);
+  process.once("SIGTERM", stop2);
+  await handle2.closed;
+  process.off("SIGINT", stop2);
+  process.off("SIGTERM", stop2);
   return EXIT_OK;
 }
 async function main(argv, io = processIo) {
@@ -41004,6 +42225,7 @@ async function main(argv, io = processIo) {
       case "dossier":
         return await cmdDossier(p, io);
       case "lens":
+        return await cmdLens(p, io);
       case "flow":
         return await cmdSave(p, io, p.command);
       case "render":
@@ -41018,6 +42240,8 @@ async function main(argv, io = processIo) {
         return await cmdInsights(p, io);
       case "export":
         return await cmdExport(p, io);
+      case "serve":
+        return await cmdServe(p, io);
       default:
         return await cmdStatus(p, io);
     }

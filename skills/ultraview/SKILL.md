@@ -28,5 +28,10 @@ Claude Code turn automatically, from `.claude/settings.local.json` (`--shared`
 for the committed `.claude/settings.json`). `insights` lists hotspots, hidden
 coupling, cycles, dead code, untested hubs and repeated literals, each with a
 prompt to hand back to the user; `export --md` / `--mermaid` / `--svg` produce
-a brief or a diagram for a README or PR. The full agent loop arrives in later
-releases. Run `node scripts/ultraview.mjs --help` for the current surface.
+a brief or a diagram for a README or PR. To answer a question, `lens new
+"<question>"` prints the evidence, the target path and the template; write the
+lens, then `lens save` and `check` (`lens list` shows which saved answers went
+stale). `serve` (`--open`, `--port`, `--host`, `--ask auto|claude|codex|none`)
+serves the map on 127.0.0.1 with live updates as `.ultraview/` changes, and an
+optional read-only Ask bridge that saves each answer as a lens. The full agent
+loop arrives in later releases. Run `node scripts/ultraview.mjs --help` for the current surface.

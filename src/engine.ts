@@ -38,8 +38,8 @@ export {
   gatherEvidence,
   indexExists,
   indexPaths,
-  loadEnrichedProse,
   loadCache,
+  loadEnrichedProse,
   loadGraph,
   loadManifest,
   loadSymbols,
@@ -48,6 +48,7 @@ export {
   renderModuleDossier,
   runBuild,
   runCheck,
+  runFind,
   runStatus,
   withEntries,
 } from "./vendor/ultraindex-engine.mjs";

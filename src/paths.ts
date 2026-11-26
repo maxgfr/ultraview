@@ -9,7 +9,7 @@ export const VIEW_DIR = ".ultraview";
 export const INDEX_DIR_NAME = ".ultraindex";
 
 /** The generated files `build` lists in `.ultraview/.gitignore`. */
-export const GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log"] as const;
+export const GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log", "ask.log"] as const;
 
 export interface ViewPaths {
   repo: string;
