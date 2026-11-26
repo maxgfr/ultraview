@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.12.0](https://github.com/maxgfr/ultraview/compare/v1.11.0...v1.12.0) (2026-11-26)
+
+
+### Features
+
+* **chat:** ask-model and explain for chat turns ([7f12d65](https://github.com/maxgfr/ultraview/commit/7f12d6507c3bb61f97e81a849651f567314da5f6))
+* **chat:** conversations with the app ([06071a7](https://github.com/maxgfr/ultraview/commit/06071a73986d58e543f1b4924b256bbae6694bf9)), closes [#20](https://github.com/maxgfr/ultraview/issues/20)
+
 # [1.11.0](https://github.com/maxgfr/ultraview/compare/v1.10.0...v1.11.0) (2026-11-26)
 
 

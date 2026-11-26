@@ -44365,7 +44365,7 @@ function readStatus(repoArg, probes = PROBES) {
 }
 
 // src/version.ts
-var ULTRAVIEW_VERSION = "1.11.0";
+var ULTRAVIEW_VERSION = "1.12.0";
 
 // src/cli.ts
 var EXIT_OK = 0;
