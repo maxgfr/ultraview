@@ -31,7 +31,7 @@ false-positive guards (comments, strings, test files, docs).
 | `sqlalchemy-orm`          | entityUses           | `session.query/get(X)`, `select(X)` read; `session.add(X(…))`, `insert/update/delete(X)` write; Flask-SQLAlchemy `X.query.…` read                                                                                                                                                                |
 | `django-models`           | entities             | `class X(models.Model)` (or a same-file model), `models.*Field`, `ForeignKey` / `OneToOneField` / `ManyToManyField` (class, `"app.X"`, `"self"`)                                                                                                                                                 |
 | `django-orm`              | entityUses           | `X.objects.<op>(…)` read / write; a write anywhere on the chain wins                                                                                                                                                                                                                             |
-| `sql-schema`              | entities             | `CREATE TABLE [IF NOT EXISTS] name (…)` in `*.sql`: columns, inline and table-level `REFERENCES`; temporary tables skipped                                                                                                                                                                       |
+| `sql-schema`              | entities             | `CREATE TABLE [IF NOT EXISTS] name (…)` in `*.sql`: columns, inline and table-level `REFERENCES`; temporary tables skipped; `ALTER TABLE` / `DROP TABLE` for `sql-migrations`; down migrations skipped                                                                                           |
 | `sql-literals`            | (hints)              | `INSERT INTO` / `UPDATE … SET` / `DELETE FROM` / `SELECT … FROM` / `JOIN` in string literals of any code language, for the `sql-uses` linker                                                                                                                                                     |
 | `bullmq`                  | jobs                 | `new Queue("name")` → queue, `new Worker("name", …)` → worker                                                                                                                                                                                                                                    |
 | `node-cron`               | jobs                 | `cron.schedule("<expr>", handler)` → `cron:<handler>` (inline callbacks: `cron:<file>`, `#2`…)                                                                                                                                                                                                   |
@@ -65,7 +65,11 @@ Linkers: `express-mounts`, `js-mounts` (Hono / Fastify cross-file prefixes),
 `python-mounts` (FastAPI / Flask / Django cross-file prefixes) — all three on
 the shared `mounts.ts`; `orm-fields` (fields declared away from their entity,
 JS ORM relations settled), `prisma-relations`, `drf-viewsets`,
-`orm-relations` (SQLAlchemy / Django / SQL relations and foreign-key tables),
+`sql-migrations` (every `*.sql` file's `CREATE` / `ALTER` / `DROP TABLE` replayed
+in migration order into one entity per table: latest `CREATE TABLE` wins and
+is cited, later `ADD` / `DROP` / `RENAME COLUMN`, type changes, `ADD … FOREIGN
+KEY` / `DROP CONSTRAINT` and `RENAME TO` applied, a dropped table removed;
+before `orm-relations`), `orm-relations` (SQLAlchemy / Django / SQL relations and foreign-key tables),
 `sql-uses` (a SQL literal must name a declared table), `http-calls` (client
 calls through imported instances; every call, JS or Python, matched to a route
 by method + path pattern, most specific route wins, a call's `:p` never

@@ -212,7 +212,8 @@ base-URL prefixes stripped, query dropped) and route matching by method + path
 pattern; screens — Next app/pages, Nuxt pages, SvelteKit routes, React Router /
 Vue Router literal route tables; entities — Prisma, Drizzle, TypeORM,
 Mongoose, Sequelize, SQLAlchemy, Django models, SQL `CREATE TABLE` in
-migrations; entityUses — Prisma client calls (`prisma.order.create`), Drizzle
+migrations (one entity per table across the migration history, `ALTER TABLE`
+columns and foreign keys applied); entityUses — Prisma client calls (`prisma.order.create`), Drizzle
 `db.insert(orders)`, ORM model method calls on known entity names, SQL
 `INSERT/UPDATE/DELETE/SELECT … <table>` literals; jobs — BullMQ queues/workers,
 Celery tasks, `vercel.json` crons, GitHub Actions `schedule`, node-cron;

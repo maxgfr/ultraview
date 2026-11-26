@@ -214,6 +214,35 @@ export interface SqlUseHint {
   line: number;
 }
 
+/** One action of an `ALTER TABLE` statement the `sql-migrations` linker replays. Column and constraint names are unquoted. */
+export type SqlAlterAction =
+  | { action: "add-column"; field: EntityField }
+  | { action: "drop-column"; column: string }
+  | { action: "rename-column"; from: string; to: string }
+  | { action: "set-type"; column: string; type: string }
+  /** `ADD [CONSTRAINT name] FOREIGN KEY (cols) REFERENCES table`: `table` is a `TABLE_REF` relation target. */
+  | { action: "add-fk"; columns: string[]; table: string; constraint?: string }
+  /** `DROP CONSTRAINT name` / MySQL `DROP FOREIGN KEY name`. */
+  | { action: "drop-constraint"; constraint: string }
+  | { action: "rename-table"; to: string };
+
+/** One DDL statement of a `*.sql` file. `create` names the entity fact the extractor emitted at that line. */
+export type SqlDdlOp =
+  | { op: "create"; table: string; line: number }
+  | { op: "drop"; table: string; line: number }
+  | { op: "alter"; table: string; line: number; actions: SqlAlterAction[] };
+
+/**
+ * The DDL statements of one `*.sql` file, in file order (`CREATE TABLE`,
+ * `ALTER TABLE`, `DROP TABLE`), for the `sql-migrations` linker, which
+ * replays every file's statements in migration order into one entity per table.
+ */
+export interface SqlDdlHint {
+  kind: "sql-ddl";
+  file: string;
+  ops: SqlDdlOp[];
+}
+
 /** The actions a Django REST framework viewset serves, from its bases and methods, for the routes a router registers it under. */
 export interface ViewsetHint {
   kind: "viewset";
@@ -340,6 +369,7 @@ export type LinkHint =
   | MountHint
   | TableHint
   | SqlUseHint
+  | SqlDdlHint
   | ViewsetHint
   | FieldsHint
   | HttpClientHint

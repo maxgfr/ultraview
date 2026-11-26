@@ -21,7 +21,7 @@ import { bullmqExtractor, celeryExtractor, githubScheduleExtractor, nodeCronExtr
 import { pythonHttpExtractor } from "./python-http.js";
 import { djangoModelsExtractor, djangoOrmExtractor, ormRelationLinker, sqlalchemyModelsExtractor, sqlalchemyOrmExtractor } from "./python-orm.js";
 import { djangoUrlsExtractor, drfViewsetExtractor, drfViewsetLinker, fastapiExtractor, flaskExtractor, pythonMountLinker } from "./python-routes.js";
-import { sqlLiteralExtractor, sqlSchemaExtractor, sqlUseLinker } from "./sql.js";
+import { sqlLiteralExtractor, sqlMigrationLinker, sqlSchemaExtractor, sqlUseLinker } from "./sql.js";
 
 /** Python routes, HTTP calls and ORMs; SQL schemas and literals; jobs; externals; infra. */
 const PY_OPS_EXTRACTORS: readonly Extractor[] = [
@@ -47,8 +47,8 @@ const PY_OPS_EXTRACTORS: readonly Extractor[] = [
   k8sExtractor,
 ];
 
-/** Python mount prefixes and DRF actions, then ORM / SQL relation and table resolution (before `entity-uses`). */
-const PY_OPS_LINKERS: readonly Linker[] = [pythonMountLinker, drfViewsetLinker, ormRelationLinker, sqlUseLinker];
+/** Python mount prefixes and DRF actions; SQL migrations replayed into one entity per table; then ORM / SQL relation and table resolution (before `entity-uses`). */
+const PY_OPS_LINKERS: readonly Linker[] = [pythonMountLinker, drfViewsetLinker, sqlMigrationLinker, ormRelationLinker, sqlUseLinker];
 // --- end issue #2 ---
 
 // --- issue #1: JS/TS web ---

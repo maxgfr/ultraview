@@ -431,11 +431,11 @@ function keywords(question, keep) {
   const out2 = [];
   for (const raw of foldText(question).split(NON_WORD)) {
     if (!raw) continue;
-    const lower = raw.toLowerCase();
+    const lower2 = raw.toLowerCase();
     if (raw.length < 2) continue;
-    if (STOPWORDS.has(lower) && !keep?.(raw)) continue;
-    if (seen.has(lower)) continue;
-    seen.add(lower);
+    if (STOPWORDS.has(lower2) && !keep?.(raw)) continue;
+    if (seen.has(lower2)) continue;
+    seen.add(lower2);
     out2.push(raw);
   }
   return out2;
@@ -15476,8 +15476,8 @@ function stopwordRescue(scan2, query) {
   const docs = bm25DocsFor(scan2);
   const declared2 = new Set(
     named.filter((t) => {
-      const lower = t.toLowerCase();
-      return docs.some((d) => d.exactNames.has(lower) && d.symbols.includes(t));
+      const lower2 = t.toLowerCase();
+      return docs.some((d) => d.exactNames.has(lower2) && d.symbols.includes(t));
     })
   );
   return declared2.size ? (raw) => declared2.has(raw) : void 0;
@@ -16835,8 +16835,8 @@ function createCallBinder(scan2, pairs, opts = {}) {
       if (typeHint !== void 0 && list.some((d) => d.parent === typeHint)) return list.filter((d) => d.parent === typeHint);
       if (typeHint !== void 0 && list.some((d) => d.parent !== void 0 && lastSegment(d.parent) === typeHint))
         return list.filter((d) => d.parent !== void 0 && lastSegment(d.parent) === typeHint);
-      const lower = receiver?.toLowerCase();
-      if (lower !== void 0 && list.some((d) => d.parent?.toLowerCase() === lower)) return list.filter((d) => d.parent?.toLowerCase() === lower);
+      const lower2 = receiver?.toLowerCase();
+      if (lower2 !== void 0 && list.some((d) => d.parent?.toLowerCase() === lower2)) return list.filter((d) => d.parent?.toLowerCase() === lower2);
       return list;
     };
     const reading = (shape, receiver, selfType, typeHint, typed) => ({ shape, receiver, selfType, typeHint, typed, results: /* @__PURE__ */ new Map() });
@@ -26722,15 +26722,15 @@ var CONFIG_BASES = /* @__PURE__ */ new Set([
   "pubspec.yaml"
 ]);
 function categorize(rel2, ext) {
-  const lower = rel2.toLowerCase();
-  const base = basename3(lower);
-  const segments = lower.split("/");
+  const lower2 = rel2.toLowerCase();
+  const base = basename3(lower2);
+  const segments = lower2.split("/");
   const inDir = (names) => names.some((n) => segments.includes(n));
   if (inDir(I18N_DIRS) && I18N_EXTS.has(ext)) return "i18n";
   if (ext === ".prisma" || ext === ".sql" || ext === ".graphql" || ext === ".gql" || base.startsWith("schema.") || base === "models.py" || inDir(SCHEMA_DIRS)) {
     return "schema";
   }
-  if (lower.includes(".test.") || lower.includes(".spec.") || inDir(TEST_DIRS)) return "test";
+  if (lower2.includes(".test.") || lower2.includes(".spec.") || inDir(TEST_DIRS)) return "test";
   if (CONFIG_BASES.has(base) || base.endsWith(".config.js") || base.endsWith(".config.ts") || base.endsWith(".config.mjs") || base.startsWith(".eslintrc") || base.startsWith(".prettierrc") || base.startsWith(".env") || base.startsWith("docker-compose")) {
     return "config";
   }
@@ -30384,10 +30384,10 @@ function splitIdentifier(token) {
   const out2 = [];
   for (const part of spaced.split(/[^A-Za-z0-9]+| /)) {
     if (!part) continue;
-    const lower = part.toLowerCase();
-    if (seen.has(lower)) continue;
-    seen.add(lower);
-    out2.push(lower);
+    const lower2 = part.toLowerCase();
+    if (seen.has(lower2)) continue;
+    seen.add(lower2);
+    out2.push(lower2);
   }
   return out2;
 }
@@ -30459,8 +30459,8 @@ function buildHaystack(text2) {
   for (const tok of folded.split(/[^A-Za-z0-9_]+/)) {
     if (!tok) continue;
     length++;
-    const lower = tok.toLowerCase();
-    const forms = /* @__PURE__ */ new Set([lower, stem2(lower)]);
+    const lower2 = tok.toLowerCase();
+    const forms = /* @__PURE__ */ new Set([lower2, stem2(lower2)]);
     for (const part of splitIdentifier(tok)) {
       forms.add(part);
       forms.add(stem2(part));
@@ -32204,9 +32204,9 @@ function applyMounts(facts, hints, framework, resolve33) {
 // src/extract/js.ts
 var JS_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
 function isJsLike(rel2) {
-  const lower = rel2.toLowerCase();
-  if (lower.endsWith(".d.ts") || lower.endsWith(".d.mts") || lower.endsWith(".d.cts")) return false;
-  return JS_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  const lower2 = rel2.toLowerCase();
+  if (lower2.endsWith(".d.ts") || lower2.endsWith(".d.mts") || lower2.endsWith(".d.cts")) return false;
+  return JS_EXTENSIONS.some((ext) => lower2.endsWith(ext));
 }
 function skipString(text2, i2) {
   const quote = text2[i2];
@@ -34746,53 +34746,282 @@ var pythonMountLinker = {
 };
 
 // src/extract/sql.ts
-var IDENT = String.raw`(?:[\`"\[]?[A-Za-z_][\w$]*[\`"\]]?\.)?[\`"\[]?([A-Za-z_][\w$]*)[\`"\]]?`;
+var PART = String.raw`[\`"\[]?[A-Za-z_][\w$]*[\`"\]]?`;
+var NAME = String.raw`[\`"\[]?([A-Za-z_][\w$]*)[\`"\]]?`;
+var IDENT = String.raw`(?:${PART}\.)?${NAME}`;
 var CONSTRAINT_START = /^(?:CONSTRAINT|PRIMARY|FOREIGN|UNIQUE|CHECK|INDEX|KEY|EXCLUDE|FULLTEXT|SPATIAL|LIKE|PERIOD)\b/i;
-var TYPE_END = /\s+(?:NOT|NULL|DEFAULT|PRIMARY|REFERENCES|UNIQUE|CHECK|CONSTRAINT|GENERATED|COLLATE|AUTO_INCREMENT|AUTOINCREMENT|IDENTITY|ON|COMMENT|AS|ENCODE|CHARACTER\s+SET)\b[\s\S]*$/i;
+var TYPE_END = /\s+(?:NOT|NULL|DEFAULT|PRIMARY|REFERENCES|UNIQUE|CHECK|CONSTRAINT|GENERATED|COLLATE|AUTO_INCREMENT|AUTOINCREMENT|IDENTITY|ON|COMMENT|AS|ENCODE|CHARACTER\s+SET|USING)\b[\s\S]*$/i;
+var REFERENCES = new RegExp(String.raw`\bREFERENCES\s+${IDENT}`, "i");
+var FOREIGN_KEY = new RegExp(String.raw`(?:CONSTRAINT\s+${NAME}\s+)?FOREIGN\s+KEY\s*(?:${PART}\s*)?\(([^)]*)\)\s*REFERENCES\s+${IDENT}`, "i");
 function unquoteIdent(raw) {
   return raw.trim().replace(/^[`"[]|[`"\]]$/g, "");
 }
+var columnList = (raw) => raw.split(",").map(unquoteIdent).filter(Boolean);
+function columnField(def) {
+  const col = /^([`"[]?[A-Za-z_][\w$]*[`"\]]?)\s+(.+)$/.exec(def);
+  if (!col) return void 0;
+  const type = col[2].replace(TYPE_END, "").trim();
+  const field = { name: unquoteIdent(col[1]), type: type || "unknown" };
+  const ref2 = REFERENCES.exec(def);
+  if (ref2) field.relation = `${TABLE_REF}${ref2[1]}`;
+  return field;
+}
+function statementEnd(text2, from) {
+  let depth = 0;
+  for (let i2 = from; i2 < text2.length; i2++) {
+    const ch = text2[i2];
+    if (ch === '"' || ch === "`") {
+      const close = text2.indexOf(ch, i2 + 1);
+      if (close === -1) return text2.length;
+      i2 = close;
+    } else if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && ch === ";") return i2;
+    else if (depth === 0 && ch === "\n" && /^[ \t\r]*\n/.test(text2.slice(i2 + 1, i2 + 80))) return i2;
+  }
+  return text2.length;
+}
+function splitTopLevel(text2) {
+  const out2 = [];
+  let depth = 0;
+  let start2 = 0;
+  for (let i2 = 0; i2 < text2.length; i2++) {
+    const ch = text2[i2];
+    if (ch === '"' || ch === "`") {
+      const close = text2.indexOf(ch, i2 + 1);
+      i2 = close === -1 ? text2.length : close;
+    } else if (ch === "(") depth++;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (ch === "," && depth === 0) {
+      out2.push(text2.slice(start2, i2));
+      start2 = i2 + 1;
+    }
+  }
+  out2.push(text2.slice(start2));
+  return out2.map((s) => s.replace(/\s+/g, " ").trim()).filter(Boolean);
+}
+function alterAction(def) {
+  let m;
+  if (m = /^ADD\s+(.*)$/i.exec(def)) {
+    const rest = m[1];
+    const fk = FOREIGN_KEY.exec(rest);
+    if (fk) {
+      const action = { action: "add-fk", columns: columnList(fk[2]), table: fk[3] };
+      if (fk[1]) action.constraint = fk[1];
+      return action;
+    }
+    const col = /^COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?(.*)$/i.exec(rest);
+    if (!col && CONSTRAINT_START.test(rest)) return void 0;
+    const field = columnField(col ? col[1] : rest.replace(/^IF\s+NOT\s+EXISTS\s+/i, ""));
+    return field ? { action: "add-column", field } : void 0;
+  }
+  if (m = /^DROP\s+(.*)$/i.exec(def)) {
+    const rest = m[1];
+    const constraint = new RegExp(String.raw`^(?:CONSTRAINT|FOREIGN\s+KEY)\s+(?:IF\s+EXISTS\s+)?${NAME}`, "i").exec(rest);
+    if (constraint) return { action: "drop-constraint", constraint: constraint[1] };
+    const col = /^COLUMN\s+(.*)$/i.exec(rest);
+    if (!col && /^(?:PRIMARY|INDEX|KEY|CHECK|DEFAULT|PERIOD|SYSTEM|PARTITION)\b/i.test(rest)) return void 0;
+    const name2 = new RegExp(String.raw`^(?:IF\s+EXISTS\s+)?${NAME}`, "i").exec(col ? col[1] : rest);
+    return name2 ? { action: "drop-column", column: name2[1] } : void 0;
+  }
+  if (m = /^RENAME\s+(.*)$/i.exec(def)) {
+    const rest = m[1];
+    const table = new RegExp(String.raw`^(?:TO|AS)\s+${IDENT}`, "i").exec(rest);
+    if (table) return { action: "rename-table", to: table[1] };
+    if (/^(?:CONSTRAINT|INDEX|KEY)\b/i.test(rest)) return void 0;
+    const col = new RegExp(String.raw`^(?:COLUMN\s+)?${NAME}\s+TO\s+${NAME}`, "i").exec(rest);
+    return col ? { action: "rename-column", from: col[1], to: col[2] } : void 0;
+  }
+  m = new RegExp(String.raw`^ALTER\s+(?:COLUMN\s+)?${NAME}\s+(?:SET\s+DATA\s+)?TYPE\s+(.+)$`, "i").exec(def);
+  if (m) {
+    const type = m[2].replace(TYPE_END, "").trim();
+    return type ? { action: "set-type", column: m[1], type } : void 0;
+  }
+  return void 0;
+}
+var SECTION = /^[ \t]*--[ \t]*(?:migrate:(up|down)|\+goose[ \t]+(up|down)|\+migrate[ \t]+(up|down))\b/gim;
+function downSections(text2) {
+  const out2 = [];
+  let downAt;
+  for (const m of text2.matchAll(SECTION)) {
+    const down = (m[1] ?? m[2] ?? m[3] ?? "").toLowerCase() === "down";
+    if (down && downAt === void 0) downAt = m.index;
+    else if (!down && downAt !== void 0) {
+      out2.push([downAt, m.index]);
+      downAt = void 0;
+    }
+  }
+  if (downAt !== void 0) out2.push([downAt, text2.length]);
+  return out2;
+}
+var DOWN_FILE = /(?:^|[/._-])down\.sql$|(?:^|\/)U\d[^/]*__[^/]*\.sql$/i;
 function extractSchema2(input) {
   const text2 = maskSource(input.rel, input.text, { strings: true });
   const lineOf = lineIndex(text2);
+  const down = downSections(input.text);
+  const inDown = (at) => down.some(([s, e]) => at >= s && at < e);
   const entities = [];
+  const ops = [];
   const CREATE = new RegExp(
     String.raw`\bCREATE\s+(?:OR\s+REPLACE\s+)?((?:GLOBAL\s+|LOCAL\s+)?TEMP(?:ORARY)?\s+|UNLOGGED\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?${IDENT}\s*\(`,
     "gi"
   );
   for (const m of text2.matchAll(CREATE)) {
-    if (m[1] && /TEMP/i.test(m[1])) continue;
+    const at = m.index;
+    if (m[1] && /TEMP/i.test(m[1]) || inDown(at)) continue;
     const name2 = m[2];
-    const call2 = readArgs(text2, m.index + m[0].length - 1);
+    const call2 = readArgs(text2, at + m[0].length - 1);
     if (!call2) continue;
     const fields = [];
     const fks = [];
     for (const arg of call2.args) {
       const def = arg.raw.replace(/\s+/g, " ").trim();
       if (CONSTRAINT_START.test(def)) {
-        const fk = new RegExp(String.raw`FOREIGN KEY\s*\(([^)]*)\)\s*REFERENCES\s+${IDENT}`, "i").exec(def);
-        if (fk) fks.push({ cols: fk[1].split(",").map(unquoteIdent), table: fk[2] });
+        const fk = FOREIGN_KEY.exec(def);
+        if (fk) fks.push({ cols: columnList(fk[2]).map((c2) => c2.toLowerCase()), table: fk[3] });
         continue;
       }
-      const col = /^([`"[]?[A-Za-z_][\w$]*[`"\]]?)\s+(.+)$/.exec(def);
-      if (!col) continue;
-      const type = col[2].replace(TYPE_END, "").trim();
-      const field = { name: unquoteIdent(col[1]), type: type || "unknown" };
-      const ref2 = new RegExp(String.raw`\bREFERENCES\s+${IDENT}`, "i").exec(def);
-      if (ref2) field.relation = `${TABLE_REF}${ref2[1]}`;
-      fields.push(field);
+      const field = columnField(def);
+      if (field) fields.push(field);
     }
     for (const fk of fks) {
-      for (const f of fields) if (fk.cols.includes(f.name)) f.relation = `${TABLE_REF}${fk.table}`;
+      for (const f of fields) if (fk.cols.includes(f.name.toLowerCase())) f.relation = `${TABLE_REF}${fk.table}`;
     }
-    entities.push({ name: name2, orm: "sql", file: input.rel, line: lineOf(m.index), fields });
+    const line2 = lineOf(at);
+    entities.push({ name: name2, orm: "sql", file: input.rel, line: line2, fields });
+    ops.push({ at, op: { op: "create", table: name2, line: line2 } });
   }
-  return entities.length ? { entities } : {};
+  const ALTER = new RegExp(String.raw`\bALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?${IDENT}[ \t]*\*?`, "gi");
+  for (const m of text2.matchAll(ALTER)) {
+    const at = m.index;
+    if (inDown(at)) continue;
+    const from = at + m[0].length;
+    const actions = splitTopLevel(text2.slice(from, statementEnd(text2, from))).map(alterAction).filter((a) => a !== void 0);
+    if (actions.length) ops.push({ at, op: { op: "alter", table: m[1], line: lineOf(at), actions } });
+  }
+  for (const m of text2.matchAll(/\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?/gi)) {
+    const at = m.index;
+    if (inDown(at)) continue;
+    const from = at + m[0].length;
+    for (const item of splitTopLevel(text2.slice(from, statementEnd(text2, from)))) {
+      const name2 = new RegExp(`^${IDENT}`).exec(item);
+      if (name2) ops.push({ at, op: { op: "drop", table: name2[1], line: lineOf(at) } });
+    }
+  }
+  if (!entities.length && !ops.length) return {};
+  ops.sort((a, b) => a.at - b.at);
+  const hint = { kind: "sql-ddl", file: input.rel, ops: ops.map((o) => o.op) };
+  return entities.length ? { entities, hints: [hint] } : { hints: [hint] };
 }
 var sqlSchemaExtractor = {
   id: "sql-schema",
-  applies: (input) => input.rel.toLowerCase().endsWith(".sql"),
+  applies: (input) => input.rel.toLowerCase().endsWith(".sql") && !DOWN_FILE.test(input.rel),
   extract: extractSchema2
+};
+function migrationOrder(a, b) {
+  const pa = a.split(/(\d+)/);
+  const pb = b.split(/(\d+)/);
+  for (let i2 = 0; i2 < Math.min(pa.length, pb.length); i2++) {
+    const x = pa[i2];
+    const y = pb[i2];
+    if (x === y) continue;
+    if (i2 % 2 === 1) {
+      const nx = x.replace(/^0+(?=\d)/, "");
+      const ny = y.replace(/^0+(?=\d)/, "");
+      if (nx.length !== ny.length) return nx.length - ny.length;
+      if (nx !== ny) return nx < ny ? -1 : 1;
+      continue;
+    }
+    return x < y ? -1 : 1;
+  }
+  return pa.length !== pb.length ? pa.length - pb.length : a < b ? -1 : a > b ? 1 : 0;
+}
+var lower = (s) => s.toLowerCase();
+function applyAlter(t, a, tables) {
+  const fields = t.entity.fields;
+  const find = (col) => fields.find((f) => lower(f.name) === lower(col));
+  switch (a.action) {
+    case "add-column": {
+      const at = fields.findIndex((f) => lower(f.name) === lower(a.field.name));
+      if (at === -1) fields.push({ ...a.field });
+      else fields[at] = { ...a.field };
+      return;
+    }
+    case "drop-column":
+      t.entity.fields = fields.filter((f) => lower(f.name) !== lower(a.column));
+      for (const [name2, cols] of t.constraints) if (cols.includes(lower(a.column))) t.constraints.delete(name2);
+      return;
+    case "rename-column": {
+      const f = find(a.from);
+      if (f) f.name = a.to;
+      for (const cols of t.constraints.values()) for (let i2 = 0; i2 < cols.length; i2++) if (cols[i2] === lower(a.from)) cols[i2] = lower(a.to);
+      return;
+    }
+    case "set-type": {
+      const f = find(a.column);
+      if (f) f.type = a.type;
+      return;
+    }
+    case "add-fk":
+      for (const col of a.columns) {
+        const f = find(col);
+        if (f) f.relation = `${TABLE_REF}${a.table}`;
+      }
+      if (a.constraint) t.constraints.set(lower(a.constraint), a.columns.map(lower));
+      return;
+    case "drop-constraint": {
+      const cols = t.constraints.get(lower(a.constraint));
+      if (!cols) return;
+      for (const f of fields) if (cols.includes(lower(f.name))) delete f.relation;
+      t.constraints.delete(lower(a.constraint));
+      return;
+    }
+    case "rename-table": {
+      const from = t.entity.name;
+      tables.delete(lower(from));
+      t.entity.name = a.to;
+      tables.set(lower(a.to), t);
+      for (const other of tables.values()) {
+        for (const f of other.entity.fields) if (f.relation && lower(f.relation) === lower(`${TABLE_REF}${from}`)) f.relation = `${TABLE_REF}${a.to}`;
+      }
+      return;
+    }
+  }
+}
+var sqlMigrationLinker = {
+  id: "sql-migrations",
+  link(facts, ctx) {
+    const ddl = ctx.hints.filter((h) => h.kind === "sql-ddl");
+    if (!ddl.length) return facts;
+    const key = (file, line2, name2) => `${file}\0${line2}\0${lower(name2)}`;
+    const created = /* @__PURE__ */ new Map();
+    const others = [];
+    for (const e of facts.entities) {
+      if (e.orm !== "sql") {
+        others.push(e);
+        continue;
+      }
+      const k = key(e.file, e.line, e.name);
+      const list = created.get(k);
+      if (list) list.push(e);
+      else created.set(k, [e]);
+    }
+    const tables = /* @__PURE__ */ new Map();
+    for (const hint of [...ddl].sort((a, b) => migrationOrder(a.file, b.file))) {
+      for (const op of hint.ops) {
+        if (op.op === "create") {
+          const e = created.get(key(hint.file, op.line, op.table))?.shift();
+          if (e) tables.set(lower(e.name), { entity: { ...e, fields: e.fields.map((f) => ({ ...f })) }, constraints: /* @__PURE__ */ new Map() });
+        } else if (op.op === "drop") tables.delete(lower(op.table));
+        else {
+          const t = tables.get(lower(op.table));
+          if (t) for (const a of op.actions) applyAlter(t, a, tables);
+        }
+      }
+    }
+    const unreplayed = [...created.values()].flat();
+    return { ...facts, entities: [...others, ...unreplayed, ...[...tables.values()].map((t) => t.entity)] };
+  }
 };
 var STATEMENTS = [
   { re: new RegExp(String.raw`\b(INSERT\s+(?:IGNORE\s+)?INTO)\s+${IDENT}`, "gi"), op: "write" },
@@ -37219,7 +37448,7 @@ var PY_OPS_EXTRACTORS = [
   dockerfileExtractor,
   k8sExtractor
 ];
-var PY_OPS_LINKERS = [pythonMountLinker, drfViewsetLinker, ormRelationLinker, sqlUseLinker];
+var PY_OPS_LINKERS = [pythonMountLinker, drfViewsetLinker, sqlMigrationLinker, ormRelationLinker, sqlUseLinker];
 var JS_WEB_EXTRACTORS = [
   nextAppExtractor,
   nextPagesExtractor,
@@ -40833,9 +41062,9 @@ function readQuestion(question) {
     }
   } else {
     for (const raw of codeindex_engine_exports.keywords(question)) {
-      const lower = codeindex_engine_exports.foldText(raw).toLowerCase();
-      if (!/^[a-z0-9]+$/.test(lower) || ENGLISH_FILLER.has(lower)) continue;
-      add(englishStem(lower), 1);
+      const lower2 = codeindex_engine_exports.foldText(raw).toLowerCase();
+      if (!/^[a-z0-9]+$/.test(lower2) || ENGLISH_FILLER.has(lower2)) continue;
+      add(englishStem(lower2), 1);
     }
   }
   for (const t of [...weight.keys()]) for (const s of SYNONYMS[t] ?? []) add(englishStem(s), SYNONYM_WEIGHT);
