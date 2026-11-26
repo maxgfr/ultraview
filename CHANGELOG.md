@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.9.0](https://github.com/maxgfr/ultraview/compare/v1.8.1...v1.9.0) (2026-11-26)
+
+
+### Features
+
+* rpc edges, hub summaries and live ask in the viewer ([3f708ce](https://github.com/maxgfr/ultraview/commit/3f708ce5dfb42fd89800ccdcf3b4c48fb5822b89)), closes [#8](https://github.com/maxgfr/ultraview/issues/8)
+* ship the skill, references, README, evals and example ([ac4a11c](https://github.com/maxgfr/ultraview/commit/ac4a11c2d7f93bedf52746ec54d9db0253afbf76)), closes [#12](https://github.com/maxgfr/ultraview/issues/12)
+
 ## [1.8.1](https://github.com/maxgfr/ultraview/compare/v1.8.0...v1.8.1) (2026-11-26)
 
 
