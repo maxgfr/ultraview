@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.9.1](https://github.com/maxgfr/ultraview/compare/v1.9.0...v1.9.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ask:** write the log before announcing the outcome ([decf24a](https://github.com/maxgfr/ultraview/commit/decf24ade949ca702a67491146e174fc7d1f3502)), closes [#15](https://github.com/maxgfr/ultraview/issues/15)
+* **render:** draw the current lenses, flows and model ([77e52d0](https://github.com/maxgfr/ultraview/commit/77e52d01c88efb84371cf025fab70a16b10d1019)), closes [#13](https://github.com/maxgfr/ultraview/issues/13)
+
 # [1.9.0](https://github.com/maxgfr/ultraview/compare/v1.8.1...v1.9.0) (2026-11-26)
 
 
