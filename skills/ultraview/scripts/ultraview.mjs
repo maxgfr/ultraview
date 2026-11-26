@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import { appendFileSync as appendFileSync2, existsSync as existsSync29, mkdirSync as mkdirSync12, readFileSync as readFileSync33, realpathSync as realpathSync8 } from "fs";
-import { relative as relative17, resolve as resolve31 } from "path";
+import { appendFileSync as appendFileSync2, existsSync as existsSync29, mkdirSync as mkdirSync12, readFileSync as readFileSync34, realpathSync as realpathSync8 } from "fs";
+import { relative as relative17, resolve as resolve32 } from "path";
 import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL4 } from "url";
 
 // src/build.ts
@@ -31682,13 +31682,13 @@ function manifestKind(rel2) {
   if (baseOf(dirOf3(rel2)) === "requirements" && base.endsWith(".txt")) return "requirements";
   return void 0;
 }
-function createRepoContext(files, readText2) {
+function createRepoContext(files, readText3) {
   const sorted = [...files].sort();
   const deps = /* @__PURE__ */ new Map();
   for (const rel2 of sorted) {
     const kind = manifestKind(rel2);
     if (!kind) continue;
-    const text2 = readText2(rel2);
+    const text2 = readText3(rel2);
     if (text2 === void 0) continue;
     const names = READERS[kind](text2);
     const ws = manifestWorkspace(rel2);
@@ -32171,11 +32171,11 @@ function joinRoutePath(prefix, path) {
   const joined = `${prefix.replace(/\/+$/, "")}${p}`.replace(/\/{2,}/g, "/");
   return joined || "/";
 }
-function applyMounts(facts, hints, framework, resolve32) {
+function applyMounts(facts, hints, framework, resolve33) {
   const parents = /* @__PURE__ */ new Map();
   for (const h of hints) {
     if (h.kind !== "mount" || h.framework !== framework) continue;
-    const child2 = resolve32(h);
+    const child2 = resolve33(h);
     if (!child2 || child2 === h.file) continue;
     const list = parents.get(child2) ?? [];
     list.push({ file: h.file, prefix: h.prefix });
@@ -34738,9 +34738,9 @@ var pythonMountLinker = {
   id: "python-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve32 = (h) => pyModuleFile(h.target, h.file, files);
+    const resolve33 = (h) => pyModuleFile(h.target, h.file, files);
     let out2 = facts;
-    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve32);
+    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve33);
     return out2;
   }
 };
@@ -36685,8 +36685,8 @@ var jsMountLinker = {
   id: "js-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve32 = (h) => moduleFile(h.target, files);
-    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve32), ctx.hints, "fastify", resolve32);
+    const resolve33 = (h) => moduleFile(h.target, files);
+    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve33), ctx.hints, "fastify", resolve33);
   }
 };
 
@@ -37125,14 +37125,14 @@ function composeTrpcRoutes(hints) {
     byKey2.set(k, h);
     for (const e of h.exports) if (!byExport.has(key(h.file, e))) byExport.set(key(h.file, e), k);
   }
-  const resolve32 = (c2) => {
+  const resolve33 = (c2) => {
     const local = key(c2.module, c2.name);
     return byKey2.has(local) ? local : byExport.get(local);
   };
   const parents = /* @__PURE__ */ new Map();
   for (const [k, h] of byKey2) {
     for (const c2 of h.children) {
-      const child2 = resolve32(c2);
+      const child2 = resolve33(c2);
       if (!child2 || child2 === k) continue;
       const list = parents.get(child2) ?? [];
       list.push({ parent: k, prefix: c2.prefix });
@@ -37320,13 +37320,13 @@ function normalizeFacts(facts) {
   out2.links = normalizeLinks(facts.links ?? [], out2.externals);
   return out2;
 }
-function runExtractors(repo, files, readText2, opts = {}) {
+function runExtractors(repo, files, readText3, opts = {}) {
   const extractors = opts.extractors ?? EXTRACTORS2;
   const linkers = opts.linkers ?? LINKERS;
   const isTest = opts.isTest ?? codeindex_engine_exports.isTestPath;
   const texts = /* @__PURE__ */ new Map();
   const read = (rel2) => {
-    if (!texts.has(rel2)) texts.set(rel2, readText2(join41(repo, rel2)));
+    if (!texts.has(rel2)) texts.set(rel2, readText3(join41(repo, rel2)));
     return texts.get(rel2);
   };
   const ctx = createRepoContext(files, read);
@@ -37378,7 +37378,7 @@ function runExtractors(repo, files, readText2, opts = {}) {
     }
   }
   for (const [rel2, rows] of pending) {
-    const text2 = readText2(join41(repo, rel2));
+    const text2 = readText3(join41(repo, rel2));
     if (text2 === void 0) continue;
     const extent = extentFinder(rel2, text2);
     for (const row2 of rows) row2.end = extent(row2.line);
@@ -40384,9 +40384,64 @@ function saveFlow(repo, input, opts = {}) {
 
 // src/render.ts
 import { spawn as spawn2 } from "child_process";
-import { existsSync as existsSync24, mkdirSync as mkdirSync10, readFileSync as readFileSync29, renameSync as renameSync8, writeFileSync as writeFileSync12 } from "fs";
-import { dirname as dirname16, join as join48, relative as relative15, resolve as resolve26 } from "path";
+import { existsSync as existsSync24, mkdirSync as mkdirSync10, readFileSync as readFileSync30, renameSync as renameSync9, writeFileSync as writeFileSync13 } from "fs";
+import { dirname as dirname16, join as join48, relative as relative15, resolve as resolve27 } from "path";
 import { fileURLToPath as fileURLToPath3 } from "url";
+
+// src/refresh.ts
+import { readFileSync as readFileSync29, renameSync as renameSync8, writeFileSync as writeFileSync12 } from "fs";
+import { resolve as resolve26 } from "path";
+function carriedOver(viewText) {
+  if (viewText === void 0) return {};
+  let prev;
+  try {
+    prev = JSON.parse(viewText);
+  } catch {
+    return {};
+  }
+  if (!prev || prev.schema !== VIEW_SCHEMA || !Array.isArray(prev.nodes)) return {};
+  const churn = /* @__PURE__ */ new Map();
+  for (const n of prev.nodes) {
+    const c2 = n?.metrics?.churn;
+    if (n?.kind === "file" && typeof n.id === "string" && n.id.startsWith("file:") && typeof c2 === "number" && c2 > 0) churn.set(n.id.slice(5), c2);
+  }
+  const insights = Array.isArray(prev.insights) ? prev.insights : [];
+  return { churn, insights };
+}
+function readText2(abs) {
+  try {
+    return readFileSync29(abs, "utf8");
+  } catch {
+    return void 0;
+  }
+}
+function freshView(repoArg) {
+  const repo = resolve26(repoArg);
+  const loaded2 = loadViewInputs(repo, carriedOver(readText2(viewPaths(repo).view)));
+  const assembled = assembleWithNotes(loaded2.inputs);
+  const view = assembled.view;
+  return { view, text: stableJson(view), assembled, loaded: loaded2, byId: new Map(view.nodes.map((n) => [n.id, n])) };
+}
+function writeView(file, text2) {
+  if (readText2(file) === text2) return false;
+  const tmp = `${file}.${process.pid}.tmp`;
+  writeFileSync12(tmp, text2);
+  renameSync8(tmp, file);
+  return true;
+}
+function indexStaleness(repoArg) {
+  const repo = resolve26(repoArg);
+  const r = runCheck(viewPaths(repo).index, repo);
+  return {
+    index: r.stale,
+    changed: r.changed.length,
+    added: r.added.length,
+    removed: r.removed.length,
+    files: [...r.changed, ...r.added, ...r.removed].slice(0, 20)
+  };
+}
+
+// src/render.ts
 var DATA_TAG = '<script type="application/json" id="ultraview-data">';
 var ENV_TAG = '<script type="application/json" id="ultraview-env">';
 function viewerTemplatePath() {
@@ -40411,25 +40466,27 @@ function renderHtml(template, view, env) {
   return fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
 }
 function renderMap(opts) {
-  const repo = resolve26(opts.repo);
+  const repo = resolve27(opts.repo);
   const paths = viewPaths(repo);
-  if (!existsSync24(paths.view)) throw new Error(`no ${relative15(process.cwd(), paths.view) || paths.view}: run \`ultraview build\` first`);
-  const viewText = readFileSync29(paths.view, "utf8");
-  let view;
+  const missing = !indexExists(paths.index) ? paths.index : !existsSync24(paths.facts) ? paths.facts : void 0;
+  if (missing) throw new Error(`no ${relative15(process.cwd(), missing) || missing}: run \`ultraview build\` first`);
+  const viewText = freshView(repo).text;
+  const updated = writeView(paths.view, viewText);
+  const view = JSON.parse(viewText);
+  let stale = false;
   try {
-    view = JSON.parse(viewText);
-  } catch (e) {
-    throw new Error(`${paths.view} is not valid JSON (${e.message}): run \`ultraview build\` again`);
+    stale = indexStaleness(repo).index;
+  } catch {
   }
   const templatePath = opts.template ?? viewerTemplatePath();
-  const template = readFileSync29(templatePath, "utf8");
+  const template = readFileSync30(templatePath, "utf8");
   const html = renderHtml(template, view, { root: repo });
-  const out2 = resolve26(opts.out ?? paths.html);
+  const out2 = resolve27(opts.out ?? paths.html);
   mkdirSync10(dirname16(out2), { recursive: true });
   const tmp = `${out2}.${process.pid}.tmp`;
-  writeFileSync12(tmp, html);
-  renameSync8(tmp, out2);
-  return { repo, out: out2, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template) };
+  writeFileSync13(tmp, html);
+  renameSync9(tmp, out2);
+  return { repo, out: out2, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template), updated, stale };
 }
 function openerFor(platform, file) {
   if (platform === "darwin") return { cmd: "open", args: [file] };
@@ -40457,14 +40514,14 @@ function openFile(file, platform = process.platform) {
 
 // src/ask.ts
 import { spawn as spawn3 } from "child_process";
-import { accessSync as accessSync2, constants, createWriteStream, existsSync as existsSync26, mkdirSync as mkdirSync11, mkdtempSync as mkdtempSync4, readFileSync as readFileSync31, rmSync as rmSync8, statSync as statSync19 } from "fs";
+import { accessSync as accessSync2, constants, createWriteStream, existsSync as existsSync26, mkdirSync as mkdirSync11, mkdtempSync as mkdtempSync4, readFileSync as readFileSync32, rmSync as rmSync8, statSync as statSync19 } from "fs";
 import { tmpdir as tmpdir2 } from "os";
-import { delimiter, dirname as dirname17, join as join50, resolve as resolve28 } from "path";
+import { delimiter, dirname as dirname17, join as join50, resolve as resolve29 } from "path";
 import { fileURLToPath as fileURLToPath4 } from "url";
 
 // src/lens.ts
-import { existsSync as existsSync25, readdirSync as readdirSync7, readFileSync as readFileSync30, statSync as statSync18 } from "fs";
-import { join as join49, resolve as resolve27 } from "path";
+import { existsSync as existsSync25, readdirSync as readdirSync7, readFileSync as readFileSync31, statSync as statSync18 } from "fs";
+import { join as join49, resolve as resolve28 } from "path";
 
 // src/lens-terms.ts
 var SYNONYM_WEIGHT = 0.6;
@@ -40817,7 +40874,7 @@ function savedQuestions(repo) {
   for (const name2 of readdirSync7(dir).filter((n) => n.endsWith(".json")).sort()) {
     let question;
     try {
-      const v = JSON.parse(readFileSync30(join49(dir, name2), "utf8"));
+      const v = JSON.parse(readFileSync31(join49(dir, name2), "utf8"));
       if (typeof v.question === "string") question = v.question;
     } catch {
     }
@@ -40837,7 +40894,7 @@ function questionSlug(question) {
   return SLUG_RE.test(slug) ? slug : "lens";
 }
 function proposeLensId(repo, question) {
-  const saved = savedQuestions(resolve27(repo));
+  const saved = savedQuestions(resolve28(repo));
   for (const [id, q] of saved) if (q === question) return { id, reask: true };
   const base = questionSlug(question);
   for (let n = 1; ; n++) {
@@ -41043,7 +41100,7 @@ function instructions(pack) {
   return lines.join("\n");
 }
 function lensNew(repoArg, question, opts = {}) {
-  const repo = resolve27(repoArg);
+  const repo = resolve28(repoArg);
   const q = question.trim();
   if (!q) throw new Error("the question is empty");
   if (opts.id !== void 0 && !SLUG_RE.test(opts.id)) throw new Error(`--id must be a slug (lowercase letters, digits, dashes): ${opts.id}`);
@@ -41135,7 +41192,7 @@ function lensNew(repoArg, question, opts = {}) {
   };
 }
 function lensList(repoArg) {
-  const repo = resolve27(repoArg);
+  const repo = resolve28(repoArg);
   const live = liveView(repo);
   const stale = new Set(live.view.stale.lenses);
   const lenses = live.view.lenses.map((l) => {
@@ -41203,7 +41260,7 @@ function resolveAskAgent(mode, pathEnv, platform = process.platform) {
 function ultraviewScript() {
   const here = fileURLToPath4(import.meta.url);
   if (here.endsWith(".mjs")) return here;
-  return resolve28(dirname17(here), "../scripts/ultraview.mjs");
+  return resolve29(dirname17(here), "../scripts/ultraview.mjs");
 }
 function scriptCommand(script) {
   return /^[A-Za-z0-9_./:\\-]+$/.test(script) ? `node ${script}` : `node "${script}"`;
@@ -41346,7 +41403,7 @@ function askLensId(repo, question) {
   return proposeLensId(repo, question).id;
 }
 function askAgent(req, id = askLensId(req.repo, req.question)) {
-  const repo = resolve28(req.repo);
+  const repo = resolve29(req.repo);
   const { question, agent } = req;
   const base = { id, question };
   const tmpDir = mkdtempSync4(join50(tmpdir2(), "ultraview-ask-"));
@@ -41429,7 +41486,7 @@ ${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : 
       }
       req.onProgress?.("validating", { bytes });
       let reply = out2;
-      if (inv.lastMessageFile && existsSync26(inv.lastMessageFile)) reply = readFileSync31(inv.lastMessageFile, "utf8");
+      if (inv.lastMessageFile && existsSync26(inv.lastMessageFile)) reply = readFileSync32(inv.lastMessageFile, "utf8");
       const lens = extractLensJson(reply);
       if (!lens) {
         finish2({ ...base, ok: false, error: `${agent.name} replied without a lens JSON object (see ${ASK_LOG})` });
@@ -41447,10 +41504,10 @@ ${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : 
 }
 
 // src/serve.ts
-import { existsSync as existsSync27, readdirSync as readdirSync8, readFileSync as readFileSync32, renameSync as renameSync9, statSync as statSync20, watch, writeFileSync as writeFileSync13 } from "fs";
+import { existsSync as existsSync27, readdirSync as readdirSync8, readFileSync as readFileSync33, statSync as statSync20, watch } from "fs";
 import { createServer } from "http";
 import { isIP } from "net";
-import { dirname as dirname18, join as join51, relative as relative16, resolve as resolve29, sep as sep11 } from "path";
+import { dirname as dirname18, join as join51, relative as relative16, resolve as resolve30, sep as sep11 } from "path";
 var SERVE_PORT = 4178;
 var SERVE_HOST = "127.0.0.1";
 var SERVE_DEBOUNCE_MS = 150;
@@ -41537,7 +41594,7 @@ function searchNodes(view, q, n = SEARCH_NODES) {
   }));
 }
 async function startServe(opts) {
-  const repo = resolve29(opts.repo);
+  const repo = resolve30(opts.repo);
   if (!existsSync27(repo) || !statSync20(repo).isDirectory()) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
   if (!indexExists(paths.index)) throw new Error("no ultraindex index: run `ultraview build` first");
@@ -41550,21 +41607,9 @@ async function startServe(opts) {
   });
   const debounceMs = opts.debounceMs ?? SERVE_DEBOUNCE_MS;
   const agent = resolveAskAgent(opts.ask ?? "auto", env.PATH ?? env.Path);
-  const template = readFileSync32(opts.template ?? viewerTemplatePath(), "utf8");
-  const assemble2 = () => {
-    const loaded2 = loadViewInputs(repo);
-    const assembled = assembleWithNotes(loaded2.inputs);
-    const view = assembled.view;
-    return { view, text: stableJson(view), assembled, loaded: loaded2, byId: new Map(view.nodes.map((n) => [n.id, n])) };
-  };
-  const writeView = (text2) => {
-    const tmp = `${paths.view}.${process.pid}.tmp`;
-    writeFileSync13(tmp, text2);
-    renameSync9(tmp, paths.view);
-  };
-  let state = { ...assemble2(), version: 1 };
-  const onDisk = existsSync27(paths.view) ? readFileSync32(paths.view, "utf8") : void 0;
-  if (onDisk !== state.text) writeView(state.text);
+  const template = readFileSync33(opts.template ?? viewerTemplatePath(), "utf8");
+  let state = { ...freshView(repo), version: 1 };
+  writeView(paths.view, state.text);
   let html;
   const clients = /* @__PURE__ */ new Set();
   const broadcast = (event, data) => {
@@ -41582,7 +41627,7 @@ data: ${JSON.stringify(data)}
     signature = agentSignature();
     let next;
     try {
-      next = assemble2();
+      next = freshView(repo);
     } catch (e) {
       warn(`could not re-assemble the view: ${e.message}`);
       return false;
@@ -41590,7 +41635,7 @@ data: ${JSON.stringify(data)}
     if (next.text === state.text) return false;
     state = { ...next, version: state.version + 1 };
     try {
-      writeView(state.text);
+      writeView(paths.view, state.text);
     } catch (e) {
       warn(`could not write ${paths.view}: ${e.message}`);
     }
@@ -41644,14 +41689,7 @@ data: ${JSON.stringify(data)}
   const checkIndex = () => {
     let next;
     try {
-      const r = runCheck(paths.index, repo);
-      next = {
-        index: r.stale,
-        changed: r.changed.length,
-        added: r.added.length,
-        removed: r.removed.length,
-        files: [...r.changed, ...r.added, ...r.removed].slice(0, 20)
-      };
+      next = indexStaleness(repo);
     } catch (e) {
       warn(`could not check the index: ${e.message}`);
       return;
@@ -41695,7 +41733,7 @@ data: ${JSON.stringify(data)}
       if (name2 === "view.json") {
         let disk;
         try {
-          disk = readFileSync32(paths.view, "utf8");
+          disk = readFileSync33(paths.view, "utf8");
         } catch {
           disk = void 0;
         }
@@ -42045,7 +42083,7 @@ function formatBuildSummary(r) {
 
 // src/status.ts
 import { existsSync as existsSync28 } from "fs";
-import { resolve as resolve30 } from "path";
+import { resolve as resolve31 } from "path";
 var build = (s) => `run \`ultraview build --repo ${s.paths.repo}\``;
 var noIndex = (s) => s.index.exists ? void 0 : { situation: "no-index", reasons: ["no ultraindex index at .ultraindex/"], worklist: [build(s)] };
 var indexStale = (s) => {
@@ -42104,7 +42142,7 @@ function indexState(paths) {
   };
 }
 function readStatus(repoArg, probes = PROBES) {
-  const repo = resolve30(repoArg);
+  const repo = resolve31(repoArg);
   if (!existsSync28(repo)) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
   let report;
@@ -42188,11 +42226,14 @@ Commands:
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
   flow save <file>   Same for a flow: .ultraview/flows/<id>.json.
-  render             Embed .ultraview/view.json into the offline viewer and
-                     write one self-contained page, .ultraview/index.html
-                     (or --out): the map with semantic zoom, data models,
-                     flows, saved questions, changes, search and tour.
-                     --open opens it in the default browser.
+  render             Re-assemble .ultraview/view.json from the current model,
+                     flows, lenses, timeline and changes (no re-indexing),
+                     embed it into the offline viewer and write one
+                     self-contained page, .ultraview/index.html (or --out):
+                     the map with semantic zoom, data models, flows, saved
+                     questions, changes, search and tour. Notes when the
+                     index is stale (run build). --open opens it in the
+                     default browser.
   diff               What changed, on the map: the engine's delta mapped onto
                      every level (capabilities, systems, modules, files,
                      symbols, routes, screens, entities, jobs) as added /
@@ -42471,7 +42512,7 @@ async function cmdDossier(p, io) {
       return EXIT_USAGE;
     }
   }
-  const repo = resolve31(p.values.repo ?? ".");
+  const repo = resolve32(p.values.repo ?? ".");
   const live = liveView(repo);
   const text2 = renderNodeDossier(live, repo, id, { budget });
   if (text2 === void 0) return unknownId(p, io, id, similarIds(live.view, id));
@@ -42487,7 +42528,7 @@ async function cmdSave(p, io, what) {
   }
   let text2;
   try {
-    text2 = readFileSync33(resolve31(file), "utf8");
+    text2 = readFileSync34(resolve32(file), "utf8");
   } catch (e) {
     io.err(`ultraview: cannot read ${file}: ${e.message}
 `);
@@ -42518,6 +42559,7 @@ async function cmdRender(p, io) {
     const shown = relative17(process.cwd(), r.out);
     io.out(`rendered   ${shown && !shown.startsWith("..") ? shown : r.out} (${kb(r.bytes)}: view ${kb(r.viewBytes)} + viewer ${kb(r.viewerBytes)})
 `);
+    if (r.stale) io.out("note       the index is stale: source files changed since the last build; run `ultraview build` to map them\n");
     if (opened === false) io.out("open       no opener found: open the file in a browser\n");
     else if (!opened) io.out("next step: open it in a browser (offline, one file), or pass --open\n");
   }
@@ -42590,7 +42632,7 @@ ${problemLines(recorded.errors)}
   return EXIT_OK;
 }
 async function cmdDiff(p, io) {
-  const repo = resolve31(p.values.repo ?? ".");
+  const repo = resolve32(p.values.repo ?? ".");
   if (!p.bools.has("hook")) return runDiff(p, io, repo, false);
   const pull = process.env.CODEINDEX_NO_GRAMMARS_PULL;
   process.env.CODEINDEX_NO_GRAMMARS_PULL = "1";
@@ -42695,7 +42737,7 @@ async function cmdExport(p, io) {
   const content = format === "md" ? exportBrief(view) : format === "svg" ? exportSvg(view, opts) : exportMermaid(view, opts);
   if (p.values.out !== void 0) {
     writeFileAtomic(p.values.out, content);
-    io.out(p.bools.has("json") ? json({ format, file: resolve31(p.values.out) }) : `wrote      ${p.values.out}
+    io.out(p.bools.has("json") ? json({ format, file: resolve32(p.values.out) }) : `wrote      ${p.values.out}
 `);
   } else io.out(p.bools.has("json") ? json({ format, content }) : content);
   return EXIT_OK;

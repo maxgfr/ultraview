@@ -28,8 +28,6 @@ run("build", "--repo", repo, "--no-ast");
 run("lens", "save", join(models, "shop.lens.json"), "--repo", repo);
 run("flow", "save", join(models, "shop.flow.json"), "--repo", repo);
 run("check", "--repo", repo);
-// `render` draws view.json as the last `build` left it: build again so the saved lens and flow are in it.
-run("build", "--repo", repo, "--no-ast");
 run("render", "--repo", repo);
 
 const html = readFileSync(join(repo, ".ultraview", "index.html"), "utf8")

@@ -103,8 +103,8 @@ Then by what the user wants:
 5. `ultraview check` until clean.
 6. Write 1–3 flows for the app's main jobs (`flow save`) and a `tour` of 3–8
    stops. `check` again.
-7. `ultraview build` again (it re-assembles the map with what you saved),
-   then `ultraview render --open`, or `ultraview serve --open` for live updates.
+7. `ultraview render --open` (it draws what you saved, no rebuild needed), or
+   `ultraview serve --open` for live updates.
 8. Report in plain words: what the app is, its systems and capabilities in
    3–5 lines, anything surprising, the top 3 `insights` with their citations,
    and where the map is (`.ultraview/index.html`, or the served URL). Say that
@@ -125,7 +125,7 @@ A question answered once is saved as a lens: a view anyone can reopen at
 4. `ultraview lens save <file>` (stamps the hashes of the cited files), then
    `ultraview check`.
 5. Answer the user in the chat too, and point at `#lens=<id>` (live when
-   `serve` runs; after `build` + `render` otherwise).
+   `serve` runs; after `render` otherwise).
 
 Asking the same question again keeps its id and replaces the answer (a
 re-ask). A different question under a taken id needs another `--id`.
@@ -179,7 +179,7 @@ Details: [writing](references/writing.md).
 - `lens new "<question>" [--id <slug>] [--budget <n>]` — the evidence pack for a question.
 - `lens save <file> [--force]` / `flow save <file> [--force]` — validate, stamp `sources`, store.
 - `lens list` — saved questions, with their stale flag.
-- `render [--out <file>] [--open]` — the offline page, `.ultraview/index.html`.
+- `render [--out <file>] [--open]` — the offline page, `.ultraview/index.html`, from the current agent files; notes a stale index.
 - `serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--open]` — the live map on 127.0.0.1:4178.
 - `diff [--base <ref> | --staged | --worktree] [--depth <n>] [--record] [--markdown] [--quiet]` — the change on the map.
 - `diff --record [--source agent|pr|manual] [--title <t>] [--summary <s>] [--request <r>]` — and its timeline entry.

@@ -407,7 +407,7 @@ absent outside git.
 | `build [--repo .]` | ultraindex `runBuild` (incremental) + extractors → facts.json + view.json; prints a ≤150-line summary for the agent (entrypoints, workspaces, top modules by PageRank, routes/screens/entities/jobs/externals counts, uncovered paths) — the agent never reads facts.json/view.json |
 | `dossier <node-id>` | evidence pack to write about a node (ultraindex dossier + facts + neighbors), budgeted |
 | `check` | schema, ids resolve, citations resolve (ultraindex `checkCitations`), coverage thresholds (systems ≥ 90% code files, capabilities ≥ 70% non-test modules), stale lenses/flows, exit 1 on failure |
-| `render [--out]` | view.json → self-contained `.ultraview/index.html` |
+| `render [--out]` | re-assembles view.json from the current agent files (the same cheap path as `serve`, no re-indexing; written only when its bytes change) → self-contained `.ultraview/index.html`; notes a stale index |
 | `serve [--port 4178] [--host 127.0.0.1] [--ask auto|claude|codex|none] [--open]` | local server (node:http, no dependency), live data over SSE on any `.ultraview/` change, `/api/*` for on-demand node / search / callgraph, optional Ask bridge (read-only `claude -p` / `codex exec`, answer saved as a lens) — contract in §8.1 |
 | `lens new "<question>" [--budget n] [--id slug]` | evidence pack: proposed id (slug of the question, de-duplicated; a saved question keeps its id) + target path + JSON template, ranked candidates (first the routes/screens/entities/jobs/symbols/capabilities named like the question, scored by term rarity, name before definition / fields / summary, plus the kind, HTTP method and cardinality the wording points at and the score of a matching capability; a French question read through a lexicon of everyday app words (`src/lens-terms.ts`); then ultraindex `runFind` over modules mapped to view ids, slices included), their strongest edges, source excerpts (`gatherEvidence`) within the budget (default 6000 tokens ≈ 24k chars), closing steps (`lens save`, `check`); `--json` for the structured pack. Read-only, deterministic |
 | `lens save <file>` / `flow save <file>` | validate, stamp `sources`, write under `.ultraview/` |
@@ -628,9 +628,8 @@ The skill spells this loop out with its invariants, routing table and
 fan-out contract; the shapes, writing rules and viewer are in its
 references (`schema.md`, `capabilities.md`, `lenses.md`, `flows.md`,
 `change-review.md`, `writing.md`, `orchestrate.md`, `viewer.md`,
-`engine-evidence.md`). `render` draws view.json as the last `build` left it,
-so the loop builds again after saving before it renders; `serve` re-assembles
-on its own. `evals/` measures step 3 (the ranking of `lens new`) and the gates
+`engine-evidence.md`). `render` and `serve` re-assemble the view from what
+was saved, so the loop renders without building again. `evals/` measures step 3 (the ranking of `lens new`) and the gates
 of steps 2–3 on fixture repos.
 
 Invariants: never read facts.json/view.json/graph.json whole; never write a

@@ -36,9 +36,11 @@ not instructions to click.
 
 ## render or serve
 
-- `render [--out <file>] [--open]`: one self-contained file; it shows
-  `view.json` as the last `build` left it, so `build` after saving model,
-  lenses or flows, then render.
+- `render [--out <file>] [--open]`: one self-contained file. It re-assembles
+  `view.json` from the current model, flows, lenses, timeline and changes (no
+  re-indexing), so what you saved shows without a `build`. When source files
+  changed since the last `build`, it says the index is stale (`"stale": true`
+  with `--json`) and still draws the map as of that build.
 - `serve [--open] [--port 4178] [--host 127.0.0.1] [--ask …]`: re-assembles
   on every `.ultraview/` change and pushes it to open pages (no reload); a
   source change only marks the index stale until `build`. Loopback only unless

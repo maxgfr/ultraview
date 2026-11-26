@@ -79,11 +79,14 @@ Commands:
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
   flow save <file>   Same for a flow: .ultraview/flows/<id>.json.
-  render             Embed .ultraview/view.json into the offline viewer and
-                     write one self-contained page, .ultraview/index.html
-                     (or --out): the map with semantic zoom, data models,
-                     flows, saved questions, changes, search and tour.
-                     --open opens it in the default browser.
+  render             Re-assemble .ultraview/view.json from the current model,
+                     flows, lenses, timeline and changes (no re-indexing),
+                     embed it into the offline viewer and write one
+                     self-contained page, .ultraview/index.html (or --out):
+                     the map with semantic zoom, data models, flows, saved
+                     questions, changes, search and tour. Notes when the
+                     index is stale (run build). --open opens it in the
+                     default browser.
   diff               What changed, on the map: the engine's delta mapped onto
                      every level (capabilities, systems, modules, files,
                      symbols, routes, screens, entities, jobs) as added /
@@ -429,6 +432,7 @@ async function cmdRender(p: Parsed, io: Io): Promise<number> {
     const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
     const shown = relative(process.cwd(), r.out);
     io.out(`rendered   ${shown && !shown.startsWith("..") ? shown : r.out} (${kb(r.bytes)}: view ${kb(r.viewBytes)} + viewer ${kb(r.viewerBytes)})\n`);
+    if (r.stale) io.out("note       the index is stale: source files changed since the last build; run `ultraview build` to map them\n");
     if (opened === false) io.out("open       no opener found: open the file in a browser\n");
     else if (!opened) io.out("next step: open it in a browser (offline, one file), or pass --open\n");
   }

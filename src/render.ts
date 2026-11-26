@@ -1,6 +1,9 @@
-// `ultraview render`, as a library call (docs/design.md §7, §8): embed
-// `.ultraview/view.json` into the offline viewer and write one self-contained
-// `.ultraview/index.html`. Never prints, never exits.
+// `ultraview render`, as a library call (docs/design.md §7, §8): re-assemble
+// the view from the agent files as they stand (src/refresh.ts, the same cheap
+// path `serve` takes: no re-indexing, no extractor run), write
+// `.ultraview/view.json` when its bytes changed, embed it into the offline
+// viewer and write one self-contained `.ultraview/index.html`. A stale index
+// is reported, not rebuilt. Never prints, never exits.
 //
 // The view goes in verbatim (re-serialised compactly) as
 // <script type="application/json" id="ultraview-data">; every `<` is written
@@ -13,7 +16,9 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { indexExists } from "./engine.js";
 import { viewPaths } from "./paths.js";
+import { freshView, indexStaleness, writeView } from "./refresh.js";
 
 export const DATA_TAG = '<script type="application/json" id="ultraview-data">';
 export const ENV_TAG = '<script type="application/json" id="ultraview-env">';
@@ -32,6 +37,10 @@ export interface RenderResult {
   bytes: number;
   viewBytes: number;
   viewerBytes: number;
+  /** view.json was rewritten: agent files changed since it was last written. */
+  updated: boolean;
+  /** The index no longer matches the source files: the page shows the code as of the last `build`. */
+  stale: boolean;
 }
 
 /** Where the packaged viewer lives, from src/ (tests), scripts/ (repo bundle) or skills/ultraview/scripts/ (installed skill). */
@@ -66,13 +75,17 @@ export function renderHtml(template: string, view: unknown, env: { root?: string
 export function renderMap(opts: RenderOptions): RenderResult {
   const repo = resolve(opts.repo);
   const paths = viewPaths(repo);
-  if (!existsSync(paths.view)) throw new Error(`no ${relative(process.cwd(), paths.view) || paths.view}: run \`ultraview build\` first`);
-  const viewText = readFileSync(paths.view, "utf8");
-  let view: unknown;
+  const missing = !indexExists(paths.index) ? paths.index : !existsSync(paths.facts) ? paths.facts : undefined;
+  if (missing) throw new Error(`no ${relative(process.cwd(), missing) || missing}: run \`ultraview build\` first`);
+  const viewText = freshView(repo).text;
+  const updated = writeView(paths.view, viewText);
+  // The page embeds view.json as written (keys sorted), re-serialised compactly.
+  const view: unknown = JSON.parse(viewText);
+  let stale = false;
   try {
-    view = JSON.parse(viewText);
-  } catch (e) {
-    throw new Error(`${paths.view} is not valid JSON (${(e as Error).message}): run \`ultraview build\` again`);
+    stale = indexStaleness(repo).index;
+  } catch {
+    // an index that cannot be checked is drawn as it is
   }
   const templatePath = opts.template ?? viewerTemplatePath();
   const template = readFileSync(templatePath, "utf8");
@@ -82,7 +95,7 @@ export function renderMap(opts: RenderOptions): RenderResult {
   const tmp = `${out}.${process.pid}.tmp`;
   writeFileSync(tmp, html);
   renameSync(tmp, out);
-  return { repo, out, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template) };
+  return { repo, out, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template), updated, stale };
 }
 
 /** The command that opens a file with the OS's default app. */

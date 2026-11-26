@@ -186,8 +186,9 @@ Nothing committed holds a machine-local path. Outside `.ultraview/`, only
   capability, flow and question level.
 - **French questions** are bridged by a small lexicon of everyday app words;
   other languages rank on their own words only.
-- `render` draws the view as the last `build` left it: build after saving,
-  or use `serve`.
+- `render` and `serve` redraw saved model, flow and lens edits without
+  re-indexing, but code changes need `build`: until then the map shows the
+  code as of the last build, and both say the index is stale.
 
 ## How it compares
 

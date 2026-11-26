@@ -24,18 +24,16 @@
 // outputs.
 
 import type { ChildProcess } from "node:child_process";
-import { existsSync, type FSWatcher, readdirSync, readFileSync, renameSync, statSync, watch, writeFileSync } from "node:fs";
+import { existsSync, type FSWatcher, readdirSync, readFileSync, statSync, watch } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { isIP } from "node:net";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { type AskAgent, type AskMode, askAgent, askLensId, checkQuestion, resolveAskAgent } from "./ask.js";
-import { codeindex, indexExists, loadCache, loadManifest, runCheck, runFind } from "./engine.js";
-import { stableJson } from "./json.js";
-import { type AssembleResult, assembleWithNotes } from "./model/assemble.js";
+import { codeindex, indexExists, loadCache, loadManifest, runFind } from "./engine.js";
 import { modId } from "./model/ids.js";
-import { type LoadedInputs, loadViewInputs } from "./model/load.js";
 import type { ViewModel, ViewNode } from "./model/types.js";
 import { INDEX_DIR_NAME, VIEW_DIR, viewPaths } from "./paths.js";
+import { type FreshView, freshView, indexStaleness, type StaleState, writeView } from "./refresh.js";
 import { renderHtml, viewerTemplatePath } from "./render.js";
 import { nodeCard, similarIds } from "./show.js";
 
@@ -91,15 +89,7 @@ export interface ServeOptions {
   onWarning?: (message: string) => void;
 }
 
-export interface StaleState {
-  /** The index no longer matches the source files: run `ultraview build`. */
-  index: boolean;
-  changed: number;
-  added: number;
-  removed: number;
-  /** The first few files concerned. */
-  files: string[];
-}
+export type { StaleState } from "./refresh.js";
 
 export interface ServeHandle {
   url: string;
@@ -172,12 +162,7 @@ function readBody(req: IncomingMessage, max: number): Promise<string | undefined
   });
 }
 
-interface LiveState {
-  view: ViewModel;
-  text: string;
-  assembled: AssembleResult;
-  loaded: LoadedInputs;
-  byId: Map<string, ViewNode>;
+interface LiveState extends FreshView {
   version: number;
 }
 
@@ -231,21 +216,9 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
   const agent = resolveAskAgent(opts.ask ?? "auto", env.PATH ?? env.Path);
   const template = readFileSync(opts.template ?? viewerTemplatePath(), "utf8");
 
-  // --- the live view ---------------------------------------------------------
-  const assemble = (): Omit<LiveState, "version"> => {
-    const loaded = loadViewInputs(repo);
-    const assembled = assembleWithNotes(loaded.inputs);
-    const view = assembled.view;
-    return { view, text: stableJson(view), assembled, loaded, byId: new Map(view.nodes.map((n) => [n.id, n])) };
-  };
-  const writeView = (text: string) => {
-    const tmp = `${paths.view}.${process.pid}.tmp`;
-    writeFileSync(tmp, text);
-    renameSync(tmp, paths.view);
-  };
-  let state: LiveState = { ...assemble(), version: 1 };
-  const onDisk = existsSync(paths.view) ? readFileSync(paths.view, "utf8") : undefined;
-  if (onDisk !== state.text) writeView(state.text);
+  // --- the live view (src/refresh.ts, the same re-assembly as `render`) -------------
+  let state: LiveState = { ...freshView(repo), version: 1 };
+  writeView(paths.view, state.text);
   let html: { version: number; text: string } | undefined;
 
   // --- SSE -------------------------------------------------------------------
@@ -261,9 +234,9 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
 
   const refresh = (): boolean => {
     signature = agentSignature();
-    let next: Omit<LiveState, "version">;
+    let next: FreshView;
     try {
-      next = assemble();
+      next = freshView(repo);
     } catch (e) {
       warn(`could not re-assemble the view: ${(e as Error).message}`);
       return false;
@@ -271,7 +244,7 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
     if (next.text === state.text) return false;
     state = { ...next, version: state.version + 1 };
     try {
-      writeView(state.text);
+      writeView(paths.view, state.text);
     } catch (e) {
       warn(`could not write ${paths.view}: ${(e as Error).message}`);
     }
@@ -333,14 +306,7 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
   const checkIndex = () => {
     let next: StaleState;
     try {
-      const r = runCheck(paths.index, repo);
-      next = {
-        index: r.stale,
-        changed: r.changed.length,
-        added: r.added.length,
-        removed: r.removed.length,
-        files: [...r.changed, ...r.added, ...r.removed].slice(0, 20),
-      };
+      next = indexStaleness(repo);
     } catch (e) {
       warn(`could not check the index: ${(e as Error).message}`);
       return;
