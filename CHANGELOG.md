@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.8.0](https://github.com/maxgfr/ultraview/compare/v1.7.0...v1.8.0) (2026-11-26)
+
+
+### Features
+
+* live serve, lens evidence packs and the ask bridge ([22eef7a](https://github.com/maxgfr/ultraview/commit/22eef7a311a6438698d939e05bd7a59b911851cf)), closes [#10](https://github.com/maxgfr/ultraview/issues/10)
+
 # [1.7.0](https://github.com/maxgfr/ultraview/compare/v1.6.0...v1.7.0) (2026-11-26)
 
 
