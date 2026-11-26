@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.8](https://github.com/maxgfr/ultraview/compare/v1.13.7...v1.13.8) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ask:** state edge kinds and repair or drop bad edges ([3b1a4d2](https://github.com/maxgfr/ultraview/commit/3b1a4d233c3f93a474e25089acc5ebcef1222409)), closes [#29](https://github.com/maxgfr/ultraview/issues/29)
+
 ## [1.13.7](https://github.com/maxgfr/ultraview/compare/v1.13.6...v1.13.7) (2026-11-26)
 
 
