@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.2](https://github.com/maxgfr/ultraview/compare/v1.13.1...v1.13.2) (2026-11-26)
+
+
+### Bug Fixes
+
+* **ask:** repair node ids and retry once before rejecting a turn ([6244de6](https://github.com/maxgfr/ultraview/commit/6244de627586a2fe60937196945035f5108343f9)), closes [#23](https://github.com/maxgfr/ultraview/issues/23)
+
 ## [1.13.1](https://github.com/maxgfr/ultraview/compare/v1.13.0...v1.13.1) (2026-11-26)
 
 
