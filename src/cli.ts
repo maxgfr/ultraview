@@ -4,13 +4,14 @@
 // plain text for an agent or as JSON with --json.
 
 import { readFileSync, realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildMap } from "./build.js";
 import { type CheckReport, checkMap, formatIssue } from "./check.js";
 import { DOSSIER_BUDGET, renderNodeDossier } from "./dossier.js";
 import { codeindex, ULTRAINDEX_VERSION } from "./engine.js";
 import { type SaveResult, saveFlow, saveLens } from "./save.js";
+import { openFile, renderMap } from "./render.js";
 import { formatNodeCard, liveView, nodeCard, similarIds } from "./show.js";
 import { formatBuildSummary } from "./summary.js";
 import { readStatus, type StatusReport } from "./status.js";
@@ -23,8 +24,8 @@ export const EXIT_USAGE = 2;
 export const HELP = `ultraview v${ULTRAVIEW_VERSION} (ultraindex ${ULTRAINDEX_VERSION}, codeindex ${codeindex.ENGINE_VERSION})
 See your app instead of reading its code: a cited map of a repository, built
 from the ultraindex index plus deterministic extractors (routes, data models,
-…) and the meaning the agent writes into .ultraview/ (model, flows, lenses).
-Under construction: no viewer yet.
+…) and the meaning the agent writes into .ultraview/ (model, flows, lenses),
+drawn as one offline HTML page.
 
 Usage:
   ultraview <command> [options]
@@ -54,6 +55,11 @@ Commands:
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
   flow save <file>   Same for a flow: .ultraview/flows/<id>.json.
+  render             Embed .ultraview/view.json into the offline viewer and
+                     write one self-contained page, .ultraview/index.html
+                     (or --out): the map with semantic zoom, data models,
+                     flows, saved questions, changes, search and tour.
+                     --open opens it in the default browser.
 
 Options:
   --repo <dir>   Repository to map (default: the current directory)
@@ -65,6 +71,9 @@ Options:
   --budget <n>   dossier: token budget (default ${DOSSIER_BUDGET}, ~4 characters a token)
   --force        lens save / flow save: replace a different question / title
                  saved under the same id
+  --out <file>   render: where to write the page (default
+                 <repo>/.ultraview/index.html)
+  --open         render: open the page with the OS opener afterwards
   --json         Machine-readable output (the full result object)
   -h, --help     Show this help
   -v, --version  Show the version
@@ -73,9 +82,9 @@ Exit codes: 0 ok, 1 failure (check failed, save refused), 2 usage error or
 unknown node id.
 `;
 
-export const COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow"];
-export const VALUE_FLAGS = ["repo", "budget"];
-export const BOOL_FLAGS = ["json", "no-ast", "strict", "force"];
+export const COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render"];
+export const VALUE_FLAGS = ["repo", "budget", "out"];
+export const BOOL_FLAGS = ["json", "no-ast", "strict", "force", "open"];
 
 /** Positional arguments each command takes (after the command name). */
 const ARITY: Record<string, { min: number; max: number; usage: string }> = {
@@ -86,6 +95,7 @@ const ARITY: Record<string, { min: number; max: number; usage: string }> = {
   show: { min: 1, max: 1, usage: "show <node-id>" },
   lens: { min: 2, max: 2, usage: "lens save <file>" },
   flow: { min: 2, max: 2, usage: "flow save <file>" },
+  render: { min: 0, max: 0, usage: "render [--out <file>] [--open]" },
 };
 
 export interface Io {
@@ -260,6 +270,20 @@ async function cmdSave(p: Parsed, io: Io, what: "lens" | "flow"): Promise<number
   return r.ok ? EXIT_OK : EXIT_FAILURE;
 }
 
+async function cmdRender(p: Parsed, io: Io): Promise<number> {
+  const r = renderMap({ repo: p.values.repo ?? ".", out: p.values.out });
+  const opened = p.bools.has("open") ? await openFile(r.out) : undefined;
+  if (p.bools.has("json")) io.out(json({ ...r, ...(opened !== undefined ? { opened } : {}) }));
+  else {
+    const kb = (n: number) => `${(n / 1024).toFixed(0)} KB`;
+    const shown = relative(process.cwd(), r.out);
+    io.out(`rendered   ${shown && !shown.startsWith("..") ? shown : r.out} (${kb(r.bytes)}: view ${kb(r.viewBytes)} + viewer ${kb(r.viewerBytes)})\n`);
+    if (opened === false) io.out("open       no opener found: open the file in a browser\n");
+    else if (!opened) io.out("next step: open it in a browser (offline, one file), or pass --open\n");
+  }
+  return EXIT_OK;
+}
+
 export async function main(argv: readonly string[], io: Io = processIo): Promise<number> {
   const p = parseArgs(argv);
   if ("error" in p) {
@@ -300,6 +324,8 @@ export async function main(argv: readonly string[], io: Io = processIo): Promise
       case "lens":
       case "flow":
         return await cmdSave(p, io, p.command);
+      case "render":
+        return await cmdRender(p, io);
       default:
         return await cmdStatus(p, io);
     }

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import { readFileSync as readFileSync27, realpathSync as realpathSync8 } from "fs";
-import { resolve as resolve20 } from "path";
+import { readFileSync as readFileSync28, realpathSync as realpathSync8 } from "fs";
+import { relative as relative15, resolve as resolve21 } from "path";
 import { pathToFileURL as pathToFileURL4 } from "url";
 
 // src/build.ts
@@ -13101,8 +13101,8 @@ function matchEntryTargets(entries, key) {
     const pre = entry2.key.slice(0, starAt);
     const post = entry2.key.slice(starAt + 1);
     if (!key.startsWith(pre) || !key.endsWith(post) || key.length < pre.length + post.length) continue;
-    const fill = key.slice(pre.length, key.length - post.length);
-    return entry2.targets.map((t) => t.replace(/\*/g, () => fill));
+    const fill2 = key.slice(pre.length, key.length - post.length);
+    return entry2.targets.map((t) => t.replace(/\*/g, () => fill2));
   }
   return void 0;
 }
@@ -32018,11 +32018,11 @@ function joinRoutePath(prefix, path) {
   const joined = `${prefix.replace(/\/+$/, "")}${p}`.replace(/\/{2,}/g, "/");
   return joined || "/";
 }
-function applyMounts(facts, hints, framework, resolve21) {
+function applyMounts(facts, hints, framework, resolve22) {
   const parents = /* @__PURE__ */ new Map();
   for (const h of hints) {
     if (h.kind !== "mount" || h.framework !== framework) continue;
-    const child2 = resolve21(h);
+    const child2 = resolve22(h);
     if (!child2 || child2 === h.file) continue;
     const list = parents.get(child2) ?? [];
     list.push({ file: h.file, prefix: h.prefix });
@@ -34577,9 +34577,9 @@ var pythonMountLinker = {
   id: "python-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve21 = (h) => pyModuleFile(h.target, h.file, files);
+    const resolve22 = (h) => pyModuleFile(h.target, h.file, files);
     let out2 = facts;
-    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve21);
+    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve22);
     return out2;
   }
 };
@@ -34759,15 +34759,15 @@ function resolveLocalModule(ctx, fromRel, spec) {
   if (rel2 !== void 0) return tryTarget(rel2);
   if (!isLocalSpecifier(spec)) return void 0;
   const ws = workspaceDirOf(ctx, fromRel);
-  const join46 = (dir, p) => dir ? `${dir}/${p}` : p;
+  const join47 = (dir, p) => dir ? `${dir}/${p}` : p;
   let rest;
   let roots;
   if (spec.startsWith("$lib")) {
     rest = spec.slice(4).replace(/^\//, "");
-    roots = [join46(ws, "src/lib")];
+    roots = [join47(ws, "src/lib")];
   } else {
     rest = spec.replace(/^(?:@\/|~~?\/|#\/?)/, "");
-    roots = [join46(ws, "src"), ws, join46(ws, "app")];
+    roots = [join47(ws, "src"), ws, join47(ws, "app")];
   }
   for (const root of roots) {
     const hit = tryTarget(root ? rest ? `${root}/${rest}` : root : rest);
@@ -36520,8 +36520,8 @@ var jsMountLinker = {
   id: "js-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve21 = (h) => moduleFile(h.target, files);
-    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve21), ctx.hints, "fastify", resolve21);
+    const resolve22 = (h) => moduleFile(h.target, files);
+    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve22), ctx.hints, "fastify", resolve22);
   }
 };
 
@@ -36960,14 +36960,14 @@ function composeTrpcRoutes(hints) {
     byKey2.set(k, h);
     for (const e of h.exports) if (!byExport.has(key(h.file, e))) byExport.set(key(h.file, e), k);
   }
-  const resolve21 = (c2) => {
+  const resolve22 = (c2) => {
     const local = key(c2.module, c2.name);
     return byKey2.has(local) ? local : byExport.get(local);
   };
   const parents = /* @__PURE__ */ new Map();
   for (const [k, h] of byKey2) {
     for (const c2 of h.children) {
-      const child2 = resolve21(c2);
+      const child2 = resolve22(c2);
       if (!child2 || child2 === k) continue;
       const list = parents.get(child2) ?? [];
       list.push({ parent: k, prefix: c2.prefix });
@@ -38727,6 +38727,79 @@ function saveFlow(repo, input, opts = {}) {
   return save(FLOW, repo, input, opts);
 }
 
+// src/render.ts
+import { spawn as spawn2 } from "child_process";
+import { existsSync as existsSync21, mkdirSync as mkdirSync8, readFileSync as readFileSync27, renameSync as renameSync7, writeFileSync as writeFileSync11 } from "fs";
+import { dirname as dirname14, join as join46, relative as relative14, resolve as resolve19 } from "path";
+import { fileURLToPath as fileURLToPath3 } from "url";
+var DATA_TAG = '<script type="application/json" id="ultraview-data">';
+var ENV_TAG = '<script type="application/json" id="ultraview-env">';
+function viewerTemplatePath() {
+  const here = dirname14(fileURLToPath3(import.meta.url));
+  const candidates = [join46(here, "../assets/viewer.html"), join46(here, "../skills/ultraview/assets/viewer.html")];
+  const found = candidates.find((c2) => existsSync21(c2));
+  if (!found) throw new Error(`viewer not found (looked in ${candidates.map((c2) => relative14(process.cwd(), c2) || c2).join(", ")}): run \`pnpm run build\``);
+  return found;
+}
+function scriptJson(value) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+function fill(html, tag, body2) {
+  const start2 = html.indexOf(tag);
+  if (start2 === -1) throw new Error(`viewer template has no ${tag}`);
+  const from = start2 + tag.length;
+  const end = html.indexOf("</script>", from);
+  if (end === -1) throw new Error(`viewer template: unterminated ${tag}`);
+  return html.slice(0, from) + body2 + html.slice(end);
+}
+function renderHtml(template, view, env) {
+  return fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
+}
+function renderMap(opts) {
+  const repo = resolve19(opts.repo);
+  const paths = viewPaths(repo);
+  if (!existsSync21(paths.view)) throw new Error(`no ${relative14(process.cwd(), paths.view) || paths.view}: run \`ultraview build\` first`);
+  const viewText = readFileSync27(paths.view, "utf8");
+  let view;
+  try {
+    view = JSON.parse(viewText);
+  } catch (e) {
+    throw new Error(`${paths.view} is not valid JSON (${e.message}): run \`ultraview build\` again`);
+  }
+  const templatePath = opts.template ?? viewerTemplatePath();
+  const template = readFileSync27(templatePath, "utf8");
+  const html = renderHtml(template, view, { root: repo });
+  const out2 = resolve19(opts.out ?? paths.html);
+  mkdirSync8(dirname14(out2), { recursive: true });
+  const tmp = `${out2}.${process.pid}.tmp`;
+  writeFileSync11(tmp, html);
+  renameSync7(tmp, out2);
+  return { repo, out: out2, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template) };
+}
+function openerFor(platform, file) {
+  if (platform === "darwin") return { cmd: "open", args: [file] };
+  if (platform === "win32") return { cmd: "cmd", args: ["/c", "start", '""', file] };
+  return { cmd: "xdg-open", args: [file] };
+}
+function spawnDetached(cmd, args2) {
+  return new Promise((done) => {
+    try {
+      const child2 = spawn2(cmd, args2, { detached: true, stdio: "ignore", windowsHide: true });
+      child2.once("error", () => done(false));
+      child2.once("spawn", () => {
+        child2.unref();
+        done(true);
+      });
+    } catch {
+      done(false);
+    }
+  });
+}
+function openFile(file, platform = process.platform) {
+  const { cmd, args: args2 } = openerFor(platform, file);
+  return spawnDetached(cmd, args2);
+}
+
 // src/summary.ts
 var SUMMARY_MAX_LINES = 150;
 var EXAMPLES = 5;
@@ -38807,7 +38880,7 @@ function formatBuildSummary(r) {
   push();
   push(`written    ${r.written.join(", ")}`);
   push(
-    r.hasModel ? "next step: run `ultraview check` and fix what it reports; `ultraview status` says what is stale." : "next step: read README, manifests and entrypoints, then write .ultraview/model.json (systems covering >= 90% of code files, then capabilities; every sentence cites [path:line])."
+    r.hasModel ? "next step: run `ultraview check` and fix what it reports, then `ultraview render` to draw the map; `ultraview status` says what is stale." : "next step: read README, manifests and entrypoints, then write .ultraview/model.json (systems covering >= 90% of code files, then capabilities; every sentence cites [path:line])."
   );
   if (lines.length > SUMMARY_MAX_LINES) {
     const kept = lines.slice(0, SUMMARY_MAX_LINES - 2);
@@ -38821,8 +38894,8 @@ function formatBuildSummary(r) {
 }
 
 // src/status.ts
-import { existsSync as existsSync21 } from "fs";
-import { resolve as resolve19 } from "path";
+import { existsSync as existsSync22 } from "fs";
+import { resolve as resolve20 } from "path";
 var build = (s) => `run \`ultraview build --repo ${s.paths.repo}\``;
 var noIndex = (s) => s.index.exists ? void 0 : { situation: "no-index", reasons: ["no ultraindex index at .ultraindex/"], worklist: [build(s)] };
 var indexStale = (s) => {
@@ -38881,15 +38954,15 @@ function indexState(paths) {
   };
 }
 function readStatus(repoArg, probes = PROBES) {
-  const repo = resolve19(repoArg);
-  if (!existsSync21(repo)) throw new Error(`repo not found: ${repo}`);
+  const repo = resolve20(repoArg);
+  if (!existsSync22(repo)) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
   let report;
   const inputs = {
     paths,
     index: indexState(paths),
-    facts: { exists: existsSync21(paths.facts) },
-    model: { exists: existsSync21(paths.model) },
+    facts: { exists: existsSync22(paths.facts) },
+    model: { exists: existsSync22(paths.model) },
     check: () => report ??= checkMap(repo)
   };
   let hit = { situation: "ready", reasons: ["index fresh, model checks clean, nothing stale"], worklist: [] };
@@ -38920,8 +38993,8 @@ var EXIT_USAGE = 2;
 var HELP2 = `ultraview v${ULTRAVIEW_VERSION} (ultraindex ${VERSION}, codeindex ${codeindex_engine_exports.ENGINE_VERSION})
 See your app instead of reading its code: a cited map of a repository, built
 from the ultraindex index plus deterministic extractors (routes, data models,
-\u2026) and the meaning the agent writes into .ultraview/ (model, flows, lenses).
-Under construction: no viewer yet.
+\u2026) and the meaning the agent writes into .ultraview/ (model, flows, lenses),
+drawn as one offline HTML page.
 
 Usage:
   ultraview <command> [options]
@@ -38951,6 +39024,11 @@ Commands:
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
   flow save <file>   Same for a flow: .ultraview/flows/<id>.json.
+  render             Embed .ultraview/view.json into the offline viewer and
+                     write one self-contained page, .ultraview/index.html
+                     (or --out): the map with semantic zoom, data models,
+                     flows, saved questions, changes, search and tour.
+                     --open opens it in the default browser.
 
 Options:
   --repo <dir>   Repository to map (default: the current directory)
@@ -38962,6 +39040,9 @@ Options:
   --budget <n>   dossier: token budget (default ${DOSSIER_BUDGET}, ~4 characters a token)
   --force        lens save / flow save: replace a different question / title
                  saved under the same id
+  --out <file>   render: where to write the page (default
+                 <repo>/.ultraview/index.html)
+  --open         render: open the page with the OS opener afterwards
   --json         Machine-readable output (the full result object)
   -h, --help     Show this help
   -v, --version  Show the version
@@ -38969,9 +39050,9 @@ Options:
 Exit codes: 0 ok, 1 failure (check failed, save refused), 2 usage error or
 unknown node id.
 `;
-var COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow"];
-var VALUE_FLAGS2 = ["repo", "budget"];
-var BOOL_FLAGS = ["json", "no-ast", "strict", "force"];
+var COMMANDS = ["build", "status", "check", "dossier", "show", "lens", "flow", "render"];
+var VALUE_FLAGS2 = ["repo", "budget", "out"];
+var BOOL_FLAGS = ["json", "no-ast", "strict", "force", "open"];
 var ARITY = {
   build: { min: 0, max: 0, usage: "build" },
   status: { min: 0, max: 0, usage: "status" },
@@ -38979,7 +39060,8 @@ var ARITY = {
   dossier: { min: 1, max: 1, usage: "dossier <node-id>" },
   show: { min: 1, max: 1, usage: "show <node-id>" },
   lens: { min: 2, max: 2, usage: "lens save <file>" },
-  flow: { min: 2, max: 2, usage: "flow save <file>" }
+  flow: { min: 2, max: 2, usage: "flow save <file>" },
+  render: { min: 0, max: 0, usage: "render [--out <file>] [--open]" }
 };
 var processIo = {
   out: (s) => process.stdout.write(s),
@@ -39100,7 +39182,7 @@ async function cmdDossier(p, io) {
       return EXIT_USAGE;
     }
   }
-  const repo = resolve20(p.values.repo ?? ".");
+  const repo = resolve21(p.values.repo ?? ".");
   const live = liveView(repo);
   const text2 = renderNodeDossier(live, repo, id, { budget });
   if (text2 === void 0) return unknownId(p, io, id, similarIds(live.view, id));
@@ -39116,7 +39198,7 @@ async function cmdSave(p, io, what) {
   }
   let text2;
   try {
-    text2 = readFileSync27(resolve20(file), "utf8");
+    text2 = readFileSync28(resolve21(file), "utf8");
   } catch (e) {
     io.err(`ultraview: cannot read ${file}: ${e.message}
 `);
@@ -39137,6 +39219,20 @@ ${r.errors.map((e) => `  ${e.path || "(root)"}: ${e.message}`).join("\n")}
 `);
   }
   return r.ok ? EXIT_OK : EXIT_FAILURE;
+}
+async function cmdRender(p, io) {
+  const r = renderMap({ repo: p.values.repo ?? ".", out: p.values.out });
+  const opened = p.bools.has("open") ? await openFile(r.out) : void 0;
+  if (p.bools.has("json")) io.out(json({ ...r, ...opened !== void 0 ? { opened } : {} }));
+  else {
+    const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
+    const shown = relative15(process.cwd(), r.out);
+    io.out(`rendered   ${shown && !shown.startsWith("..") ? shown : r.out} (${kb(r.bytes)}: view ${kb(r.viewBytes)} + viewer ${kb(r.viewerBytes)})
+`);
+    if (opened === false) io.out("open       no opener found: open the file in a browser\n");
+    else if (!opened) io.out("next step: open it in a browser (offline, one file), or pass --open\n");
+  }
+  return EXIT_OK;
 }
 async function main(argv, io = processIo) {
   const p = parseArgs(argv);
@@ -39180,6 +39276,8 @@ async function main(argv, io = processIo) {
       case "lens":
       case "flow":
         return await cmdSave(p, io, p.command);
+      case "render":
+        return await cmdRender(p, io);
       default:
         return await cmdStatus(p, io);
     }

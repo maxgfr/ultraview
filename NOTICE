@@ -1,0 +1,23 @@
+ultraview
+Copyright (c) maxgfr. Licensed under the MIT License (see LICENSE).
+
+The offline viewer, skills/ultraview/assets/viewer.html (and every page
+`ultraview render` writes from it), embeds third-party software:
+
+elkjs (Eclipse Layout Kernel for JavaScript)
+  Copyright (c) 2017 Kiel University and others.
+  Licensed under the Eclipse Public License 2.0 (SPDX: EPL-2.0),
+  https://www.eclipse.org/legal/epl-2.0.
+  Source code: https://github.com/kieler/elkjs (npm package `elkjs`).
+  Embedded unmodified: lib/elk-worker.min.js, deflate-compressed and
+  base64-encoded in a <script type="application/octet-stream"
+  id="ultraview-elk"> element, preceded by this licence notice. The
+  version is named in that notice and pinned in pnpm-lock.yaml.
+
+Preact
+  Copyright (c) 2015-present Jason Miller. MIT License.
+  https://github.com/preactjs/preact
+
+fflate
+  Copyright (c) 2023 Arjun Barrett. MIT License.
+  https://github.com/101arrowz/fflate

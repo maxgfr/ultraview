@@ -1,7 +1,18 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.6.9/schema.json",
   "files": {
-    "includes": ["src/**", "tests/**", "scripts/sync-version.mjs", "*.ts", "!tests/fixtures", "!tests/__snapshots__", "!src/vendor", "!.claude"]
+    "includes": [
+      "src/**",
+      "tests/**",
+      "viewer/**",
+      "scripts/sync-version.mjs",
+      "scripts/build-viewer.mjs",
+      "*.ts",
+      "!tests/fixtures",
+      "!tests/__snapshots__",
+      "!src/vendor",
+      "!.claude"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -35,6 +46,22 @@
     "enabled": false
   },
   "overrides": [
+    {
+      "includes": ["viewer/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          },
+          "complexity": {
+            "noImportantStyles": "off"
+          },
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
+    },
     {
       "includes": ["tests/**"],
       "linter": {

@@ -9,7 +9,12 @@ which carries the pinned codeindex engine as its `codeindex` namespace.
 (pure functions: path + text + repo context in, facts out) into
 `.ultraview/facts.json`; `src/status.ts` routes the agent. tsup bundles
 everything into one dependency-free `scripts/ultraview.mjs`, copied into the
-skill. The full spec is [docs/design.md](docs/design.md).
+skill. The viewer lives in `viewer/` (TypeScript + Preact; pure logic in
+`viewer/lib/`, unit-tested in node; components in `viewer/ui/`; strings in
+`viewer/i18n/`): `scripts/build-viewer.mjs` bundles it with esbuild and
+inlines it, with the elkjs layout worker, into one offline
+`skills/ultraview/assets/viewer.html` that `ultraview render` fills with
+`.ultraview/view.json`. The full spec is [docs/design.md](docs/design.md).
 
 ## Prerequisites
 

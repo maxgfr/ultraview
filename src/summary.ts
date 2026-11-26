@@ -102,7 +102,7 @@ export function formatBuildSummary(r: MapBuildResult): string {
   push(`written    ${r.written.join(", ")}`);
   push(
     r.hasModel
-      ? "next step: run `ultraview check` and fix what it reports; `ultraview status` says what is stale."
+      ? "next step: run `ultraview check` and fix what it reports, then `ultraview render` to draw the map; `ultraview status` says what is stale."
       : "next step: read README, manifests and entrypoints, then write .ultraview/model.json (systems covering >= 90% of code files, then capabilities; every sentence cites [path:line]).",
   );
 

@@ -1,0 +1,20 @@
+// Prompts the viewer copies for the user's coding agent. They are
+// instructions to an agent that reads English, not interface text, so they
+// stay in English whatever the interface language.
+
+export function askAboutNode(id: string, label: string): string {
+  return `Using ultraview, explain ${id} (${label}): what it does for the app, what it depends on and what depends on it. Run \`ultraview show ${id}\` and \`ultraview dossier ${id}\` first, and cite [path:line] for every claim.`;
+}
+
+export function reaskLens(id: string, question: string): string {
+  return `Use ultraview to re-answer the lens "${question}" (id ${id}): its cited files changed since it was saved. Run \`ultraview lens new "${question}"\`, rewrite the answer with fresh citations, then \`ultraview lens save\` and \`ultraview check\`.`;
+}
+
+export function retraceFlow(id: string, title: string): string {
+  return `Use ultraview to re-trace the flow "${title}" (id ${id}): its cited files changed since it was saved. Update each step's note with fresh citations, then \`ultraview flow save\` and \`ultraview check\`.`;
+}
+
+export function askAboutInsight(title: string, nodes: readonly string[]): string {
+  const where = nodes.length ? ` It involves ${nodes.slice(0, 8).join(", ")}.` : "";
+  return `Using ultraview, look into this insight: "${title}".${where} Explain whether it is a real problem, cite [path:line] for every claim, and propose the smallest fix.`;
+}

@@ -10,21 +10,22 @@
   "files": [
     "skills",
     "scripts",
-    "src"
+    "src",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsup && webindex skill copy",
+    "build": "tsup && webindex skill copy && node scripts/build-viewer.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p viewer",
     "lint": "biome ci .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "check:build": "tsup && webindex skill copy && git diff --exit-code -- scripts/ultraview.mjs skills/ultraview/scripts/ultraview.mjs && webindex skill check && webindex skill bundle && webindex skill vendor --check",
+    "check:build": "tsup && webindex skill copy && node scripts/build-viewer.mjs && git diff --exit-code -- scripts/ultraview.mjs skills/ultraview/scripts/ultraview.mjs skills/ultraview/assets/viewer.html && webindex skill check && webindex skill bundle && webindex skill vendor --check",
     "release": "semantic-release",
     "verify:bundle": "webindex skill bundle",
     "verify:engine": "webindex skill check && webindex skill vendor --check",
@@ -56,6 +57,10 @@
     "@semantic-release/git": "^11.0.1",
     "@types/node": "^20.19.43",
     "@vitest/coverage-v8": "^4.1.11",
+    "elkjs": "^0.12.2",
+    "esbuild": "0.28.1",
+    "fflate": "^0.8.3",
+    "preact": "^11.2.0",
     "semantic-release": "^25.0.9",
     "tsup": "^8.5.1",
     "typescript": "^7.0.2",

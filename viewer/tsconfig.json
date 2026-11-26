@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
+  },
+  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.json", "../src/model/types.ts", "../src/model/ids.ts"],
+  "exclude": []
+}

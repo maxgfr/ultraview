@@ -14,6 +14,8 @@ ultraindex index, extracts the repository's routes and data models into
 `status` says what to do next; `check` gates what the agent writes into
 `.ultraview/model.json`, flows and lenses (ids, citations, coverage, staleness);
 `dossier <node-id>` and `show <node-id>` give the evidence and a card for one
-node; `lens save` / `flow save` stamp and store a saved question or flow. The
-viewer and the full agent loop arrive in later releases. Run
+node; `lens save` / `flow save` stamp and store a saved question or flow;
+`render` writes the map as one offline page, `.ultraview/index.html` (`--open`
+opens it; deep links such as `#lens=<id>` or `#view=map&node=<id>` point the
+user at a view). The full agent loop arrives in later releases. Run
 `node scripts/ultraview.mjs --help` for the current surface.
