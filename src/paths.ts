@@ -8,8 +8,8 @@ import { join } from "node:path";
 export const VIEW_DIR = ".ultraview";
 export const INDEX_DIR_NAME = ".ultraindex";
 
-/** The generated files `build` lists in `.ultraview/.gitignore`. */
-export const GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log", "ask.log"] as const;
+/** The generated files `build` lists in `.ultraview/.gitignore` (and the drafts of conversation turns, `lens save --thread`'s input). */
+export const GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log", "ask.log", "conversations/*.draft.json"] as const;
 
 export interface ViewPaths {
   repo: string;

@@ -281,6 +281,10 @@ describe("deep links", () => {
     expect(parseHash("#lens=how-refunds-work")).toEqual({ view: "lenses", lens: "how-refunds-work" });
     expect(parseHash("#flow=checkout&step=2")).toEqual({ view: "flows", flow: "checkout", step: 2 });
     expect(parseHash("#change=c1")).toEqual({ view: "changes", change: "c1" });
+    // A conversation opens beside any view: it implies none.
+    expect(parseHash("#chat=how-orders-work")).toEqual({ view: "map", chat: "how-orders-work" });
+    expect(parseHash("#view=data&chat=c")).toEqual({ view: "data", chat: "c" });
+    expect(formatHash({ view: "lenses", lens: "l", chat: "c" })).toBe("#lens=l&chat=c");
     expect(formatHash({ view: "map", level: "file", node: "sym:src/a.ts#fn" })).toBe("#level=file&node=sym:src/a.ts%23fn");
     expect(formatHash({ view: "map", node: "route:GET /api/x" })).toBe("#node=route:GET%20/api/x");
   });

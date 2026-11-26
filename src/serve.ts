@@ -3,12 +3,20 @@
 //
 //   GET  /               the viewer page, rendered from the current view (src/render.ts)
 //   GET  /view.json      the current view-model
-//   GET  /events         Server-Sent Events: hello, view, stale, ask-progress, ask-done, ask-error
+//   GET  /events         Server-Sent Events: hello, view, stale, chat, ask-progress, ask-done, ask-error
 //   GET  /api/node       ?id=          the node card (`show --json`)
 //   GET  /api/search     ?q=           node label / id match + ultraindex find over modules
 //   GET  /api/callgraph  ?sym=&depth=&dir=   the codeindex symbol neighbourhood
 //   POST /api/ask        {question}    the Ask bridge (src/ask.ts), when an agent CLI is enabled
 //   POST /api/explain    {node, mode, lang?}   the instant answer from proven facts (src/explain.ts)
+//   POST /api/chat       {thread?, question, mode, context?}   one conversation turn through the
+//                        Ask bridge; the response is an event stream: progress…, then turn or error
+//   GET  /api/chat       ?id=          one conversation (src/chat.ts)
+//   GET  /api/chats                    every conversation: id, title, turns, updatedAt
+//
+// Conversations live outside the view: a file changed under
+// `.ultraview/conversations/` (a turn saved from the terminal, or by
+// /api/chat) is pushed as `chat {id}` on the event stream, never as `view`.
 //
 // Live data: `.ultraview/` (model.json, flows/, lenses/, timeline.jsonl,
 // changes/, facts.json) and `.ultraindex/` are watched; a change re-assembles
@@ -29,11 +37,23 @@ import { existsSync, type FSWatcher, readdirSync, readFileSync, statSync, watch 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { isIP } from "node:net";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { type AskAgent, type AskMode, askAgent, askLensId, askModelProblem, checkQuestion, resolveAskAgent } from "./ask.js";
+import { type AskAgent, type AskMode, askAgent, askLensId, askModelProblem, chatAgent, checkQuestion, resolveAskAgent } from "./ask.js";
+import {
+  CHAT_TURNS_MAX,
+  type ContextView,
+  CONVERSATIONS_DIR,
+  chatList,
+  checkContext,
+  conversationIds,
+  isChatId,
+  proposeChatId,
+  readConversation,
+  resolveContext,
+} from "./chat.js";
 import { codeindex, indexExists, loadCache, loadManifest, runFind } from "./engine.js";
 import { explainContext, explainRequest } from "./explain.js";
 import { modId } from "./model/ids.js";
-import type { ViewModel, ViewNode } from "./model/types.js";
+import { CHAT_MODES, type ChatMode, type ViewModel, type ViewNode } from "./model/types.js";
 import { INDEX_DIR_NAME, VIEW_DIR, viewPaths } from "./paths.js";
 import { type FreshView, freshView, indexStaleness, type StaleState, writeView } from "./refresh.js";
 import { renderHtml, viewerTemplatePath } from "./render.js";
@@ -63,8 +83,10 @@ const CALLGRAPH_EDGES = 400;
 
 /** Files under `.ultraview/` that never trigger a re-assembly (outputs, logs). */
 const IGNORED_VIEW_FILES = new Set(["index.html", "ask.log", ".gitignore"]);
-/** Agent-authored subdirectories of `.ultraview/`. */
+/** Agent-authored subdirectories of `.ultraview/` the view is assembled from. */
 const AGENT_DIRS = ["flows", "lenses", "changes"];
+/** The conversations' subdirectory of `.ultraview/`: watched for `chat` events, never for the view. */
+const CHAT_DIR = CONVERSATIONS_DIR.slice(`${VIEW_DIR}/`.length);
 /** Never source: a change under these is not a reason to call the index stale. */
 const NOT_SOURCE = [VIEW_DIR, INDEX_DIR_NAME, ".git", "node_modules"];
 
@@ -241,6 +263,35 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
   }, opts.heartbeatMs ?? HEARTBEAT_MS);
   heartbeat.unref();
 
+  // --- conversations: a changed file is a `chat` event (sizes, mtimes and bytes compared) ---
+  const chatDir = join(paths.dir, CHAT_DIR);
+  const chatStamp = (id: string): string | undefined => {
+    try {
+      return readFileSync(join(chatDir, `${id}.json`), "utf8");
+    } catch {
+      return undefined;
+    }
+  };
+  let chats = new Map<string, string>();
+  const scanChats = (announce: boolean) => {
+    const next = new Map<string, string>();
+    for (const id of conversationIds(repo)) {
+      const text = chatStamp(id);
+      if (text !== undefined) next.set(id, text);
+    }
+    if (announce) for (const [id, text] of next) if (chats.get(id) !== text) broadcast("chat", { id });
+    chats = next;
+  };
+  scanChats(false);
+  let chatTimer: NodeJS.Timeout | undefined;
+  const scheduleChats = () => {
+    if (chatTimer) clearTimeout(chatTimer);
+    chatTimer = setTimeout(() => {
+      chatTimer = undefined;
+      scanChats(true);
+    }, debounceMs);
+  };
+
   const refresh = (): boolean => {
     signature = agentSignature();
     let next: FreshView;
@@ -302,7 +353,31 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
     return parts.join("\n");
   };
   let signature = agentSignature();
+  const chatSignature = (): string => {
+    const parts: string[] = [];
+    let names: string[] = [];
+    try {
+      names = readdirSync(chatDir).sort();
+    } catch {
+      return "";
+    }
+    for (const n of names) {
+      try {
+        const st = statSync(join(chatDir, n));
+        parts.push(`${n}:${st.size}:${st.mtimeMs}`);
+      } catch {
+        // gone
+      }
+    }
+    return parts.join("\n");
+  };
+  let chatSig = chatSignature();
   const agentPoll = setInterval(() => {
+    const nextChat = chatSignature();
+    if (nextChat !== chatSig) {
+      chatSig = nextChat;
+      scheduleChats();
+    }
     const next = agentSignature();
     if (next === signature) return;
     signature = next;
@@ -358,6 +433,11 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
         const sub = join(paths.dir, name);
         if (existsSync(sub)) watchDir(sub, false, onViewDirEvent);
       }
+      if (name === CHAT_DIR) {
+        if (existsSync(chatDir)) watchDir(chatDir, false, onChatDirEvent);
+        scheduleChats();
+        return;
+      }
       if (name === "view.json") {
         let disk: string | undefined;
         try {
@@ -370,7 +450,12 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
     }
     scheduleRefresh();
   };
+  function onChatDirEvent(file: string | null) {
+    if (file !== null && !String(file).endsWith(".json")) return;
+    scheduleChats();
+  }
   if (!watchDir(paths.dir, false, onViewDirEvent)) warn(`cannot watch ${paths.dir}: live updates are off`);
+  if (existsSync(chatDir)) watchDir(chatDir, false, onChatDirEvent);
   for (const d of AGENT_DIRS) if (existsSync(join(paths.dir, d))) watchDir(join(paths.dir, d), false, onViewDirEvent);
   watchDir(paths.index, false, () => {
     scheduleRefresh();
@@ -424,6 +509,7 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
   };
 
   // --- the Ask bridge --------------------------------------------------------------
+  // One agent at a time, for /api/ask and /api/chat alike.
   let asking: { id: string; question: string; child?: ChildProcess } | undefined;
   const startAsk = (question: string) => {
     const id = askLensId(repo, question);
@@ -452,6 +538,106 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
       } else broadcast("ask-error", { id, question, agent: who, error: o.error, ...(o.problems ? { problems: o.problems } : {}) });
     });
     return id;
+  };
+
+  /** The map a chat turn's context and node ids resolve against: the served view. */
+  const contextView = (): ContextView => ({ byId: state.byId, flows: state.view.flows, insights: state.view.insights });
+
+  /** One conversation turn: an event stream on `res` (progress…, then turn or error), then the end of it. */
+  const startChat = (res: ServerResponse, body: { thread?: string; question: string; mode: ChatMode; context?: Record<string, string> }) => {
+    const conv = body.thread !== undefined ? readConversation(repo, body.thread)?.conversation : undefined;
+    const newThread = conv ? undefined : proposeChatId(repo, body.question);
+    const id = conv?.id ?? newThread!;
+    const current: { id: string; question: string; child?: ChildProcess } = { id: `chat:${id}`, question: body.question };
+    asking = current;
+    const who = agent!.name;
+    res.writeHead(200, { ...SECURITY_HEADERS, "Content-Type": "text/event-stream; charset=utf-8", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+    let open = true;
+    res.on("close", () => {
+      open = false;
+    });
+    const emit = (event: string, data: unknown) => {
+      if (open) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    const beat = setInterval(() => {
+      if (open) res.write(": ping\n\n");
+    }, opts.heartbeatMs ?? HEARTBEAT_MS);
+    beat.unref();
+    emit("progress", { text: `asking ${who}${conv ? ` (turn ${conv.turns.length + 1} of ${conv.id})` : ""}` });
+    void chatAgent({
+      repo,
+      question: body.question,
+      agent: agent!,
+      env,
+      timeoutMs: opts.askTimeoutMs,
+      mode: body.mode,
+      ...(conv ? { thread: conv } : { newThread }),
+      ...(body.context ? { context: body.context } : {}),
+      view: contextView(),
+      onProgress: (stage, detail) =>
+        emit("progress", {
+          text:
+            stage === "started"
+              ? `${who} started`
+              : stage === "running"
+                ? `${who} is reading the code${detail.bytes ? ` (${Math.max(1, Math.round(detail.bytes / 1024))} KB of output)` : ""}`
+                : "checking the answer: schema, node ids, citations",
+        }),
+      onChild: (child) => {
+        current.child = child;
+      },
+    }).then((o) => {
+      if (asking === current) asking = undefined;
+      clearInterval(beat);
+      if (o.ok && o.turn && o.index !== undefined) {
+        emit("turn", { thread: o.thread, index: o.index, turn: o.turn });
+        scanChats(true);
+        chatSig = chatSignature();
+      } else
+        emit("error", {
+          message: `${o.error ?? "the turn failed"}${o.problems?.length ? `: ${o.problems.map((p) => `${p.path || "(root)"}: ${p.message}`).join("; ")}` : ""}`,
+        });
+      if (open) res.end();
+    });
+  };
+
+  /** The guards every POST passes: loopback when bound wider, same origin, JSON; the parsed body, or undefined once refused. */
+  const postBody = async (req: IncomingMessage, res: ServerResponse): Promise<Record<string, unknown> | undefined> => {
+    if (!loopbackOnly && !isLoopbackHost(req.socket.remoteAddress ?? "")) {
+      sendJson(res, 403, { error: "asking is only allowed from this machine" });
+      return undefined;
+    }
+    const origin = req.headers.origin;
+    if (origin !== undefined && origin !== `http://${req.headers.host}`) {
+      sendJson(res, 403, { error: "cross-origin request refused" });
+      return undefined;
+    }
+    const site = req.headers["sec-fetch-site"];
+    if (site !== undefined && site !== "same-origin" && site !== "none") {
+      sendJson(res, 403, { error: "cross-site request refused" });
+      return undefined;
+    }
+    if (!(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+      sendJson(res, 415, { error: "send application/json" });
+      return undefined;
+    }
+    const body = await readBody(req, BODY_MAX);
+    if (body === undefined) {
+      sendJson(res, 413, { error: `body over ${BODY_MAX} bytes` });
+      return undefined;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      sendJson(res, 400, { error: "body is not JSON" });
+      return undefined;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      sendJson(res, 400, { error: "body must be a JSON object" });
+      return undefined;
+    }
+    return parsed as Record<string, unknown>;
   };
 
   // --- routes ------------------------------------------------------------------------
@@ -562,25 +748,68 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
       case "/api/ask": {
         if (!agent) return sendJson(res, 404, { error: "the Ask bridge is off (no agent CLI found, or --ask none)" });
         if (method !== "POST") return send(res, 405, "text/plain; charset=utf-8", "method not allowed\n", false, { Allow: "POST" });
-        if (!loopbackOnly && !isLoopbackHost(req.socket.remoteAddress ?? "")) return sendJson(res, 403, { error: "asking is only allowed from this machine" });
-        const origin = req.headers.origin;
-        if (origin !== undefined && origin !== `http://${req.headers.host}`) return sendJson(res, 403, { error: "cross-origin request refused" });
-        const site = req.headers["sec-fetch-site"];
-        if (site !== undefined && site !== "same-origin" && site !== "none") return sendJson(res, 403, { error: "cross-site request refused" });
-        if (!(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) return sendJson(res, 415, { error: "send application/json" });
-        const body = await readBody(req, BODY_MAX);
-        if (body === undefined) return sendJson(res, 413, { error: `body over ${BODY_MAX} bytes` });
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(body);
-        } catch {
-          return sendJson(res, 400, { error: "body is not JSON" });
-        }
-        const q = checkQuestion((parsed as { question?: unknown } | null)?.question);
+        const parsed = await postBody(req, res);
+        if (!parsed) return;
+        const q = checkQuestion(parsed.question);
         if ("error" in q) return sendJson(res, 400, { error: q.error });
         if (asking) return sendJson(res, 409, { error: "an ask is already running", id: asking.id });
         const id = startAsk(q.question);
         return sendJson(res, 202, { id, question: q.question, agent: agent.name });
+      }
+      case "/api/chat": {
+        if (method === "GET" || head) {
+          const id = param("id");
+          if (!id) return sendJson(res, 400, { error: "missing ?id=" }, head);
+          if (!isChatId(id)) return sendJson(res, 400, { error: "not a conversation id" }, head);
+          const r = readConversation(repo, id);
+          if (!r) return sendJson(res, 404, { error: `unknown conversation: ${id}` }, head);
+          if (!r.conversation)
+            return sendJson(res, 500, { error: `${CONVERSATIONS_DIR}/${id}.json is invalid (run \`ultraview check\`)`, problems: r.problems }, head);
+          return sendJson(res, 200, r.conversation, head);
+        }
+        if (method !== "POST") return send(res, 405, "text/plain; charset=utf-8", "method not allowed\n", false, { Allow: "GET, HEAD, POST" });
+        if (!agent) return sendJson(res, 404, { error: "the Ask bridge is off (no agent CLI found, or --ask none)" });
+        const parsed = await postBody(req, res);
+        if (!parsed) return;
+        for (const k of Object.keys(parsed))
+          if (!["thread", "question", "mode", "context"].includes(k))
+            return sendJson(res, 400, { error: `unknown key "${k}" (thread, question, mode, context)` });
+        const q = checkQuestion(parsed.question);
+        if ("error" in q) return sendJson(res, 400, { error: q.error });
+        if (!(CHAT_MODES as readonly unknown[]).includes(parsed.mode)) return sendJson(res, 400, { error: `\`mode\` must be one of ${CHAT_MODES.join(", ")}` });
+        let thread: string | undefined;
+        if (parsed.thread !== undefined) {
+          if (!isChatId(parsed.thread)) return sendJson(res, 400, { error: "`thread` is not a conversation id" });
+          const r = readConversation(repo, parsed.thread);
+          if (!r) return sendJson(res, 404, { error: `unknown conversation: ${parsed.thread}` });
+          if (!r.conversation) return sendJson(res, 409, { error: `${CONVERSATIONS_DIR}/${parsed.thread}.json is invalid (run \`ultraview check\`)` });
+          if (r.conversation.turns.length >= CHAT_TURNS_MAX)
+            return sendJson(res, 409, { error: `the conversation already holds ${CHAT_TURNS_MAX} turns: start a new one` });
+          thread = parsed.thread;
+        }
+        const ctx = checkContext(parsed.context);
+        if ("error" in ctx) return sendJson(res, 400, { error: ctx.error });
+        if (Object.keys(ctx).length) {
+          const r = resolveContext(contextView(), ctx);
+          if ("error" in r) return sendJson(res, 400, { error: r.error });
+        }
+        if (asking) return sendJson(res, 409, { error: "an ask is already running", id: asking.id });
+        startChat(res, {
+          ...(thread ? { thread } : {}),
+          question: q.question,
+          mode: parsed.mode as ChatMode,
+          ...(Object.keys(ctx).length ? { context: ctx as Record<string, string> } : {}),
+        });
+        return;
+      }
+      case "/api/chats": {
+        if (!getOnly()) return;
+        return sendJson(
+          res,
+          200,
+          chatList(repo).conversations.map(({ id, title, turns, updatedAt }) => ({ id, title, turns, updatedAt })),
+          head,
+        );
       }
       default:
         return send(res, 404, "text/plain; charset=utf-8", "not found\n", head);
@@ -622,6 +851,7 @@ export async function startServe(opts: ServeOptions): Promise<ServeHandle> {
       clearInterval(agentPoll);
       if (viewTimer) clearTimeout(viewTimer);
       if (sourceTimer) clearTimeout(sourceTimer);
+      if (chatTimer) clearTimeout(chatTimer);
       for (const w of watchers.values()) w.close();
       watchers.clear();
       asking?.child?.kill("SIGTERM");

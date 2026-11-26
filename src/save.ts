@@ -58,22 +58,30 @@ const FLOW: Kind<Flow> = {
   noun: "title",
 };
 
-function save<T extends { id: string; sources?: SourceHashes }>(kind: Kind<T>, repoArg: string, input: unknown, opts: SaveOptions): SaveResult {
-  const repo = resolve(repoArg);
-  const fail = (errors: Problem[], extra: Partial<SaveResult> = {}): SaveResult => ({ ok: false, sources: {}, replaced: false, errors, ...extra });
+/** What `prepare` found: the parsed item and its stamped sources, or the problems. */
+export interface Prepared<T> {
+  item?: T;
+  sources: SourceHashes;
+  errors: Problem[];
+}
 
+/**
+ * The gates before a write: the schema, then every citation of every prose
+ * string — each cited file must exist inside the repo and, with an index,
+ * every citation must resolve. Returns the `sources` to stamp (the sha256 of
+ * each cited file). Writes nothing.
+ */
+function prepare<T>(kind: Pick<Kind<T>, "validate" | "prose">, repo: string, input: unknown): Prepared<T> {
   let value = input;
   if (typeof input === "string") {
     const parsed = parseJson(input);
-    if (parsed.problems.length) return fail(parsed.problems);
+    if (parsed.problems.length) return { sources: {}, errors: parsed.problems };
     value = parsed.value;
   }
   const schemaErrors = kind.validate(value);
-  if (schemaErrors.length) return fail(schemaErrors);
+  if (schemaErrors.length) return { sources: {}, errors: schemaErrors };
   const item = value as T;
-  const file = `${kind.dir}/${item.id}.json`;
 
-  // Every cited file must exist inside the repo; with an index, every citation must resolve.
   const errors: Problem[] = [];
   const graph = loadGraph(viewPaths(repo).index);
   const lineTable = graph ? fileLineTable(graph) : undefined;
@@ -91,10 +99,31 @@ function save<T extends { id: string; sources?: SourceHashes }>(kind: Kind<T>, r
       cited.add(relative(repo, abs).split(sep).join("/"));
     }
   }
-  if (errors.length) return fail(errors, { file, id: item.id });
-
+  if (errors.length) return { item, sources: {}, errors };
   const sources: SourceHashes = {};
   for (const rel of [...cited].sort()) sources[rel] = fileSha256(join(repo, rel))!;
+  return { item, sources, errors: [] };
+}
+
+/**
+ * `lens save`'s gates without the write (schema, citations, `sources`), for
+ * answers stored elsewhere: a conversation turn (src/chat.ts) is a lens
+ * answer and passes exactly these.
+ */
+export function prepareLens(repoArg: string, input: unknown): Prepared<Lens> {
+  return prepare(LENS, resolve(repoArg), input);
+}
+
+function save<T extends { id: string; sources?: SourceHashes }>(kind: Kind<T>, repoArg: string, input: unknown, opts: SaveOptions): SaveResult {
+  const repo = resolve(repoArg);
+  const fail = (errors: Problem[], extra: Partial<SaveResult> = {}): SaveResult => ({ ok: false, sources: {}, replaced: false, errors, ...extra });
+
+  const prepared = prepare(kind, repo, input);
+  const item = prepared.item;
+  if (!item) return fail(prepared.errors);
+  const file = `${kind.dir}/${item.id}.json`;
+  if (prepared.errors.length) return fail(prepared.errors, { file, id: item.id });
+  const sources = prepared.sources;
 
   const abs = join(repo, file);
   let replaced = false;

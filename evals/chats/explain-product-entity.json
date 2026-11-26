@@ -1,0 +1,45 @@
+{
+  "id": "explain-product-entity",
+  "fixture": "shop-express-prisma",
+  "context": {
+    "node": "entity:Product"
+  },
+  "turns": [
+    {
+      "intent": "the user clicked 'ask about this' on a data model card: ask what this is (do not name it)",
+      "expect": [
+        "entity:Product"
+      ]
+    },
+    {
+      "intent": "follow-up: how is it connected to orders",
+      "expect": [
+        "entity:OrderItem",
+        "entity:Order"
+      ]
+    }
+  ],
+  "questions": {
+    "en": [
+      "wait, what even is this? I clicked 'ask about this' on one of the cards and honestly not sure what I'm looking at",
+      "gotcha. and how does it tie into orders then?"
+    ],
+    "fr": [
+      "Salut ! Je viens de cliquer sur « ask about this » sans trop savoir ce que c'était, tu peux m'expliquer ce truc ?",
+      "Ok merci, et du coup il est lié comment aux commandes ?"
+    ],
+    "es": [
+      "Oye, ¿esto qué es exactamente? Le he dado a 'preguntar sobre esto' pero la verdad no me queda claro qué representa.",
+      "Ah, vale... ¿y eso cómo se conecta con los pedidos?"
+    ],
+    "de": [
+      "Was ist das denn eigentlich? Erklär mir das kurz.",
+      "Und wie hängt das mit den Bestellungen zusammen?"
+    ],
+    "ja": [
+      "これって何？何のデータ？",
+      "で、注文とはどう繋がってるの？"
+    ]
+  },
+  "generator": "glm-5.3-flash"
+}

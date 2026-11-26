@@ -88,6 +88,26 @@ A capability member `mod:<slug>` claims every slice of the module;
 `flow save`; never write it. A cited file whose hash changes makes the lens
 or flow **stale**.
 
+## conversations/<id>.json
+
+A thread of turns; `lens save <draft> --thread <id>` appends one. You write
+only the turn (the draft), never the conversation file:
+
+```json
+{ "question": "And what data does it write?",
+  "answer": "It stores the order with one line per product. [src/services/orders.ts:16-21]",
+  "nodes": ["entity:Order", "entity:OrderItem"], "edges": [], "focus": "entity:Order",
+  "lang": "en", "mode": "business",
+  "followUps": ["Can an order be changed?", "How is an order cancelled?", "Who sees the orders?"] }
+```
+
+The saved turn also holds `source` (`agent`), `context` (what was clicked:
+`node`, `edge` `"<from> -> <to>"`, `insight` or `step` `"<flow-id>:<n>"`),
+`sources`, `at` and `ms`, stamped by ultraview; its `answer`, `nodes`,
+`edges`, `focus` sit under `answer`. A turn's citations make it stale like a
+lens. Exactly 3 `followUps`, in the question's language; `lang` a BCP-47
+tag (`en`, `fr`, `pt-BR`); `mode` `business` or `dev`.
+
 ## timeline.jsonl
 
 One stable-JSON object per line, appended by `diff --record` or `timeline add`,

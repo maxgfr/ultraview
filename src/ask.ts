@@ -1,6 +1,7 @@
 // The Ask bridge behind `ultraview serve --ask` (docs/design.md §7): one
 // question from the viewer → one read-only, non-interactive run of the user's
-// coding agent CLI → one lens, validated and saved by ultraview itself.
+// coding agent CLI → one lens (`POST /api/ask`) or one conversation turn
+// (`POST /api/chat`, src/chat.ts), validated and saved by ultraview itself.
 //
 //   - The agent is found on PATH (`auto`: claude, then codex) and spawned by
 //     absolute path, with a minimal environment, the repository as its working
@@ -9,6 +10,10 @@
 //     Bash / Read / Glob / Grep tools, and Bash allowed for ultraview's read-only
 //     commands only; Codex with `--sandbox read-only`. No flag that bypasses
 //     permissions is ever passed.
+//   - A turn's prompt carries the thread's digest (chatDigest), what the
+//     question was asked about in the map, the mode (business: plain words;
+//     dev: symbols, calls, files) and the rule to answer in the question's
+//     language with 3 follow-ups; the agent runs `lens new --thread`.
 //   - It writes nothing: its final message is the lens JSON. ultraview takes it
 //     (Claude: stdout; Codex: `--output-last-message` into a private temp dir),
 //     forces the proposed id and the asked question, and runs `saveLens`, which
@@ -22,7 +27,9 @@ import { accessSync, closeSync, constants, existsSync, mkdirSync, mkdtempSync, o
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CHAT_QUESTION_MAX, type ContextView, chatDigest, resolveContext, saveTurn, type TurnResult } from "./chat.js";
 import { proposeLensId } from "./lens.js";
+import type { ChatContext, ChatMode, ChatTurn, Conversation } from "./model/types.js";
 import type { Problem } from "./model/validate.js";
 import { VIEW_DIR } from "./paths.js";
 import { saveLens } from "./save.js";
@@ -35,7 +42,7 @@ export type AskMode = (typeof ASK_MODES)[number];
 /** Default time an ask may take, in milliseconds. */
 export const ASK_TIMEOUT_MS = 180_000;
 /** Longest question accepted. */
-export const ASK_QUESTION_MAX = 500;
+export const ASK_QUESTION_MAX = CHAT_QUESTION_MAX;
 /** Agent output kept in memory to read the answer from (the log gets everything). */
 const OUTPUT_MAX = 4 * 1024 * 1024;
 export const ASK_LOG = `${VIEW_DIR}/ask.log`;
@@ -124,6 +131,73 @@ export function askPrompt(question: string, id: string, script: string): string 
     "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
+    "",
+  ].join("\n");
+}
+
+/** A shell-safe single-quoted argument. */
+const shellQuote = (v: string) => `'${v.replace(/'/g, "'\\''")}'`;
+
+export interface ChatPromptInput {
+  question: string;
+  mode: ChatMode;
+  /** The conversation so far (absent for a first turn). */
+  thread?: Conversation;
+  /** What the question was asked about, and the lines saying so. */
+  context?: { value: ChatContext; lines: string[] };
+}
+
+/**
+ * The prompt for one conversation turn: the thread's digest (turns 1..N-1:
+ * questions, one-line answers, node ids in play), what was clicked, the
+ * mode's register, the language rule and the turn JSON to reply with.
+ */
+export function chatPrompt(input: ChatPromptInput, script: string): string {
+  const uv = scriptCommand(script);
+  const { question, mode, thread, context } = input;
+  const flags = [
+    ...(thread ? [`--thread ${thread.id}`] : []),
+    ...(context && Object.keys(context.value).length ? [`--context ${shellQuote(JSON.stringify(context.value))}`] : []),
+  ].join(" ");
+  const digest = thread ? chatDigest(thread) : "";
+  const register =
+    mode === "business"
+      ? "Mode business: the reader does not read code. Use plain business words (what the app does for whom); do not name functions, files, symbols or routes unless the question asks for them (citations still name files)."
+      : "Mode dev: the reader is a developer. Give the technical detail: the symbols, the calls between them, the files, routes and data they touch.";
+  return [
+    "You answer one turn of a conversation about the repository in the current directory for ultraview, a cited map of the app.",
+    "You are read-only: never create, edit, move or delete any file, and never run a command that writes. ultraview saves your answer itself.",
+    "",
+    ...(digest
+      ? [
+          digest,
+          "",
+          `Read the question with the conversation above: "it", "that", "this", "and then?" refer to the most recent turn's nodes unless the question names something else.`,
+          "",
+        ]
+      : []),
+    ...(context
+      ? [`The user asked from the map, about: ${context.lines.join("; ")}. "This" and "it" mean that, unless the question names something else.`, ""]
+      : []),
+    `Question: ${question}`,
+    "",
+    register,
+    "Answer in the language of the question (a French question gets a French answer, a Japanese one a Japanese answer); citations stay [path:line].",
+    "",
+    "Steps:",
+    // Single-quoted: nothing in the question ($, backticks) is expanded by the shell the agent runs it in.
+    `1. Gather the evidence with ultraview: ${uv} lens new ${shellQuote(question)}${flags ? ` ${flags}` : ""}`,
+    "   It prints the conversation so far, candidate nodes (those the conversation points at among them), their edges, source excerpts and the JSON template to fill.",
+    '   If the question is not in English, you MUST add --terms "<English code keywords>" to that command: 3-8 words the code would use for what is',
+    "   asked, including what its pronouns refer to in the conversation (e.g. order cancel delete), plus this repository's own names when you know them.",
+    "   Keep the question exactly as asked; the terms carry the search.",
+    `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
+    "3. Reply with ONLY the turn JSON object (no prose before or after it):",
+    `   {"question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "...", "lang": "<the question's language: en, fr, ja...>", "followUps": ["...", "...", "..."]}`,
+    "   - answer: Markdown, in the question's language; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
+    "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
+    "   - followUps: exactly 3 short questions the user could ask next about this app, in the question's language.",
+    "   - Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     "",
   ].join("\n");
 }
@@ -335,27 +409,46 @@ function openAskLog(file: string): { write: (data: string | Buffer) => void; clo
   };
 }
 
-/** Run one ask to completion: spawn the agent, read its reply, save the lens. Never throws. */
-export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.question)): Promise<AskOutcome> {
+/** One finished agent run, as the runner reports it: the outcome to log and announce. */
+interface RunOutcome {
+  ok: boolean;
+  file?: string;
+  error?: string;
+  problems?: Problem[];
+}
+
+/**
+ * Run the agent once: spawn it read-only with `prompt` on stdin, log
+ * everything it prints, enforce the timeout, then hand its reply's JSON object
+ * to `accept`, which validates and saves it. `label` heads the log entry.
+ * Never throws. (The one place an agent is started: a model choice would be
+ * passed through `agentInvocation` here.)
+ */
+function runAgent<O extends RunOutcome>(
+  req: AskRequest,
+  label: string,
+  prompt: string,
+  fail: (error: string, problems?: Problem[]) => O,
+  accept: (reply: Record<string, unknown>) => O,
+): Promise<O> {
   const repo = resolve(req.repo);
-  const { question, agent } = req;
-  const base = { id, question };
+  const { agent } = req;
   const tmpDir = mkdtempSync(join(tmpdir(), "ultraview-ask-"));
   const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir, ...(req.model ? { model: req.model } : {}) });
   mkdirSync(join(repo, VIEW_DIR), { recursive: true });
   const log = openAskLog(join(repo, ASK_LOG));
   log.write(
-    `=== ${new Date().toISOString()} ask ${id} (${agent.name})\nquestion: ${question}\n$ ${[inv.cmd, ...inv.args].map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")}\n`,
+    `=== ${new Date().toISOString()} ${label} (${agent.name})\nquestion: ${req.question}\n$ ${[inv.cmd, ...inv.args].map((a) => (/\s/.test(a) ? JSON.stringify(a) : a)).join(" ")}\n`,
   );
 
-  return new Promise<AskOutcome>((done) => {
+  return new Promise<O>((done) => {
     let finished = false;
     let out = "";
     let bytes = 0;
     let lastProgress = 0;
     let timer: NodeJS.Timeout | undefined;
     let killTimer: NodeJS.Timeout | undefined;
-    const finish = (o: AskOutcome) => {
+    const finish = (o: O) => {
       if (finished) return;
       finished = true;
       if (timer) clearTimeout(timer);
@@ -375,7 +468,7 @@ export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.q
     try {
       child = spawn(inv.cmd, inv.args, { cwd: repo, env: agentEnv(req.env), stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
     } catch (e) {
-      finish({ ...base, ok: false, error: `cannot start ${agent.name}: ${(e as Error).message}` });
+      finish(fail(`cannot start ${agent.name}: ${(e as Error).message}`));
       return;
     }
     req.onChild?.(child);
@@ -394,40 +487,112 @@ export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.q
     child.stdout!.on("data", onData("stdout"));
     child.stderr!.on("data", onData("stderr"));
     child.stdin!.on("error", () => {});
-    child.stdin!.end(askPrompt(question, id, ultraviewScript()));
-    child.once("error", (e) => finish({ ...base, ok: false, error: `cannot start ${agent.name}: ${e.message}` }));
+    child.stdin!.end(prompt);
+    child.once("error", (e) => finish(fail(`cannot start ${agent.name}: ${e.message}`)));
 
     const timeoutMs = req.timeoutMs ?? ASK_TIMEOUT_MS;
     timer = setTimeout(() => {
       log.write(`--- timed out after ${Math.round(timeoutMs / 1000)} s: stopping ${agent.name}\n`);
       child.kill("SIGTERM");
       killTimer = setTimeout(() => child.kill("SIGKILL"), 3000);
-      finish({ ...base, ok: false, error: `${agent.name} did not answer within ${Math.round(timeoutMs / 1000)} s` });
+      finish(fail(`${agent.name} did not answer within ${Math.round(timeoutMs / 1000)} s`));
     }, timeoutMs);
 
     child.once("close", (code, signal) => {
       if (finished) return;
       log.write(`\n--- exit ${code ?? signal}\n`);
       if (code !== 0) {
-        finish({ ...base, ok: false, error: `${agent.name} exited with ${code ?? signal} (see ${ASK_LOG})` });
+        finish(fail(`${agent.name} exited with ${code ?? signal} (see ${ASK_LOG})`));
         return;
       }
       req.onProgress?.("validating", { bytes });
       let reply = out;
       if (inv.lastMessageFile && existsSync(inv.lastMessageFile)) reply = readFileSync(inv.lastMessageFile, "utf8");
-      const lens = extractLensJson(reply);
-      if (!lens) {
-        finish({ ...base, ok: false, error: `${agent.name} replied without a lens JSON object (see ${ASK_LOG})` });
+      const json = extractLensJson(reply);
+      if (!json) {
+        finish(fail(`${agent.name} replied without a JSON object (see ${ASK_LOG})`));
         return;
       }
+      let o: O;
+      try {
+        o = accept(json);
+      } catch (e) {
+        o = fail((e as Error).message);
+      }
+      finish(o);
+    });
+  });
+}
+
+/** Run one ask to completion: spawn the agent, read its reply, save the lens. Never throws. */
+export function askAgent(req: AskRequest, id: string = askLensId(req.repo, req.question)): Promise<AskOutcome> {
+  const repo = resolve(req.repo);
+  const { question } = req;
+  const base = { id, question };
+  return runAgent<AskOutcome>(
+    req,
+    `ask ${id}`,
+    askPrompt(question, id, ultraviewScript()),
+    (error, problems) => ({ ...base, ok: false, error, ...(problems ? { problems } : {}) }),
+    (lens) => {
       // The id and the question are ultraview's, never the agent's: no overwrite of another saved question.
       const { sources: _ignored, ...rest } = lens;
       const r = saveLens(repo, { schema: 1, ...rest, id, question });
-      if (!r.ok) {
-        finish({ ...base, ok: false, error: "the answer did not pass `lens save`", problems: r.errors });
-        return;
-      }
-      finish({ ...base, ok: true, file: r.file, replaced: r.replaced, sources: r.sources });
-    });
-  });
+      if (!r.ok) return { ...base, ok: false, error: "the answer did not pass `lens save`", problems: r.errors };
+      return { ...base, ok: true, file: r.file, replaced: r.replaced, sources: r.sources };
+    },
+  );
+}
+
+export interface ChatRequest extends AskRequest {
+  mode: ChatMode;
+  /** The conversation to append to; absent: a new one, `newThread`. */
+  thread?: Conversation;
+  /** The id a new conversation is created under (proposed before the agent runs). */
+  newThread?: string;
+  context?: ChatContext;
+  /** The map the context and node ids resolve against. */
+  view: ContextView;
+}
+
+export interface ChatOutcome extends RunOutcome {
+  thread: string;
+  index?: number;
+  turn?: ChatTurn;
+}
+
+/** Run one conversation turn to completion: the agent answers with the thread's digest, ultraview validates and appends the turn. Never throws. */
+export function chatAgent(req: ChatRequest): Promise<ChatOutcome> {
+  const repo = resolve(req.repo);
+  const thread = req.thread?.id ?? req.newThread;
+  if (!thread) return Promise.resolve({ ok: false, thread: "", error: "internal: no thread id" });
+  let context: { value: ChatContext; lines: string[] } | undefined;
+  if (req.context && Object.keys(req.context).length) {
+    const r = resolveContext(req.view, req.context);
+    if ("error" in r) return Promise.resolve({ ok: false, thread, error: r.error });
+    context = { value: req.context, lines: r.lines };
+  }
+  const started = Date.now();
+  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context }, ultraviewScript());
+  return runAgent<ChatOutcome>(
+    req,
+    `chat ${thread} turn ${(req.thread?.turns.length ?? 0) + 1}`,
+    prompt,
+    (error, problems) => ({ ok: false, thread, error, ...(problems ? { problems } : {}) }),
+    (reply) => {
+      // The question, the mode and the context are the request's, never the agent's; any id or sources it wrote are dropped.
+      const { sources: _s, id: _i, schema: _v, mode: _m, context: _c, ...rest } = reply;
+      const r: TurnResult = saveTurn(repo, rest, {
+        ...(req.thread ? { thread: req.thread.id } : { create: { id: thread } }),
+        question: req.question,
+        mode: req.mode,
+        ...(req.context && Object.keys(req.context).length ? { context: req.context } : {}),
+        source: "agent",
+        ms: Date.now() - started,
+        view: req.view,
+      });
+      if (!r.ok) return { ok: false, thread, error: "the answer did not pass the turn's gates (`lens save --thread`)", problems: r.errors };
+      return { ok: true, thread, file: r.file, index: r.index, turn: r.turn };
+    },
+  );
 }

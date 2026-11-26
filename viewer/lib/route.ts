@@ -7,6 +7,7 @@
 //   #lens=<id>            (view = lenses)
 //   #flow=<id>&step=2     (view = flows; steps count from 1)
 //   #change=<id>          (view = changes)
+//   #chat=<id>            a conversation (.ultraview/conversations/<id>.json), over any view
 //
 // Values keep `:` and `/` readable; everything else is percent-encoded.
 
@@ -28,6 +29,8 @@ export interface Route {
   /** 1-based flow step. */
   step?: number;
   change?: string;
+  /** An open conversation: shown beside the view, so it implies none. */
+  chat?: string;
 }
 
 function enc(v: string): string {
@@ -64,6 +67,7 @@ export function parseHash(hash: string): Route {
   if (raw.lens) r.lens = raw.lens;
   if (raw.flow) r.flow = raw.flow;
   if (raw.change) r.change = raw.change;
+  if (raw.chat) r.chat = raw.chat;
   if (raw.node) r.node = raw.node;
   if (raw.focus) r.focus = raw.focus;
   if (raw.group) r.group = raw.group;
@@ -80,6 +84,7 @@ export function formatHash(r: Route): string {
   if (r.flow) parts.push(`flow=${enc(r.flow)}`);
   if (r.flow && r.step !== undefined) parts.push(`step=${r.step}`);
   if (r.change) parts.push(`change=${enc(r.change)}`);
+  if (r.chat) parts.push(`chat=${enc(r.chat)}`);
   if (r.level) parts.push(`level=${r.level}`);
   if (r.focus) parts.push(`focus=${enc(r.focus)}`);
   if (r.group) parts.push(`group=${enc(r.group)}`);

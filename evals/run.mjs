@@ -16,6 +16,18 @@
 //            recall 1) and cite every file of `expect.cites`.
 //   bad      answer.bad.json must fail at `bad.fails` (save, check or expect)
 //            with every reason of `bad.reasons` in the messages.
+//   chat     every multi-turn scenario in chats/<id>.json (questions per
+//            language, one per turn, each turn's `expect` nodes): turn by
+//            turn, `lens new --thread` over a conversation holding the
+//            previous turns, simulated (each answer's nodes = that turn's
+//            `expect`; the scenario's `context` on turn 1, also passed as
+//            `--context`), against `lens new` alone (no digest, no context).
+//            A turn is a hit when all its `expect` nodes are in the top
+//            CHAT_TOP candidates. No `--terms` (the scenarios carry none).
+//            Gates on the follow-up turns: all languages >= CHAT_FOLLOW_MIN,
+//            each language >= CHAT_LANG_MIN, and the thread beats `lens new`
+//            alone by CHAT_GAIN_MIN points; turn 1 of a scenario with a
+//            context >= CHAT_CONTEXT_MIN.
 //
 // Usage: node evals/run.mjs [--case <id>] [--verbose]. Writes nothing in the
 // repository; exits 1 when any assertion fails.
@@ -28,6 +40,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const bundle = join(root, "scripts", "ultraview.mjs");
 const casesDir = join(root, "evals", "cases");
+const chatsDir = join(root, "evals", "chats");
 const args = process.argv.slice(2);
 const only = args.includes("--case") ? args[args.indexOf("--case") + 1] : undefined;
 const verbose = args.includes("--verbose");
@@ -38,6 +51,17 @@ const PLAIN_GATED = ["en", "fr"];
 /** With terms, a language may trail English without terms by this many points at most. */
 const TERMS_MARGIN = 2;
 const LANGS = ["en", "fr", "es", "de", "it", "pt", "nl", "ja", "zh", "ar", "ru"];
+/** Chat scenarios: a turn hits when its nodes are in this many top candidates. */
+const CHAT_TOP = 10;
+/**
+ * Chat gates, from the measured recall (evals/README.md): follow-ups with the
+ * thread 34/40 (85%), each language 6/8 or more, against 9/40 (22%) without;
+ * turn 1 with a context 10/10. Each gate sits one miss or so under it.
+ */
+const CHAT_FOLLOW_MIN = 0.8;
+const CHAT_LANG_MIN = 0.75;
+const CHAT_GAIN_MIN = 50;
+const CHAT_CONTEXT_MIN = 0.9;
 // `lens new` runs in this process, through the committed bundle's own `main`: 1300-odd packs, one node start.
 const { main } = await import(bundle);
 
@@ -167,6 +191,97 @@ for (const name of names) {
     }
   } finally {
     rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// --- chat: multi-turn scenarios through `lens new --thread` ---------------------------
+const chatRows = [];
+const chatNames = existsSync(chatsDir)
+  ? readdirSync(chatsDir)
+      .filter((n) => n.endsWith(".json") && (!only || n === `${only}.json`))
+      .sort()
+  : [];
+const builtFixtures = new Map();
+try {
+  for (const name of chatNames) {
+    const sc = JSON.parse(readFileSync(join(chatsDir, name), "utf8"));
+    if (!builtFixtures.has(sc.fixture)) builtFixtures.set(sc.fixture, builtRepo({ fixture: sc.fixture }, `chat-${sc.fixture}`));
+    const { repo } = builtFixtures.get(sc.fixture);
+    const convDir = join(repo, ".ultraview", "conversations");
+    mkdirSync(convDir, { recursive: true });
+    for (const [lang, questions] of Object.entries(sc.questions)) {
+      if (questions.length !== sc.turns.length) throw new Error(`${name}: questions.${lang} holds ${questions.length} entries for ${sc.turns.length} turns`);
+      const id = `${sc.id}-${lang}`;
+      for (const [k, turn] of sc.turns.entries()) {
+        // The thread so far: the previous turns, each answered about exactly its expected nodes.
+        const previous = sc.turns.slice(0, k).map((t, j) => ({
+          question: questions[j],
+          lang,
+          mode: "business",
+          source: "agent",
+          ...(j === 0 && sc.context ? { context: sc.context } : {}),
+          answer: { answer: "Simulated answer. [README.md:1]", nodes: t.expect },
+          followUps: ["-", "-", "-"],
+          sources: {},
+          at: "2026-01-01T00:00:00.000Z",
+        }));
+        writeFileSync(join(convDir, `${id}.json`), `${JSON.stringify({ id, title: sc.id, createdAt: "2026-01-01T00:00:00.000Z", turns: previous })}\n`);
+        const context = k === 0 && sc.context ? ["--context", JSON.stringify(sc.context)] : [];
+        const top = async (argv) =>
+          (json(await lensNew(["lens", "new", questions[k], "--repo", repo, "--json", ...argv]))?.candidates ?? []).slice(0, CHAT_TOP).map((c) => c.id);
+        const withThread = await top(["--thread", id, ...context]);
+        const alone = await top([]);
+        const hit = (ids) => turn.expect.every((n) => ids.includes(n));
+        chatRows.push({ scenario: sc.id, lang, turn: k + 1, context: k === 0 && !!sc.context, thread: hit(withThread), alone: hit(alone) });
+        if (verbose && !hit(withThread))
+          process.stdout.write(
+            `      miss (chat ${sc.id} ${lang} turn ${k + 1}): ${questions[k]}\n        want ${turn.expect.join(" ")}\n        top: ${withThread.join(" | ")}\n`,
+          );
+      }
+    }
+  }
+} finally {
+  for (const { tmp } of builtFixtures.values()) rmSync(tmp, { recursive: true, force: true });
+}
+if (chatRows.length) {
+  const count = (rows, key) => ({ hits: rows.filter((r) => r[key]).length, total: rows.length });
+  const share = (c) => (c.total ? (100 * c.hits) / c.total : Number.NaN);
+  const show = (c) => (c.total ? `${c.hits}/${c.total} (${Math.round(share(c))}%)` : "-");
+  const langs = [...new Set(chatRows.map((r) => r.lang))];
+  const lines = [`${"lang".padEnd(5)} ${"turn 1, thread".padEnd(16)} ${"turn 1, alone".padEnd(15)} ${"follow-ups, thread".padEnd(20)} follow-ups, alone`];
+  for (const lang of [...langs, "all"]) {
+    const rows = chatRows.filter((r) => lang === "all" || r.lang === lang);
+    const first = rows.filter((r) => r.turn === 1);
+    const follow = rows.filter((r) => r.turn > 1);
+    lines.push(
+      `${lang.padEnd(5)} ${show(count(first, "thread")).padEnd(16)} ${show(count(first, "alone")).padEnd(15)} ${show(count(follow, "thread")).padEnd(20)} ${show(count(follow, "alone"))}`,
+    );
+  }
+  const ctx = chatRows.filter((r) => r.context);
+  lines.push(`turn 1 with a context: ${show(count(ctx, "thread"))} with --context, ${show(count(ctx, "alone"))} without`);
+  process.stdout.write(
+    `\nchat recall (lens new --thread vs lens new alone; key nodes in the top ${CHAT_TOP}; no --terms)\n${lines.map((l) => `  ${l}`).join("\n")}\n\n`,
+  );
+
+  const follow = chatRows.filter((r) => r.turn > 1);
+  const all = count(follow, "thread");
+  record(`chat follow-ups with the thread: ${show(all)} >= ${CHAT_FOLLOW_MIN * 100}%`, share(all) >= CHAT_FOLLOW_MIN * 100, `${share(all).toFixed(1)}%`);
+  for (const lang of langs) {
+    const c = count(
+      follow.filter((r) => r.lang === lang),
+      "thread",
+    );
+    record(`chat follow-ups with the thread, ${lang}: ${show(c)} >= ${CHAT_LANG_MIN * 100}%`, share(c) >= CHAT_LANG_MIN * 100, `${share(c).toFixed(1)}%`);
+  }
+  const alone = count(follow, "alone");
+  record(
+    `chat follow-ups: the thread (${show(all)}) beats lens new alone (${show(alone)}) by ${CHAT_GAIN_MIN} points`,
+    share(all) - share(alone) >= CHAT_GAIN_MIN,
+    `${(share(all) - share(alone)).toFixed(1)} points`,
+  );
+  if (ctx.length) {
+    const c = count(ctx, "thread");
+    record(`chat turn 1 with a context ranks it: ${show(c)} >= ${CHAT_CONTEXT_MIN * 100}%`, share(c) >= CHAT_CONTEXT_MIN * 100, `${share(c).toFixed(1)}%`);
   }
 }
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import { appendFileSync as appendFileSync2, existsSync as existsSync30, mkdirSync as mkdirSync12, readFileSync as readFileSync34, realpathSync as realpathSync8 } from "fs";
-import { relative as relative17, resolve as resolve32 } from "path";
+import { appendFileSync as appendFileSync2, existsSync as existsSync31, mkdirSync as mkdirSync12, readFileSync as readFileSync35, realpathSync as realpathSync8 } from "fs";
+import { relative as relative17, resolve as resolve33 } from "path";
 import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL4 } from "url";
 
 // src/build.ts
@@ -406,11 +406,11 @@ function clip(s, max) {
 function clipInline(s, max) {
   const flat = s.replace(/\s+/g, " ").trim();
   if (flat.length <= max) return flat;
-  let cut = flat.slice(0, max).replace(/\s+\S*$/, "");
-  if (!cut) cut = flat.slice(0, max);
-  if ((cut.match(/`/g)?.length ?? 0) % 2 === 1) cut = cut.replace(/`[^`]*$/, "");
-  if (cut.lastIndexOf("[") > cut.lastIndexOf("]")) cut = cut.slice(0, cut.lastIndexOf("["));
-  return cut.replace(/\s+$/, "") + "\u2026";
+  let cut2 = flat.slice(0, max).replace(/\s+\S*$/, "");
+  if (!cut2) cut2 = flat.slice(0, max);
+  if ((cut2.match(/`/g)?.length ?? 0) % 2 === 1) cut2 = cut2.replace(/`[^`]*$/, "");
+  if (cut2.lastIndexOf("[") > cut2.lastIndexOf("]")) cut2 = cut2.slice(0, cut2.lastIndexOf("["));
+  return cut2.replace(/\s+$/, "") + "\u2026";
 }
 function errMessage(e) {
   return e instanceof Error ? e.message : String(e);
@@ -19371,9 +19371,9 @@ function groupFamilies(dups) {
 }
 function pathPrefix(value) {
   const body2 = value.startsWith("/") ? value.slice(1) : value;
-  const cut = body2.search(/[/:]/);
-  if (cut <= 0) return void 0;
-  const prefix = (value.startsWith("/") ? "/" : "") + body2.slice(0, cut);
+  const cut2 = body2.search(/[/:]/);
+  if (cut2 <= 0) return void 0;
+  const prefix = (value.startsWith("/") ? "/" : "") + body2.slice(0, cut2);
   return prefix.length >= FAMILY_MIN_PREFIX ? prefix : void 0;
 }
 var LITERAL_DUPLICATION_CAP;
@@ -31424,8 +31424,8 @@ function pushEvidence(lines, evidence, budget) {
     break;
   }
   if (i2 < evidence.length) {
-    const cut = evidence.length - i2 - (trimmedShown ? 1 : 0);
-    lines.push("", `\u2026 (truncated \u2014 ${cut} more file(s) cut by ~${budget}-token budget)`);
+    const cut2 = evidence.length - i2 - (trimmedShown ? 1 : 0);
+    lines.push("", `\u2026 (truncated \u2014 ${cut2} more file(s) cut by ~${budget}-token budget)`);
   }
 }
 var CITE_HELP = "Cite every factual claim with the file it rests on, in brackets: `[path]`, `[path:line]`, or `[path:start-end]` (e.g. `[src/api/client.ts:42-58]`). `ultraindex check` fails if a citation does not resolve to a real file/line.";
@@ -32171,11 +32171,11 @@ function joinRoutePath(prefix, path) {
   const joined = `${prefix.replace(/\/+$/, "")}${p}`.replace(/\/{2,}/g, "/");
   return joined || "/";
 }
-function applyMounts(facts, hints, framework, resolve33) {
+function applyMounts(facts, hints, framework, resolve34) {
   const parents = /* @__PURE__ */ new Map();
   for (const h of hints) {
     if (h.kind !== "mount" || h.framework !== framework) continue;
-    const child2 = resolve33(h);
+    const child2 = resolve34(h);
     if (!child2 || child2 === h.file) continue;
     const list = parents.get(child2) ?? [];
     list.push({ file: h.file, prefix: h.prefix });
@@ -33810,8 +33810,8 @@ function normalizeSegments(path) {
 }
 function normalizeUrlTemplate(template) {
   let s = template;
-  const cut = s.search(/[?#]/);
-  if (cut !== -1) s = s.slice(0, cut);
+  const cut2 = s.search(/[?#]/);
+  if (cut2 !== -1) s = s.slice(0, cut2);
   if (s.startsWith(URL_HOLE)) {
     while (s.startsWith(URL_HOLE)) s = s.slice(URL_HOLE.length);
     if (!s) return void 0;
@@ -34738,9 +34738,9 @@ var pythonMountLinker = {
   id: "python-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve33 = (h) => pyModuleFile(h.target, h.file, files);
+    const resolve34 = (h) => pyModuleFile(h.target, h.file, files);
     let out2 = facts;
-    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve33);
+    for (const framework of ["django", "fastapi", "flask"]) out2 = applyMounts(out2, ctx.hints, framework, resolve34);
     return out2;
   }
 };
@@ -35149,15 +35149,15 @@ function resolveLocalModule(ctx, fromRel, spec) {
   if (rel2 !== void 0) return tryTarget(rel2);
   if (!isLocalSpecifier(spec)) return void 0;
   const ws = workspaceDirOf(ctx, fromRel);
-  const join53 = (dir, p) => dir ? `${dir}/${p}` : p;
+  const join54 = (dir, p) => dir ? `${dir}/${p}` : p;
   let rest;
   let roots;
   if (spec.startsWith("$lib")) {
     rest = spec.slice(4).replace(/^\//, "");
-    roots = [join53(ws, "src/lib")];
+    roots = [join54(ws, "src/lib")];
   } else {
     rest = spec.replace(/^(?:@\/|~~?\/|#\/?)/, "");
-    roots = [join53(ws, "src"), ws, join53(ws, "app")];
+    roots = [join54(ws, "src"), ws, join54(ws, "app")];
   }
   for (const root of roots) {
     const hit = tryTarget(root ? rest ? `${root}/${rest}` : root : rest);
@@ -37098,8 +37098,8 @@ var jsMountLinker = {
   id: "js-mounts",
   link(facts, ctx) {
     const files = new Set(ctx.files);
-    const resolve33 = (h) => moduleFile(h.target, files);
-    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve33), ctx.hints, "fastify", resolve33);
+    const resolve34 = (h) => moduleFile(h.target, files);
+    return applyMounts(applyMounts(facts, ctx.hints, "hono", resolve34), ctx.hints, "fastify", resolve34);
   }
 };
 
@@ -37538,14 +37538,14 @@ function composeTrpcRoutes(hints) {
     byKey2.set(k, h);
     for (const e of h.exports) if (!byExport.has(key(h.file, e))) byExport.set(key(h.file, e), k);
   }
-  const resolve33 = (c2) => {
+  const resolve34 = (c2) => {
     const local = key(c2.module, c2.name);
     return byKey2.has(local) ? local : byExport.get(local);
   };
   const parents = /* @__PURE__ */ new Map();
   for (const [k, h] of byKey2) {
     for (const c2 of h.children) {
-      const child2 = resolve33(c2);
+      const child2 = resolve34(c2);
       if (!child2 || child2 === k) continue;
       const list = parents.get(child2) ?? [];
       list.push({ parent: k, prefix: c2.prefix });
@@ -37841,6 +37841,8 @@ var NODE_KINDS = ["cap", "sys", "mod", "file", "sym", "route", "screen", "entity
 var EDGE_KINDS3 = ["import", "call", "http", "rpc", "data", "event", "queue", "extends", "config", "contains"];
 var TIMELINE_SOURCES = ["agent", "pr", "manual"];
 var CHANGE_KINDS = ["new", "changed", "removed"];
+var CHAT_MODES = ["business", "dev"];
+var TURN_SOURCES = ["agent", "facts"];
 var CHANGE_SCHEMA = 1;
 var CHANGE_NODE_KINDS = ["cap", "sys", "mod", "file", "sym", "route", "screen", "entity", "job"];
 var INSIGHT_KINDS = ["hotspot", "hidden-coupling", "cycle", "dead-code", "untested-hub", "literal"];
@@ -37912,7 +37914,7 @@ function fileOfId(id) {
 import { join as join42 } from "path";
 var VIEW_DIR = ".ultraview";
 var INDEX_DIR_NAME = ".ultraindex";
-var GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log", "ask.log"];
+var GENERATED_FILES = ["facts.json", "view.json", "index.html", "hook.log", "ask.log", "conversations/*.draft.json"];
 function viewPaths(repo) {
   const dir = join42(repo, VIEW_DIR);
   return {
@@ -38734,6 +38736,24 @@ var LENS_SPEC = obj(
   },
   ["schema", "id", "question", "answer", "nodes"]
 );
+var lensEdges = arr(obj({ from: nodeRef(), to: nodeRef(), kind: str2({ enum: EDGE_KINDS3 }) }, ["from", "to"]));
+var CONTEXT_SPEC = obj({ node: nodeRef(), edge: text, insight: text, step: text }, []);
+var TURN_SPEC = obj(
+  {
+    question: text,
+    lang: str2({ nonEmpty: true }),
+    mode: str2({ enum: CHAT_MODES }),
+    context: CONTEXT_SPEC,
+    source: str2({ enum: TURN_SOURCES }),
+    answer: obj({ answer: text, nodes: arr(nodeRef(), { unique: true }), edges: lensEdges, focus: nodeRef() }, ["answer", "nodes"]),
+    followUps: arr(text),
+    sources: sourcesSpec,
+    at: text,
+    ms: { t: "count" }
+  },
+  ["question", "lang", "mode", "source", "answer", "followUps", "sources", "at"]
+);
+var CONVERSATION_SPEC = obj({ id: str2({ slug: true }), title: text, createdAt: text, turns: arr(TURN_SPEC) }, ["id", "title", "createdAt", "turns"]);
 var TIMELINE_SPEC = obj(
   {
     at: text,
@@ -38761,6 +38781,10 @@ function walkSpec(spec, value, path, out2) {
       return;
     case "boolean":
       if (typeof value !== "boolean") fail(`must be true or false (got ${typeName2(value)})`);
+      return;
+    case "count":
+      if (typeof value !== "number" || !Number.isInteger(value) || value < 0)
+        fail(`must be a non-negative integer (got ${JSON.stringify(value) ?? "undefined"})`);
       return;
     case "string": {
       if (typeof value !== "string") return fail(`must be a string (got ${typeName2(value)})`);
@@ -38838,6 +38862,21 @@ function validateFlow(value) {
 function validateLens(value) {
   const out2 = [];
   walkSpec(LENS_SPEC, value, "", out2);
+  return out2;
+}
+var LANG_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
+var FOLLOW_UPS = 3;
+function validateConversation(value) {
+  const out2 = [];
+  walkSpec(CONVERSATION_SPEC, value, "", out2);
+  if (out2.length) return out2;
+  value.turns.forEach((t, i2) => {
+    if (!LANG_RE.test(t.lang)) out2.push({ path: `turns[${i2}].lang`, message: `"${t.lang}" is not a language tag (en, fr, pt-BR\u2026)` });
+    if (t.source === "agent" && t.followUps.length !== FOLLOW_UPS)
+      out2.push({ path: `turns[${i2}].followUps`, message: `an agent turn carries exactly ${FOLLOW_UPS} follow-ups (got ${t.followUps.length})` });
+    if (t.source === "facts" && t.followUps.length > FOLLOW_UPS)
+      out2.push({ path: `turns[${i2}].followUps`, message: `at most ${FOLLOW_UPS} follow-ups (got ${t.followUps.length})` });
+  });
   return out2;
 }
 function validateTimelineEntry(value) {
@@ -39773,1170 +39812,36 @@ function formatChange(change) {
 }
 
 // src/check.ts
-import { existsSync as existsSync21 } from "fs";
-import { resolve as resolve20 } from "path";
-var FILES_IN_SYSTEMS_MIN = 0.9;
-var MODULES_IN_CAPABILITIES_MIN = 0.7;
-var THRESHOLDS = { filesInSystems: FILES_IN_SYSTEMS_MIN, modulesInCapabilities: MODULES_IN_CAPABILITIES_MIN };
-function formatIssue(i2) {
-  return `${i2.file}${i2.path ? ` ${i2.path}` : ""}: ${i2.message}`;
-}
-var pct = (x) => `${(x * 100).toFixed(1)}%`;
-function checkMap(repoArg, opts = {}) {
-  const repo = resolve20(repoArg);
-  if (!existsSync21(repo)) throw new Error(`repo not found: ${repo}`);
-  const paths = viewPaths(repo);
-  const errors = [];
-  const warnings = [];
-  let view;
-  const report = () => ({
-    repo,
-    ok: errors.length === 0,
-    errors,
-    warnings,
-    coverage: view?.coverage ?? { filesInSystems: 0, modulesInCapabilities: 0 },
-    thresholds: THRESHOLDS,
-    stale: view?.stale ?? { lenses: [], flows: [], prose: [] }
-  });
-  if (!indexExists(paths.index)) {
-    errors.push({ file: ".ultraindex", path: "", message: "no ultraindex index: run `ultraview build` first" });
-    return report();
-  }
-  const idx = runCheck(paths.index, paths.repo);
-  if (idx.stale) {
-    errors.push({
-      file: ".ultraindex",
-      path: "",
-      message: `index is stale (${idx.changed.length} changed, ${idx.added.length} added, ${idx.removed.length} removed): run \`ultraview build\`, then check again`
-    });
-  }
-  if (!existsSync21(paths.facts)) errors.push({ file: ".ultraview/facts.json", path: "", message: "missing: run `ultraview build`" });
-  if (!existsSync21(paths.model)) errors.push({ file: MODEL_FILE, path: "", message: "missing: write it (systems first, then capabilities)" });
-  const loaded2 = loadViewInputs(repo);
-  errors.push(...loaded2.problems);
-  const assembled = assembleWithNotes(loaded2.inputs);
-  view = assembled.view;
-  const ids = new Set(view.nodes.map((n) => n.id));
-  const { model, flows, lenses, timeline, graph } = loaded2.inputs;
-  const lineTable2 = fileLineTable(graph);
-  const resolveId = (file, path, id) => {
-    if (id !== void 0 && !ids.has(id))
-      errors.push({ file, path, message: `unknown node "${id}" (run \`ultraview show <id>\` on a known one, or see the build summary)` });
-  };
-  const prose = (file, path, text2) => {
-    if (text2 === void 0) return;
-    for (const u of checkCitations(text2, lineTable2).unresolved) errors.push({ file, path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
-    for (const s of uncitedSentences(text2)) errors.push({ file, path, message: `uncited sentence: "${s.length > 120 ? `${s.slice(0, 117)}...` : s}"` });
-  };
-  if (model) {
-    prose(MODEL_FILE, "app.summary", model.app.summary);
-    model.systems.forEach((s, i2) => {
-      if (s.summary === void 0) warnings.push({ file: MODEL_FILE, path: `systems[${i2}]`, message: `system "${s.id}" has no summary` });
-      prose(MODEL_FILE, `systems[${i2}].summary`, s.summary);
-    });
-    model.capabilities.forEach((c2, i2) => {
-      if (c2.summary === void 0) warnings.push({ file: MODEL_FILE, path: `capabilities[${i2}]`, message: `capability "${c2.id}" has no summary` });
-      prose(MODEL_FILE, `capabilities[${i2}].summary`, c2.summary);
-      (c2.members ?? []).forEach((m, j) => resolveId(MODEL_FILE, `capabilities[${i2}].members[${j}]`, m));
-    });
-    (model.edges ?? []).forEach((e, i2) => {
-      resolveId(MODEL_FILE, `edges[${i2}].from`, e.from);
-      resolveId(MODEL_FILE, `edges[${i2}].to`, e.to);
-      if (e.cite === void 0) {
-        errors.push({ file: MODEL_FILE, path: `edges[${i2}]`, message: "a hand-written edge needs a `cite` (path:line it rests on)" });
-        return;
-      }
-      const c2 = checkCitations(`[${e.cite}]`, lineTable2);
-      if (c2.unresolved.length) errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `dead citation [${e.cite}]: ${c2.unresolved[0].reason}` });
-      else if (!c2.resolved.length || !lineTable2.has(c2.resolved[0].path))
-        errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `"${e.cite}" is not an indexed path:line` });
-    });
-    (model.tour ?? []).forEach((t, i2) => {
-      resolveId(MODEL_FILE, `tour[${i2}].node`, t.node);
-      prose(MODEL_FILE, `tour[${i2}].note`, t.note);
-    });
-    (model.glossary ?? []).forEach((g, i2) => prose(MODEL_FILE, `glossary[${i2}].meaning`, g.meaning));
-    for (const g of assembled.emptyGlobs) warnings.push({ file: MODEL_FILE, path: g.path, message: `glob "${g.glob}" matches no indexed file` });
-    if (view.coverage.filesInSystems < FILES_IN_SYSTEMS_MIN) {
-      errors.push({
-        file: MODEL_FILE,
-        path: "systems",
-        message: `systems hold ${pct(view.coverage.filesInSystems)} of code files, below ${pct(FILES_IN_SYSTEMS_MIN)}: widen \`paths\` (\`ultraview show sys:_unassigned\` lists the rest)`
-      });
-    }
-    if (view.coverage.modulesInCapabilities < MODULES_IN_CAPABILITIES_MIN) {
-      errors.push({
-        file: MODEL_FILE,
-        path: "capabilities",
-        message: `capabilities claim ${pct(view.coverage.modulesInCapabilities)} of non-test code modules, below ${pct(MODULES_IN_CAPABILITIES_MIN)}: add members (\`ultraview show cap:_foundations\` lists the unclaimed)`
-      });
-    }
-  }
-  for (const f of flows) {
-    const file = `${FLOWS_DIR}/${f.id}.json`;
-    resolveId(file, "trigger", f.trigger);
-    f.steps.forEach((s, i2) => {
-      resolveId(file, `steps[${i2}].node`, s.node);
-      prose(file, `steps[${i2}].note`, s.note);
-    });
-    if (!f.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview flow save`" });
-  }
-  for (const l of lenses) {
-    const file = `${LENSES_DIR}/${l.id}.json`;
-    l.nodes.forEach((n, i2) => resolveId(file, `nodes[${i2}]`, n));
-    (l.edges ?? []).forEach((e, i2) => {
-      resolveId(file, `edges[${i2}].from`, e.from);
-      resolveId(file, `edges[${i2}].to`, e.to);
-    });
-    resolveId(file, "focus", l.focus);
-    prose(file, "answer", l.answer);
-    if (!l.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview lens save`" });
-  }
-  timeline.forEach((t, i2) => {
-    if (!t.auto) prose(TIMELINE_FILE, `line ${i2 + 1}.summary`, t.summary);
-  });
-  const staleSink = opts.strict ? errors : warnings;
-  for (const id of view.stale.lenses)
-    staleSink.push({
-      file: `${LENSES_DIR}/${id}.json`,
-      path: "",
-      message: "stale: a cited file changed since it was saved; re-ask, then `ultraview lens save`"
-    });
-  for (const id of view.stale.flows)
-    staleSink.push({
-      file: `${FLOWS_DIR}/${id}.json`,
-      path: "",
-      message: "stale: a cited file changed since it was saved; re-check, then `ultraview flow save`"
-    });
-  for (const id of view.stale.prose)
-    warnings.push({ file: ".ultraindex", path: id, message: "ultraindex prose is stale (the module's code changed since it was written)" });
-  return report();
-}
+import { existsSync as existsSync23 } from "fs";
+import { resolve as resolve24 } from "path";
 
-// src/dossier.ts
-import { join as join45, resolve as resolve22 } from "path";
+// src/chat.ts
+import { existsSync as existsSync22, readdirSync as readdirSync7, readFileSync as readFileSync29 } from "fs";
+import { join as join46, resolve as resolve23 } from "path";
 
-// src/show.ts
-import { resolve as resolve21 } from "path";
-var CARD_EDGES = 10;
-var CARD_LIST = 20;
-function liveView(repo) {
-  const loaded2 = loadViewInputs(resolve21(repo));
-  const assembled = assembleWithNotes(loaded2.inputs);
-  return { ...assembled, loaded: loaded2, byId: new Map(assembled.view.nodes.map((n) => [n.id, n])) };
-}
-var cmp8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-function listOf(nodes) {
-  const byKind = {};
-  for (const n of nodes) byKind[n.kind] = (byKind[n.kind] ?? 0) + 1;
-  const ids = nodes.map((n) => n.id).sort(cmp8);
-  return { total: ids.length, byKind, first: ids.slice(0, CARD_LIST) };
-}
-var byWeight = (key) => (a, b) => b.weight - a.weight || cmp8(a[key], b[key]) || cmp8(a.kind, b.kind);
-function nodeCard(live, id) {
-  const node = live.byId.get(id);
-  if (!node) return void 0;
-  const { view } = live;
-  const outs = view.edges.filter((e) => e.from === id);
-  const ins = view.edges.filter((e) => e.to === id);
-  const card = {
-    id: node.id,
-    kind: node.kind,
-    label: node.label,
-    ...node.parent ? { parent: node.parent } : {},
-    ...node.summary ? { summary: node.summary } : {},
-    cites: node.cites,
-    ...node.at ? { at: node.at } : {},
-    caps: node.caps,
-    tags: node.tags,
-    metrics: node.metrics,
-    ...node.role ? { role: node.role } : {},
-    ...node.actors ? { actors: node.actors } : {},
-    ...node.fields ? { fields: node.fields } : {},
-    ...node.slice ? { slice: node.slice } : {},
-    children: listOf(view.nodes.filter((n) => n.parent === id)),
-    edges: { in: ins.length, out: outs.length },
-    out: [...outs].sort(byWeight("to")).slice(0, CARD_EDGES),
-    in: [...ins].sort(byWeight("from")).slice(0, CARD_EDGES)
-  };
-  if (node.kind === "mod" && !node.slice) {
-    const slices = view.nodes.filter((n) => n.slice?.of === id).map((n) => n.id);
-    if (slices.length) card.slices = slices;
-  }
-  if (node.kind === "cap") {
-    const serving = view.nodes.filter((n) => n.caps.includes(id));
-    const coarse = serving.filter((n) => n.kind !== "file" && n.kind !== "sym");
-    card.members = { ...listOf(serving), first: listOf(coarse.length ? coarse : serving).first };
-  }
-  if (id === UNASSIGNED_SYS) {
-    const codeFiles = new Set(view.nodes.filter((n) => n.kind === "file" && n.tags.includes("code")).map((n) => n.id.slice("file:".length)));
-    card.unassignedFiles = [...live.fileSystems].filter(([rel2, sys]) => sys === UNASSIGNED_SYS && codeFiles.has(rel2)).map(([rel2]) => rel2).sort(cmp8);
-  }
-  return card;
-}
-function similarIds(view, query, n = 5) {
-  const q = query.toLowerCase().replace(/^[a-z]+:/, "");
-  if (!q) return [];
-  return view.nodes.filter((x) => x.id.toLowerCase().includes(q) || x.label.toLowerCase().includes(q)).map((x) => x.id).sort((a, b) => a.length - b.length || cmp8(a, b)).slice(0, n);
-}
-function fmtList(l) {
-  const kinds2 = Object.entries(l.byKind).sort((a, b) => cmp8(a[0], b[0])).map(([k, v]) => `${v} ${k}`).join(", ");
-  return `${l.total}${kinds2 ? ` (${kinds2})` : ""}`;
-}
-function fmtEdge(e, other, arrow) {
-  return `  ${arrow} ${other}  ${e.kind} w${e.weight}${e.derived ? "" : " (model)"}${e.label ? `  "${e.label}"` : ""}${e.cite ? `  [${e.cite}]` : ""}`;
-}
-function formatNodeCard(c2) {
-  const lines = [`${c2.id}  (${c2.kind}${c2.role ? `, ${c2.role}` : ""})  ${c2.label}`];
-  const row2 = (k, v) => lines.push(`${k.padEnd(9)} ${v}`);
-  if (c2.summary) row2("summary", c2.summary.replace(/\s+/g, " "));
-  if (c2.at) row2("at", c2.at);
-  if (c2.cites.length) row2("cites", c2.cites.join(", "));
-  row2("parent", c2.parent ?? "(top level)");
-  if (c2.slice) row2("slice of", `${c2.slice.of} ${c2.slice.qualifier}`);
-  if (c2.slices) row2("slices", c2.slices.join(", "));
-  if (c2.kind !== "cap") row2("caps", c2.caps.length ? c2.caps.join(", ") : "(none)");
-  if (c2.actors?.length) row2("actors", c2.actors.join(", "));
-  if (c2.tags.length) row2("tags", c2.tags.join(", "));
-  const m = c2.metrics;
-  row2("metrics", `loc ${m.loc} \xB7 pagerank ${m.pagerank} \xB7 tests ${m.tests} \xB7 churn ${m.churn}`);
-  if (c2.fields?.length) row2("fields", c2.fields.map((f) => `${f.name}: ${f.type}${f.relation ? ` -> ${f.relation}` : ""}`).join(", "));
-  if (c2.children.total) {
-    row2("children", fmtList(c2.children));
-    for (const id of c2.children.first) lines.push(`  ${id}`);
-    if (c2.children.total > c2.children.first.length) lines.push(`  \u2026 and ${c2.children.total - c2.children.first.length} more`);
-  }
-  if (c2.members) {
-    row2("members", fmtList(c2.members));
-    for (const id of c2.members.first) lines.push(`  ${id}`);
-  }
-  if (c2.unassignedFiles) {
-    row2("unmatched", `${c2.unassignedFiles.length} code file(s) no system's paths match`);
-    for (const rel2 of c2.unassignedFiles.slice(0, CARD_LIST)) lines.push(`  ${rel2}`);
-    if (c2.unassignedFiles.length > CARD_LIST) lines.push(`  \u2026 and ${c2.unassignedFiles.length - CARD_LIST} more`);
-  }
-  row2("out", `${c2.edges.out} edge(s)${c2.edges.out > c2.out.length ? `, top ${c2.out.length} by weight` : ""}`);
-  for (const e of c2.out) lines.push(fmtEdge(e, e.to, "->"));
-  row2("in", `${c2.edges.in} edge(s)${c2.edges.in > c2.in.length ? `, top ${c2.in.length} by weight` : ""}`);
-  for (const e of c2.in) lines.push(fmtEdge(e, e.from, "<-"));
-  return `${lines.join("\n")}
-`;
-}
-
-// src/dossier.ts
-var DOSSIER_BUDGET = 6e3;
-var CHARS_PER_TOKEN3 = 4;
-var KEY_FILES = 8;
-var HEAD_LINES2 = 60;
-var NEIGHBOURS = 12;
-var FACTS_PER_KIND = 25;
-var SITES = 12;
-var cmp9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var CITE_RULE = "Every sentence you write cites the file it rests on as `[path:line]` (or `[path:start-end]`); `ultraview check` fails a dead citation and an uncited sentence.";
-function readLines(repo, rel2) {
-  try {
-    return codeindex_engine_exports.readText(join45(repo, rel2)).split(/\r?\n/);
-  } catch {
-    return void 0;
-  }
-}
-function excerpt(repo, rel2, from, to) {
-  const lines = readLines(repo, rel2);
-  if (!lines) return void 0;
-  const a = Math.max(1, from);
-  const b = Math.min(lines.length, to);
-  if (a > b) return void 0;
-  const width = String(b).length;
-  return lines.slice(a - 1, b).map((l, i2) => `${String(a + i2).padStart(width)}  ${l}`).join("\n");
-}
-function atParts(at) {
-  if (!at) return void 0;
-  const i2 = at.lastIndexOf(":");
-  return i2 > 0 ? { file: at.slice(0, i2), line: Number(at.slice(i2 + 1)) } : void 0;
-}
-function withinBudget(sections, budget) {
-  const max = budget * CHARS_PER_TOKEN3;
+// src/gates.ts
+var unknownNode = (id) => `unknown node "${id}" (run \`ultraview show <id>\` on a known one, or see the build summary)`;
+function proseProblems(path, text2, lineTable2) {
+  if (text2 === void 0) return [];
   const out2 = [];
-  let used = 0;
-  for (let i2 = 0; i2 < sections.length; i2++) {
-    const s = sections[i2];
-    if (used + s.length + 2 <= max) {
-      out2.push(s);
-      used += s.length + 2;
-      continue;
-    }
-    const room = max - used;
-    const nl = room > 0 ? s.lastIndexOf("\n", room) : -1;
-    if (nl > 0) {
-      let kept = s.slice(0, nl);
-      if ((kept.match(/```/g)?.length ?? 0) % 2 === 1) kept += "\n```";
-      out2.push(kept);
-    }
-    out2.push(`\u2026 (cut to the ~${budget}-token budget: ${sections.length - i2 - (nl > 0 ? 1 : 0)} more section(s); pass --budget to see more)`);
-    break;
-  }
-  return `${out2.join("\n\n")}
-`;
-}
-function neighbourLines(live, id, leafOnly = false) {
-  const label = (x) => live.byId.get(x)?.label ?? x;
-  const coarse = /* @__PURE__ */ new Set(["cap", "sys", "mod"]);
-  const keep = (other) => !leafOnly || !coarse.has(kindOf2(other) ?? "");
-  const byW = (key) => (a, b) => b.weight - a.weight || cmp9(a[key], b[key]) || cmp9(a.kind, b.kind);
-  const outs = live.view.edges.filter((e) => e.from === id && keep(e.to)).sort(byW("to"));
-  const ins = live.view.edges.filter((e) => e.to === id && keep(e.from)).sort(byW("from"));
-  const lines = [];
-  for (const e of outs.slice(0, NEIGHBOURS)) lines.push(`- -> ${e.to} (${label(e.to)})  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`);
-  if (outs.length > NEIGHBOURS) lines.push(`- \u2026 and ${outs.length - NEIGHBOURS} more outgoing`);
-  for (const e of ins.slice(0, NEIGHBOURS)) lines.push(`- <- ${e.from} (${label(e.from)})  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`);
-  if (ins.length > NEIGHBOURS) lines.push(`- \u2026 and ${ins.length - NEIGHBOURS} more incoming`);
-  return lines.length ? ["## Neighbours", ...lines] : [];
-}
-function factLines(nodes) {
-  const order = [
-    ["route", "routes"],
-    ["screen", "screens"],
-    ["entity", "entities"],
-    ["job", "jobs"],
-    ["ext", "externals"],
-    ["infra", "infra"]
-  ];
-  const lines = [];
-  for (const [kind, plural4] of order) {
-    const of = nodes.filter((n) => n.kind === kind).sort((a, b) => cmp9(a.id, b.id));
-    if (!of.length) continue;
-    lines.push(`${plural4} (${of.length}):`);
-    for (const n of of.slice(0, FACTS_PER_KIND)) lines.push(`- ${n.id}${n.tags.length ? ` (${n.tags.join(", ")})` : ""}${n.at ? `  [${n.at}]` : ""}`);
-    if (of.length > FACTS_PER_KIND) lines.push(`- \u2026 and ${of.length - FACTS_PER_KIND} more`);
-  }
-  return lines.length ? ["## Facts", ...lines] : [];
-}
-function evidenceBlocks(repo, rels) {
-  return gatherEvidence(repo, rels, HEAD_LINES2).map((e) => {
-    const parts2 = [`### ${e.rel} (${e.lines} lines)`];
-    if (e.exported.length) {
-      parts2.push("Exported:");
-      for (const s of e.exported) parts2.push(`- ${s.kind} ${s.name} @ line ${s.line}`);
-    }
-    parts2.push(`Source (lines 1-${e.headTo}${e.headTo < e.lines ? ", file continues" : ""}):`, "```", excerpt(repo, e.rel, 1, e.headTo) ?? e.head, "```");
-    return parts2.join("\n");
-  });
-}
-function header(n, task) {
-  const lines = [`# Dossier \u2014 ${n.id}  "${n.label}"`, "", `Task: ${task} ${CITE_RULE}`];
-  if (n.summary) lines.push("", `Current summary: ${n.summary.replace(/\s+/g, " ")}`);
-  const meta = [n.parent ? `parent ${n.parent}` : "", n.caps.length ? `caps ${n.caps.join(", ")}` : "", n.at ? `defined at ${n.at}` : ""].filter(Boolean);
-  if (meta.length) lines.push("", meta.join(" \xB7 "));
-  return lines.join("\n");
-}
-function topFiles(files) {
-  const isCode3 = (f) => f.tags.includes("code") ? 0 : 1;
-  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode3(a) - isCode3(b) || b.metrics.pagerank - a.metrics.pagerank || cmp9(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
-}
-function groupDossier(live, repo, n, budget) {
-  const nodes = live.view.nodes;
-  let members;
-  if (n.kind === "cap") members = nodes.filter((x) => x.caps.includes(n.id));
-  else {
-    const under2 = /* @__PURE__ */ new Set([n.id]);
-    for (let grew = true; grew; ) {
-      grew = false;
-      for (const x of nodes) {
-        if (x.parent && under2.has(x.parent) && !under2.has(x.id)) {
-          under2.add(x.id);
-          grew = true;
-        }
-      }
-    }
-    under2.delete(n.id);
-    members = nodes.filter((x) => under2.has(x.id));
-  }
-  const files = members.filter((x) => x.kind === "file");
-  const fileSet = new Set(files.map((f) => f.id));
-  const exts = new Set(live.view.edges.filter((e) => fileSet.has(e.from) && kindOf2(e.to) === "ext").map((e) => e.to));
-  const factNodes = [...members, ...[...exts].map((x) => live.byId.get(x))].filter((x) => x && x.kind !== "file" && x.kind !== "sym" && x.kind !== "mod");
-  const mods = members.filter((x) => x.kind === "mod").sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp9(a.id, b.id));
-  const modLines = mods.map(
-    (m) => `- ${m.id} (${m.label}): ${nodes.filter((x) => x.parent === m.id && x.kind === "file").length} file(s), pagerank ${m.metrics.pagerank}`
-  );
-  const memberSection = [
-    `## Members: ${mods.length} module(s), ${files.length} file(s)`,
-    ...modLines.length ? modLines : files.slice(0, 20).map((f) => `- ${f.id}`)
-  ].join("\n");
-  const task = n.kind === "cap" ? `write this capability's \`summary\` in .ultraview/model.json: what it does for the people using the app, in plain words, from the evidence below.` : `write this system's \`summary\` in .ultraview/model.json: what it is and what it does for the app, in plain words, from the evidence below.`;
-  const sections = [header(n, task), memberSection];
-  const facts = factLines(factNodes);
-  if (facts.length) sections.push(facts.join("\n"));
-  const neigh = neighbourLines(live, n.id);
-  if (neigh.length) sections.push(neigh.join("\n"));
-  const key = topFiles(files);
-  if (key.length) sections.push(`## Key source (top ${key.length} file(s) by PageRank)`, ...evidenceBlocks(repo, key));
-  return withinBudget(sections, budget);
-}
-function sitesOf(facts, n) {
-  const p = parseId(n.id);
-  if (!p) return [];
-  switch (p.kind) {
-    case "route":
-      return facts.calls.filter((c2) => c2.route === n.id).map((c2) => ({ file: c2.file, line: c2.line, what: `${c2.method} ${c2.url}` }));
-    case "entity":
-      return facts.entityUses.filter((u) => u.entity === p.name).map((u) => ({ file: u.file, line: u.line, what: u.op }));
-    case "ext":
-      return facts.externals.filter((x) => x.id === p.name).map((x) => ({ file: x.file, line: x.line, what: `via ${x.via}` }));
-    case "job":
-      return facts.jobs.filter((j) => j.id === p.name).map((j) => ({ file: j.file, line: j.line, what: j.kind }));
-    default:
-      return [];
-  }
-}
-function leafDossier(live, repo, n, budget) {
-  const sections = [
-    header(n, `explain what \`${n.id}\` does and who relies on it, from the evidence below (a flow step, a lens answer or a capability summary).`)
-  ];
-  const at = atParts(n.at);
-  if (n.kind === "file") {
-    sections.push(...evidenceBlocks(repo, [fileOfId(n.id)]));
-  } else if (at) {
-    const end = n.metrics.loc > 0 ? at.line + n.metrics.loc - 1 : at.line + 15;
-    const ex = excerpt(repo, at.file, at.line - 3, Math.min(end + 2, at.line + 60));
-    if (ex) sections.push(`## Definition [${n.at}]
-\`\`\`
-${ex}
-\`\`\``);
-  }
-  if (n.fields?.length)
-    sections.push(["## Fields", ...n.fields.map((f) => `- ${f.name}: ${f.type}${f.relation ? ` -> entity:${f.relation}` : ""}`)].join("\n"));
-  const sites = sitesOf(live.loaded.inputs.facts, n).sort((a, b) => cmp9(a.file, b.file) || a.line - b.line);
-  const neigh = neighbourLines(live, n.id, true);
-  if (neigh.length) sections.push(neigh.join("\n"));
-  if (sites.length) {
-    sections.push(`## Used at (${sites.length} site(s))`);
-    for (const s of sites.slice(0, SITES)) {
-      const ex = excerpt(repo, s.file, s.line - 2, s.line + 3);
-      sections.push(`### [${s.file}:${s.line}] ${s.what}${ex ? `
-\`\`\`
-${ex}
-\`\`\`` : ""}`);
-    }
-    if (sites.length > SITES) sections.push(`\u2026 and ${sites.length - SITES} more site(s)`);
-  }
-  return withinBudget(sections, budget);
-}
-function renderNodeDossier(live, repo, id, opts = {}) {
-  const n = live.byId.get(id);
-  if (!n) return void 0;
-  const budget = opts.budget ?? DOSSIER_BUDGET;
-  if (n.kind === "mod") {
-    const whole = baseModuleOf(id);
-    const slug = whole.slice("mod:".length);
-    const module2 = live.loaded.inputs.graph.modules.find((m) => m.slug === slug);
-    if (!module2) return void 0;
-    const base = renderModuleDossier(repo, live.loaded.inputs.graph, module2, budget).trimEnd();
-    const slices = live.view.nodes.filter((x) => x.slice?.of === whole);
-    const roots = new Set(n.slice ? [id] : [id, ...slices.map((x) => x.id)]);
-    const under2 = live.view.nodes.filter((x) => x.parent && (roots.has(x.parent) || roots.has(live.byId.get(x.parent)?.parent ?? "")));
-    const facts = factLines(under2);
-    const sliceLine = n.slice ? [`slice of ${n.slice.of} ${n.slice.qualifier}`] : slices.length ? [`slices ${slices.map((x) => `${x.id} (${x.slice.qualifier})`).join(", ")}`] : [];
-    const extra = [`## ultraview`, `node ${id} \xB7 parent ${n.parent ?? "-"} \xB7 caps ${n.caps.join(", ") || "(none)"}`, ...sliceLine, ...facts].join("\n");
-    return `${base}
-
-${extra}
-`;
-  }
-  if (n.kind === "cap" || n.kind === "sys") return groupDossier(live, repo, n, budget);
-  return leafDossier(live, repo, n, budget);
-}
-
-// src/export.ts
-import { resolve as resolve23 } from "path";
-var EXPORT_LEVELS = ["cap", "sys", "mod"];
-var BRIEF_INSIGHTS = 10;
-var LEVEL_EXTRAS = { cap: ["ext", "entity"], sys: ["ext"], mod: ["ext"] };
-var cmp10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-var byRank = (a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp10(a.id, b.id);
-var labelOf = (n) => n.slice ? `${n.label} ${n.slice.qualifier}` : n.label;
-function edgesAmong(view, keep) {
-  const pairs = /* @__PURE__ */ new Map();
-  for (const e of view.edges) {
-    if (e.from === e.to || !keep.has(e.from) || !keep.has(e.to) || e.kind === "contains") continue;
-    const key = `${e.from}
-${e.to}`;
-    const p = pairs.get(key) ?? { from: e.from, to: e.to, weight: 0, kinds: /* @__PURE__ */ new Set(), declared: false };
-    p.weight += e.weight;
-    if (e.kind !== "import" && e.kind !== "call" && e.kind !== "extends") p.kinds.add(e.kind);
-    if (!e.derived) {
-      p.declared = true;
-      if (e.label) p.label ??= e.label;
-    }
-    pairs.set(key, p);
-  }
-  return [...pairs.values()].sort((a, b) => b.weight - a.weight || cmp10(a.from, b.from) || cmp10(a.to, b.to)).slice(0, MERMAID_MAX_EDGES).map((p) => {
-    const label = p.label ?? ([...p.kinds].sort().join("+") || void 0);
-    return { from: p.from, to: p.to, ...label ? { label } : {}, ...p.declared ? { dotted: true } : {} };
-  });
-}
-function pickView(view, opts = {}) {
-  const byId = new Map(view.nodes.map((n) => [n.id, n]));
-  const asPicked = (n, cls) => ({ id: n.id, label: labelOf(n), kind: n.kind, ...cls ? { cls } : {} });
-  if (opts.lens !== void 0) {
-    const lens = view.lenses.find((l) => l.id === opts.lens);
-    if (!lens) throw new Error(`unknown lens "${opts.lens}" (saved: ${view.lenses.map((l) => l.id).join(", ") || "none"})`);
-    const nodes2 = lens.nodes.flatMap((id) => byId.has(id) ? [byId.get(id)] : []).slice(0, MERMAID_MAX_NODES);
-    const keep = new Set(nodes2.map((n) => n.id));
-    const declared2 = (lens.edges ?? []).filter((e) => keep.has(e.from) && keep.has(e.to)).map((e) => ({ from: e.from, to: e.to, ...e.kind ? { label: e.kind } : {} }));
-    const seen = new Set(declared2.map((e) => `${e.from}
-${e.to}`));
-    return {
-      nodes: nodes2.map((n) => asPicked(n, n.id === lens.focus ? "focus" : void 0)),
-      edges: [...declared2, ...edgesAmong(view, keep).filter((e) => !seen.has(`${e.from}
-${e.to}`))].slice(0, MERMAID_MAX_EDGES)
-    };
-  }
-  if (opts.flow !== void 0) {
-    const flow = view.flows.find((f) => f.id === opts.flow);
-    if (!flow) throw new Error(`unknown flow "${opts.flow}" (saved: ${view.flows.map((f) => f.id).join(", ") || "none"})`);
-    const order = [...flow.trigger ? [flow.trigger] : [], ...flow.steps.map((s) => s.node)].filter((id) => byId.has(id));
-    const nodes2 = [...new Set(order)].slice(0, MERMAID_MAX_NODES);
-    const keep = new Set(nodes2);
-    const edges = [];
-    for (let i2 = 1; i2 < order.length; i2++) {
-      const [from, to] = [order[i2 - 1], order[i2]];
-      if (from !== to && keep.has(from) && keep.has(to)) edges.push({ from, to, label: String(edges.length + 1) });
-    }
-    return { nodes: nodes2.map((id) => asPicked(byId.get(id), flow.trigger === id ? "focus" : void 0)), edges: edges.slice(0, MERMAID_MAX_EDGES) };
-  }
-  const level = opts.level ?? "sys";
-  const primary = view.nodes.filter((n) => n.kind === level).sort(byRank).slice(0, MERMAID_MAX_NODES);
-  const prim = new Set(primary.map((n) => n.id));
-  const extraWeight = /* @__PURE__ */ new Map();
-  for (const e of view.edges) {
-    for (const [a, b] of [
-      [e.from, e.to],
-      [e.to, e.from]
-    ]) {
-      if (prim.has(a) && LEVEL_EXTRAS[level].includes(kindOf2(b))) extraWeight.set(b, (extraWeight.get(b) ?? 0) + e.weight);
-    }
-  }
-  const extras = [...extraWeight].sort((a, b) => b[1] - a[1] || cmp10(a[0], b[0])).slice(0, MERMAID_MAX_NODES - primary.length).map(([id]) => byId.get(id));
-  const nodes = [...primary, ...extras];
-  return { nodes: nodes.map((n) => asPicked(n, n.id === FOUNDATIONS_CAP ? "derived" : void 0)), edges: edgesAmong(view, new Set(nodes.map((n) => n.id))) };
-}
-var EXPORT_CLASSES = { focus: "stroke-width:3px", derived: "stroke-dasharray:4 2" };
-function exportMermaid(view, opts = {}) {
-  return mermaidFlowchart(pickView(view, opts), { classes: EXPORT_CLASSES });
-}
-var NODE_W = 180;
-var NODE_H = 40;
-var GAP_X = 70;
-var GAP_Y = 22;
-var PAD = 20;
-var LABEL_MAX = 24;
-var xml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-var FILL = { cap: "#eef4ff", sys: "#f4f3ff", mod: "#f9fafb", ext: "#fff6ed", entity: "#ecfdf3" };
-function exportSvg(view, opts = {}) {
-  const pick = pickView(view, opts);
-  const ids = pick.nodes.map((n) => n.id);
-  const out2 = new Map(ids.map((id) => [id, []]));
-  const edges = pick.edges.filter((e) => out2.has(e.from) && out2.has(e.to));
-  for (const e of edges) out2.get(e.from).push(e.to);
-  const forward = new Map(ids.map((id) => [id, []]));
-  const state = /* @__PURE__ */ new Map();
-  const visit = (id) => {
-    state.set(id, 1);
-    for (const to of [...out2.get(id)].sort(cmp10)) {
-      if (state.get(to) === 1) continue;
-      forward.get(id).push(to);
-      if (!state.has(to)) visit(to);
-    }
-    state.set(id, 2);
-  };
-  for (const id of [...ids].sort(cmp10)) if (!state.has(id)) visit(id);
-  const layer = new Map(ids.map((id) => [id, 0]));
-  for (let changed = true, guard = 0; changed && guard <= ids.length; guard++) {
-    changed = false;
-    for (const [from, tos] of forward) {
-      for (const to of tos) {
-        if (layer.get(to) <= layer.get(from)) {
-          layer.set(to, layer.get(from) + 1);
-          changed = true;
-        }
-      }
-    }
-  }
-  const layers = [];
-  for (const id of [...ids].sort(cmp10)) (layers[layer.get(id)] ??= []).push(id);
-  const row2 = /* @__PURE__ */ new Map();
-  layers.forEach((ls, x) => {
-    if (x > 0) {
-      const bary = (id) => {
-        const ps = edges.filter((e) => e.to === id && layer.get(e.from) < x).map((e) => row2.get(e.from));
-        return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : Number.POSITIVE_INFINITY;
-      };
-      ls.sort((a, b) => bary(a) - bary(b) || cmp10(a, b));
-    }
-    ls.forEach((id, y) => row2.set(id, y));
-  });
-  const pos = (id) => ({ x: PAD + layer.get(id) * (NODE_W + GAP_X), y: PAD + row2.get(id) * (NODE_H + GAP_Y) });
-  const width = PAD * 2 + Math.max(1, layers.length) * NODE_W + Math.max(0, layers.length - 1) * GAP_X;
-  const height = PAD * 2 + Math.max(1, ...layers.map((l) => l.length)) * (NODE_H + GAP_Y) - GAP_Y;
-  const byId = new Map(pick.nodes.map((n) => [n.id, n]));
-  const lines = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="system-ui, sans-serif" font-size="13">`,
-    `<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#667085"/></marker></defs>`
-  ];
-  for (const e of edges) {
-    const a = pos(e.from);
-    const b = pos(e.to);
-    const [x1, y1] = [a.x + NODE_W, a.y + NODE_H / 2];
-    const [x2, y2] = [b.x, b.y + NODE_H / 2];
-    const bend = Math.max(40, Math.abs(x2 - x1) / 2);
-    lines.push(
-      `<path d="M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}" fill="none" stroke="#98a2b3" stroke-width="1.5"${e.dotted ? ' stroke-dasharray="5 4"' : ""} marker-end="url(#arrow)"/>`
-    );
-    if (e.label)
-      lines.push(
-        `<text x="${Math.round((x1 + x2) / 2)}" y="${Math.round((y1 + y2) / 2) - 4}" text-anchor="middle" fill="#475467" font-size="11">${xml(e.label)}</text>`
-      );
-  }
-  for (const id of ids) {
-    const n = byId.get(id);
-    const { x, y } = pos(id);
-    const text2 = n.label.length > LABEL_MAX ? `${n.label.slice(0, LABEL_MAX - 1)}\u2026` : n.label;
-    lines.push(
-      `<g><title>${xml(n.label)}</title><rect x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="8" fill="${n.kind && FILL[n.kind] || "#ffffff"}" stroke="#475467" stroke-width="${n.cls === "focus" ? 3 : 1}"${n.cls === "derived" ? ' stroke-dasharray="4 2"' : ""}/><text x="${x + NODE_W / 2}" y="${y + NODE_H / 2 + 4}" text-anchor="middle" fill="#101828">${xml(text2)}</text></g>`
-    );
-  }
-  lines.push("</svg>");
-  return `${lines.join("\n")}
-`;
-}
-var cell2 = (s) => (s ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
-function exportBrief(view) {
-  const byId = new Map(view.nodes.map((n) => [n.id, n]));
-  const kinds2 = (kind) => view.nodes.filter((n) => n.kind === kind).sort((a, b) => Number(a.tags.includes("derived")) - Number(b.tags.includes("derived")) || cmp10(a.id, b.id));
-  const out2 = [`# ${view.app.name}`, ""];
-  if (view.app.summary) out2.push(view.app.summary, "");
-  const systems = kinds2("sys");
-  if (systems.length) {
-    out2.push("## Systems", "", "| System | Kind | Files | Lines | Summary |", "|---|---|---|---|---|");
-    for (const s of systems) {
-      const files = view.nodes.filter((n) => n.kind === "file" && byId.get(n.parent ?? "")?.parent === s.id).length;
-      out2.push(`| ${cell2(s.label)} | ${s.role ?? "\u2014"} | ${files} | ${s.metrics.loc} | ${cell2(s.summary) || "\u2014"} |`);
-    }
-    out2.push("");
-  }
-  const caps = kinds2("cap");
-  if (caps.length) {
-    out2.push("## Capabilities", "");
-    for (const c2 of caps) {
-      out2.push(`### ${c2.label}`, "");
-      if (c2.summary) out2.push(c2.summary, "");
-      const serving = (k) => view.nodes.filter((n) => n.kind === k && n.caps.includes(c2.id));
-      const sys = serving("sys").map((n) => n.label);
-      const routes = serving("route").map((n) => `\`${n.label}\``);
-      const entities2 = serving("entity").map((n) => n.label);
-      if (c2.actors?.length) out2.push(`- Used by: ${c2.actors.join(", ")}`);
-      if (sys.length) out2.push(`- Systems: ${sys.join(", ")}`);
-      if (routes.length) out2.push(`- Routes: ${routes.join(", ")}`);
-      if (entities2.length) out2.push(`- Data: ${entities2.join(", ")}`);
-      out2.push(`- Size: ${c2.metrics.loc} lines${c2.cites.length ? `; evidence: ${c2.cites.map((x) => `\`${x}\``).join(", ")}` : ""}`, "");
-    }
-  }
-  const entities = kinds2("entity");
-  if (entities.length) {
-    out2.push("## Data", "", "| Entity | Fields | Defined at |", "|---|---|---|");
-    for (const e of entities)
-      out2.push(
-        `| ${cell2(e.label)} | ${cell2((e.fields ?? []).map((f) => f.relation ? `${f.name} \u2192 ${f.relation}` : f.name).join(", ")) || "\u2014"} | \`${e.at ?? ""}\` |`
-      );
-    out2.push("");
-  }
-  const exts = kinds2("ext");
-  if (exts.length) {
-    out2.push("## External services", "");
-    for (const x of exts) out2.push(`- **${x.label}** (${x.tags.join(", ") || "detected"})${x.at ? `: \`${x.at}\`` : ""}`);
-    out2.push("");
-  }
-  if (view.flows.length) {
-    out2.push("## Flows", "");
-    for (const f of view.flows) {
-      out2.push(`### ${f.title}`, "");
-      f.steps.forEach((s, i2) => {
-        out2.push(`${i2 + 1}. **${byId.get(s.node) ? labelOf(byId.get(s.node)) : s.node}**: ${s.note}`);
-      });
-      out2.push("");
-    }
-  }
-  if (view.insights.length) {
-    out2.push("## Insights", "");
-    for (const i2 of view.insights.slice(0, BRIEF_INSIGHTS)) out2.push(`- **${i2.severity}** ${i2.title}: ${i2.detail}`);
-    out2.push("");
-  }
-  const pct2 = (x) => `${(x * 100).toFixed(1)}%`;
-  out2.push(
-    `_Coverage: ${pct2(view.coverage.filesInSystems)} of code files in systems, ${pct2(view.coverage.modulesInCapabilities)} of modules in capabilities._`
-  );
-  return `${out2.join("\n")}
-`;
-}
-function exportView(repoArg, opts = {}) {
-  const repo = resolve23(repoArg);
-  const graph = loadGraph(viewPaths(repo).index);
-  if (!graph) throw new Error(`no ultraindex index at ${viewPaths(repo).index}: run \`ultraview build\` first`);
-  const insights = opts.insights ? insightsOf(repo, { graph }) : [];
-  return assembleView(loadViewInputs(repo, { graph, insights }).inputs);
-}
-
-// src/hook.ts
-import { existsSync as existsSync22, readFileSync as readFileSync27 } from "fs";
-import { join as join46, resolve as resolve24 } from "path";
-var HOOK_AGENTS = ["claude"];
-var LOCAL_SETTINGS_FILE = ".claude/settings.local.json";
-var SHARED_SETTINGS_FILE = ".claude/settings.json";
-var SETTINGS_FILES = [LOCAL_SETTINGS_FILE, SHARED_SETTINGS_FILE];
-var HOOK_MARKER = "--source agent --hook";
-var HOOK_TIMEOUT_SECONDS = 30;
-var shQuote = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
-function hookCommand(script) {
-  return `node ${shQuote(script)} diff --worktree --record --quiet ${HOOK_MARKER} --repo "$CLAUDE_PROJECT_DIR"`;
-}
-function sharedWarning(script) {
-  return `${SHARED_SETTINGS_FILE} is shared with everyone who clones the repo, but the hook command holds an absolute path specific to this machine (${script}): on another machine it will not run. Prefer the default, ${LOCAL_SETTINGS_FILE}.`;
-}
-var isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-function lineDiff(before, after, file) {
-  if (before === after) return "";
-  const a = before ? before.replace(/\n$/, "").split("\n") : [];
-  const b = after.replace(/\n$/, "").split("\n");
-  const lcs = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
-  for (let i3 = a.length - 1; i3 >= 0; i3--)
-    for (let j2 = b.length - 1; j2 >= 0; j2--) lcs[i3][j2] = a[i3] === b[j2] ? lcs[i3 + 1][j2 + 1] + 1 : Math.max(lcs[i3 + 1][j2], lcs[i3][j2 + 1]);
-  const out2 = [`--- a/${file}`, `+++ b/${file}`];
-  let i2 = 0;
-  let j = 0;
-  while (i2 < a.length || j < b.length) {
-    if (i2 < a.length && j < b.length && a[i2] === b[j]) {
-      out2.push(` ${a[i2++]}`);
-      j++;
-    } else if (j < b.length && (i2 >= a.length || lcs[i2][j + 1] >= lcs[i2 + 1][j])) out2.push(`+${b[j++]}`);
-    else out2.push(`-${a[i2++]}`);
-  }
-  return `${out2.join("\n")}
-`;
-}
-function parseSpans(text2) {
-  let i2 = 0;
-  const ws = () => {
-    while (i2 < text2.length && /\s/.test(text2[i2])) i2++;
-  };
-  const str3 = () => {
-    const start2 = i2++;
-    while (text2[i2] !== '"') i2 += text2[i2] === "\\" ? 2 : 1;
-    i2++;
-    return { start: start2, end: i2, str: JSON.parse(text2.slice(start2, i2)) };
-  };
-  const value = () => {
-    ws();
-    const start2 = i2;
-    const c2 = text2[i2];
-    if (c2 === '"') return str3();
-    if (c2 === "{" || c2 === "[") {
-      i2++;
-      const members = [];
-      const items = [];
-      for (ws(); text2[i2] !== (c2 === "{" ? "}" : "]"); ws()) {
-        if (text2[i2] === ",") {
-          i2++;
-          continue;
-        }
-        if (c2 === "{") {
-          const key = str3();
-          ws();
-          i2++;
-          members.push({ key: key.str, start: key.start, value: value() });
-        } else items.push(value());
-      }
-      i2++;
-      return c2 === "{" ? { start: start2, end: i2, members } : { start: start2, end: i2, items };
-    }
-    while (i2 < text2.length && !/[\s,\]}]/.test(text2[i2])) i2++;
-    return { start: start2, end: i2 };
-  };
-  return value();
-}
-var elemsOf = (n) => n.members ? n.members.map((m) => ({ start: m.start, end: m.value.end })) : n.items ?? [];
-var memberOf = (n, key) => n?.members?.find((m) => m.key === key)?.value;
-var splice = (text2, start2, end, by) => text2.slice(0, start2) + by + text2.slice(end);
-function indentAt2(text2, pos) {
-  const line2 = text2.lastIndexOf("\n", pos - 1) + 1;
-  return /^[ \t]*/.exec(text2.slice(line2))[0];
-}
-function appendElem(text2, container, elem, unit) {
-  const elems = elemsOf(container);
-  const last = elems[elems.length - 1];
-  if (last) {
-    const base2 = indentAt2(text2, last.start);
-    return splice(text2, last.end, last.end, `,
-${base2}${elem.split("\n").join(`
-${base2}`)}`);
-  }
-  const outer = indentAt2(text2, container.start);
-  const base = outer + unit;
-  return splice(text2, container.start + 1, container.end - 1, `
-${base}${elem.split("\n").join(`
-${base}`)}
-${outer}`);
-}
-function removeElem(text2, container, idx) {
-  const elems = elemsOf(container);
-  if (idx > 0) return splice(text2, elems[idx - 1].end, elems[idx].end, "");
-  if (elems.length > 1) return splice(text2, elems[0].start, elems[1].start, "");
-  return splice(text2, container.start + 1, container.end - 1, "");
-}
-function oursIn(stop2) {
-  const out2 = [];
-  (stop2.items ?? []).forEach((g, gi) => {
-    (memberOf(g, "hooks")?.items ?? []).forEach((h, hi) => {
-      const command = memberOf(h, "command");
-      if (command?.str?.includes(HOOK_MARKER)) out2.push({ group: gi, hook: hi, command });
-    });
-  });
+  if (lineTable2) for (const u of checkCitations(text2, lineTable2).unresolved) out2.push({ path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
+  for (const s of uncitedSentences(text2)) out2.push({ path, message: `uncited sentence: "${s.length > 120 ? `${s.slice(0, 117)}...` : s}"` });
   return out2;
 }
-function readSettings(repo, file) {
-  const abs = join46(repo, file);
-  if (!existsSync22(abs)) return { file, abs, before: "", unit: "  " };
-  const before = readFileSync27(abs, "utf8");
-  let value;
-  try {
-    value = JSON.parse(before);
-  } catch (e) {
-    return { error: `${file} is not valid JSON (${e.message}): fix it first, nothing was changed` };
-  }
-  if (!isObject(value)) return { error: `${file} is not a JSON object: nothing was changed` };
-  if (value.hooks !== void 0 && !isObject(value.hooks)) return { error: `${file}: "hooks" is not an object: nothing was changed` };
-  if (isObject(value.hooks) && value.hooks.Stop !== void 0 && !Array.isArray(value.hooks.Stop))
-    return { error: `${file}: "hooks.Stop" is not an array: nothing was changed` };
-  return { file, abs, before, unit: /^[ \t]+(?=")/m.exec(before)?.[0] ?? "  " };
-}
-function finish(s, after, action, dryRun, command) {
-  if (after !== s.before) {
-    try {
-      JSON.parse(after);
-    } catch {
-      return failed2(`could not edit ${s.file} safely: nothing was changed`, dryRun, s.file);
-    }
-  }
-  if (!dryRun && after !== s.before) writeFileAtomic(s.abs, after);
-  return {
-    ok: true,
-    file: s.file,
-    files: after !== s.before ? [s.file] : [],
-    action,
-    dryRun,
-    diff: lineDiff(s.before, after, s.file),
-    ...command ? { command } : {},
-    errors: []
+function answerProblems(a, ids, lineTable2, prefix = "") {
+  const out2 = [];
+  const resolveId = (path, id) => {
+    if (id !== void 0 && !ids.has(id)) out2.push({ path: `${prefix}${path}`, message: unknownNode(id) });
   };
-}
-function checkAgent(agent) {
-  return agent === void 0 || HOOK_AGENTS.includes(agent) ? void 0 : `unsupported agent "${agent}" (supported: ${HOOK_AGENTS.join(", ")})`;
-}
-var failed2 = (error, dryRun, file = LOCAL_SETTINGS_FILE) => ({
-  ok: false,
-  file,
-  files: [],
-  action: "unchanged",
-  dryRun,
-  diff: "",
-  errors: [error]
-});
-function installHook(repoArg, script, opts = {}) {
-  const dryRun = !!opts.dryRun;
-  const file = opts.shared ? SHARED_SETTINGS_FILE : LOCAL_SETTINGS_FILE;
-  const bad = checkAgent(opts.agent);
-  if (bad) return failed2(bad, dryRun, file);
-  const repo = resolve24(repoArg);
-  if (!existsSync22(repo)) return failed2(`repo not found: ${repo}`, dryRun, file);
-  const s = readSettings(repo, file);
-  if ("error" in s) return failed2(s.error, dryRun, file);
-  const command = hookCommand(resolve24(script));
-  const warned = (r) => opts.shared && r.ok ? { ...r, warning: sharedWarning(resolve24(script)) } : r;
-  const group = { hooks: [{ type: "command", command, timeout: HOOK_TIMEOUT_SECONDS }] };
-  const pretty = (v) => JSON.stringify(v, null, s.unit);
-  if (!s.before) return warned(finish(s, `${pretty({ hooks: { Stop: [group] } })}
-`, "installed", dryRun, command));
-  const root = parseSpans(s.before);
-  const hooks = memberOf(root, "hooks");
-  if (!hooks) return warned(finish(s, appendElem(s.before, root, `"hooks": ${pretty({ Stop: [group] })}`, s.unit), "installed", dryRun, command));
-  const stop2 = memberOf(hooks, "Stop");
-  if (!stop2) return warned(finish(s, appendElem(s.before, hooks, `"Stop": ${pretty([group])}`, s.unit), "installed", dryRun, command));
-  const ours = oursIn(stop2);
-  if (!ours.length) return warned(finish(s, appendElem(s.before, stop2, pretty(group), s.unit), "installed", dryRun, command));
-  if (ours.every((o) => o.command.str === command)) return warned(finish(s, s.before, "unchanged", dryRun, command));
-  let after = s.before;
-  for (const o of [...ours].sort((a, b) => b.command.start - a.command.start)) after = splice(after, o.command.start, o.command.end, JSON.stringify(command));
-  return warned(finish(s, after, "updated", dryRun, command));
-}
-function uninstallFrom(repo, file, dryRun) {
-  const s = readSettings(repo, file);
-  if ("error" in s) return failed2(s.error, dryRun, file);
-  if (!s.before) return finish(s, s.before, "absent", dryRun);
-  let text2 = s.before;
-  let removed = 0;
-  for (; ; ) {
-    const stop2 = memberOf(memberOf(parseSpans(text2), "hooks"), "Stop");
-    const o = stop2 ? oursIn(stop2)[0] : void 0;
-    if (!stop2 || !o) break;
-    const group = stop2.items[o.group];
-    const list = memberOf(group, "hooks");
-    text2 = list.items.length === 1 ? removeElem(text2, stop2, o.group) : removeElem(text2, list, o.hook);
-    removed++;
-  }
-  if (!removed) return finish(s, s.before, "absent", dryRun);
-  const root = parseSpans(text2);
-  const hooks = memberOf(root, "hooks");
-  const stopAt = hooks.members.findIndex((m) => m.key === "Stop");
-  if (!hooks.members[stopAt].value.items.length) {
-    text2 = removeElem(text2, hooks, stopAt);
-    const after = parseSpans(text2);
-    const h = memberOf(after, "hooks");
-    if (!h.members.length)
-      text2 = removeElem(
-        text2,
-        after,
-        after.members.findIndex((m) => m.key === "hooks")
-      );
-  }
-  return finish(s, text2, "removed", dryRun);
-}
-function uninstallHook(repoArg, opts = {}) {
-  const dryRun = !!opts.dryRun;
-  const bad = checkAgent(opts.agent);
-  if (bad) return failed2(bad, dryRun);
-  const repo = resolve24(repoArg);
-  const results = SETTINGS_FILES.map((f) => uninstallFrom(repo, f, dryRun));
-  const bad2 = results.find((r) => !r.ok);
-  if (bad2) return bad2;
-  const removed = results.filter((r) => r.action === "removed");
-  if (!removed.length) return { ...results[0], action: "absent" };
-  return { ...removed[0], files: removed.map((r) => r.file), diff: removed.map((r) => r.diff).join("") };
-}
-
-// src/save.ts
-import { existsSync as existsSync23, mkdirSync as mkdirSync9, readFileSync as readFileSync28, statSync as statSync17, writeFileSync as writeFileSync11 } from "fs";
-import { dirname as dirname15, join as join47, relative as relative14, resolve as resolve25, sep as sep10 } from "path";
-var LENS = {
-  dir: LENSES_DIR,
-  validate: validateLens,
-  prose: (l) => [{ path: "answer", text: l.answer }],
-  identity: (l) => l.question,
-  noun: "question"
-};
-var FLOW = {
-  dir: FLOWS_DIR,
-  validate: validateFlow,
-  prose: (f) => f.steps.map((s, i2) => ({ path: `steps[${i2}].note`, text: s.note })),
-  identity: (f) => f.title,
-  noun: "title"
-};
-function save(kind, repoArg, input, opts) {
-  const repo = resolve25(repoArg);
-  const fail = (errors2, extra = {}) => ({ ok: false, sources: {}, replaced: false, errors: errors2, ...extra });
-  let value = input;
-  if (typeof input === "string") {
-    const parsed2 = parseJson(input);
-    if (parsed2.problems.length) return fail(parsed2.problems);
-    value = parsed2.value;
-  }
-  const schemaErrors = kind.validate(value);
-  if (schemaErrors.length) return fail(schemaErrors);
-  const item = value;
-  const file = `${kind.dir}/${item.id}.json`;
-  const errors = [];
-  const graph = loadGraph(viewPaths(repo).index);
-  const lineTable2 = graph ? fileLineTable(graph) : void 0;
-  const cited = /* @__PURE__ */ new Set();
-  for (const { path, text: text2 } of kind.prose(item)) {
-    if (lineTable2) for (const u of checkCitations(text2, lineTable2).unresolved) errors.push({ path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
-    for (const c2 of parseCitations(text2)) {
-      const abs2 = resolve25(repo, c2.path);
-      const inside = abs2.startsWith(repo + sep10);
-      if (!inside || !existsSync23(abs2) || !statSync17(abs2).isFile()) {
-        if (inside && !c2.path.includes("/") && !existsSync23(abs2)) continue;
-        errors.push({ path, message: `cites ${c2.path}, which is not a file in the repo` });
-        continue;
-      }
-      cited.add(relative14(repo, abs2).split(sep10).join("/"));
-    }
-  }
-  if (errors.length) return fail(errors, { file, id: item.id });
-  const sources = {};
-  for (const rel2 of [...cited].sort()) sources[rel2] = fileSha256(join47(repo, rel2));
-  const abs = join47(repo, file);
-  let replaced = false;
-  if (existsSync23(abs)) {
-    const prev = parseJson(readFileSync28(abs, "utf8")).value;
-    const prevIdentity = prev && kind.validate(prev).length === 0 ? kind.identity(prev) : void 0;
-    if (prevIdentity !== void 0 && prevIdentity !== kind.identity(item) && !opts.force) {
-      return fail(
-        [{ path: "id", message: `${file} already holds a different ${kind.noun} ("${prevIdentity}"): pick another id, or pass --force to replace it` }],
-        { file, id: item.id }
-      );
-    }
-    replaced = true;
-  }
-  mkdirSync9(dirname15(abs), { recursive: true });
-  writeFileSync11(abs, stableJson({ ...item, sources }));
-  return { ok: true, file, id: item.id, sources, replaced, errors: [] };
-}
-function saveLens(repo, input, opts = {}) {
-  return save(LENS, repo, input, opts);
-}
-function saveFlow(repo, input, opts = {}) {
-  return save(FLOW, repo, input, opts);
-}
-
-// src/render.ts
-import { spawn as spawn2 } from "child_process";
-import { existsSync as existsSync24, mkdirSync as mkdirSync10, readFileSync as readFileSync30, renameSync as renameSync9, writeFileSync as writeFileSync13 } from "fs";
-import { dirname as dirname16, join as join48, relative as relative15, resolve as resolve27 } from "path";
-import { fileURLToPath as fileURLToPath3 } from "url";
-
-// src/refresh.ts
-import { readFileSync as readFileSync29, renameSync as renameSync8, writeFileSync as writeFileSync12 } from "fs";
-import { resolve as resolve26 } from "path";
-function carriedOver(viewText) {
-  if (viewText === void 0) return {};
-  let prev;
-  try {
-    prev = JSON.parse(viewText);
-  } catch {
-    return {};
-  }
-  if (!prev || prev.schema !== VIEW_SCHEMA || !Array.isArray(prev.nodes)) return {};
-  const churn = /* @__PURE__ */ new Map();
-  for (const n of prev.nodes) {
-    const c2 = n?.metrics?.churn;
-    if (n?.kind === "file" && typeof n.id === "string" && n.id.startsWith("file:") && typeof c2 === "number" && c2 > 0) churn.set(n.id.slice(5), c2);
-  }
-  const insights = Array.isArray(prev.insights) ? prev.insights : [];
-  return { churn, insights };
-}
-function readText2(abs) {
-  try {
-    return readFileSync29(abs, "utf8");
-  } catch {
-    return void 0;
-  }
-}
-function freshView(repoArg) {
-  const repo = resolve26(repoArg);
-  const loaded2 = loadViewInputs(repo, carriedOver(readText2(viewPaths(repo).view)));
-  const assembled = assembleWithNotes(loaded2.inputs);
-  const view = assembled.view;
-  return { view, text: stableJson(view), assembled, loaded: loaded2, byId: new Map(view.nodes.map((n) => [n.id, n])) };
-}
-function writeView(file, text2) {
-  if (readText2(file) === text2) return false;
-  const tmp = `${file}.${process.pid}.tmp`;
-  writeFileSync12(tmp, text2);
-  renameSync8(tmp, file);
-  return true;
-}
-function indexStaleness(repoArg) {
-  const repo = resolve26(repoArg);
-  const r = runCheck(viewPaths(repo).index, repo);
-  return {
-    index: r.stale,
-    changed: r.changed.length,
-    added: r.added.length,
-    removed: r.removed.length,
-    files: [...r.changed, ...r.added, ...r.removed].slice(0, 20)
-  };
-}
-
-// src/render.ts
-var DATA_TAG = '<script type="application/json" id="ultraview-data">';
-var ENV_TAG = '<script type="application/json" id="ultraview-env">';
-function viewerTemplatePath() {
-  const here = dirname16(fileURLToPath3(import.meta.url));
-  const candidates = [join48(here, "../assets/viewer.html"), join48(here, "../skills/ultraview/assets/viewer.html")];
-  const found = candidates.find((c2) => existsSync24(c2));
-  if (!found) throw new Error(`viewer not found (looked in ${candidates.map((c2) => relative15(process.cwd(), c2) || c2).join(", ")}): run \`pnpm run build\``);
-  return found;
-}
-function scriptJson(value) {
-  return JSON.stringify(value).replace(/</g, "\\u003c");
-}
-function fill(html, tag, body2) {
-  const start2 = html.indexOf(tag);
-  if (start2 === -1) throw new Error(`viewer template has no ${tag}`);
-  const from = start2 + tag.length;
-  const end = html.indexOf("</script>", from);
-  if (end === -1) throw new Error(`viewer template: unterminated ${tag}`);
-  return html.slice(0, from) + body2 + html.slice(end);
-}
-function renderHtml(template, view, env) {
-  return fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
-}
-function renderMap(opts) {
-  const repo = resolve27(opts.repo);
-  const paths = viewPaths(repo);
-  const missing = !indexExists(paths.index) ? paths.index : !existsSync24(paths.facts) ? paths.facts : void 0;
-  if (missing) throw new Error(`no ${relative15(process.cwd(), missing) || missing}: run \`ultraview build\` first`);
-  const viewText = freshView(repo).text;
-  const updated = writeView(paths.view, viewText);
-  const view = JSON.parse(viewText);
-  let stale = false;
-  try {
-    stale = indexStaleness(repo).index;
-  } catch {
-  }
-  const templatePath = opts.template ?? viewerTemplatePath();
-  const template = readFileSync30(templatePath, "utf8");
-  const html = renderHtml(template, view, { root: repo });
-  const out2 = resolve27(opts.out ?? paths.html);
-  mkdirSync10(dirname16(out2), { recursive: true });
-  const tmp = `${out2}.${process.pid}.tmp`;
-  writeFileSync13(tmp, html);
-  renameSync9(tmp, out2);
-  return { repo, out: out2, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template), updated, stale };
-}
-function openerFor(platform, file) {
-  if (platform === "darwin") return { cmd: "open", args: [file] };
-  if (platform === "win32") return { cmd: "cmd", args: ["/c", "start", '""', file] };
-  return { cmd: "xdg-open", args: [file] };
-}
-function spawnDetached(cmd, args2) {
-  return new Promise((done) => {
-    try {
-      const child2 = spawn2(cmd, args2, { detached: true, stdio: "ignore", windowsHide: true });
-      child2.once("error", () => done(false));
-      child2.once("spawn", () => {
-        child2.unref();
-        done(true);
-      });
-    } catch {
-      done(false);
-    }
+  a.nodes.forEach((n, i2) => resolveId(`nodes[${i2}]`, n));
+  (a.edges ?? []).forEach((e, i2) => {
+    resolveId(`edges[${i2}].from`, e.from);
+    resolveId(`edges[${i2}].to`, e.to);
   });
+  resolveId("focus", a.focus);
+  out2.push(...proseProblems(`${prefix}answer`, a.answer, lineTable2));
+  return out2;
 }
-function openFile(file, platform = process.platform) {
-  const { cmd, args: args2 } = openerFor(platform, file);
-  return spawnDetached(cmd, args2);
-}
-
-// src/ask.ts
-import { spawn as spawn3 } from "child_process";
-import { accessSync as accessSync2, closeSync as closeSync2, constants, existsSync as existsSync26, mkdirSync as mkdirSync11, mkdtempSync as mkdtempSync4, openSync as openSync2, readFileSync as readFileSync32, rmSync as rmSync8, statSync as statSync19, writeSync } from "fs";
-import { tmpdir as tmpdir2 } from "os";
-import { delimiter, dirname as dirname17, join as join50, resolve as resolve29 } from "path";
-import { fileURLToPath as fileURLToPath4 } from "url";
-
-// src/lens.ts
-import { existsSync as existsSync25, readdirSync as readdirSync7, readFileSync as readFileSync31, statSync as statSync18 } from "fs";
-import { join as join49, resolve as resolve28 } from "path";
 
 // src/lens-terms.ts
 var SYNONYM_WEIGHT = 0.6;
@@ -41311,10 +40216,1615 @@ function readQuestion(question, terms = "") {
     bridged
   };
 }
+var LANG_MARKERS = [
+  ["fr", FRENCH_MARKERS],
+  [
+    "es",
+    new Set(
+      "el los las del una unos unas como donde cuando porque pero muy esto esta este eso esa ese quien cual cuales hay tiene puedo quiero que se lo la y".split(
+        " "
+      )
+    )
+  ],
+  [
+    "de",
+    new Set("der die das den dem des ein eine einen einem und ist sind wie wo wer was warum nicht ich mir mich wird werden eigentlich auch noch".split(" "))
+  ],
+  [
+    "it",
+    new Set(
+      "il gli di per nel nella alla dei della delle degli che cosa come dove quando perche sono questo questa quello quella viene essere anche non ci si".split(
+        " "
+      )
+    )
+  ],
+  ["pt", new Set("o os um uma umas do da dos das no na ao pelo pela ele ela onde quando porque nao isso essa esse quem qual sao tem voce entao".split(" "))],
+  ["nl", new Set("het een de en is zijn hoe waar wanneer waarom niet ik mij wordt worden ook nog dat deze die".split(" "))]
+];
+var LANG_LETTERS = [
+  ["es", /[¿¡ñ]/g],
+  ["de", /[äöüß]/gi],
+  ["fr", /[èêëœç]/gi],
+  ["pt", /[ãõ]/gi]
+];
+var SCRIPTS = [
+  ["ja", /[\p{Script=Hiragana}\p{Script=Katakana}]/u],
+  ["ko", new RegExp("\\p{Script=Hangul}", "u")],
+  ["zh", new RegExp("\\p{Script=Han}", "u")],
+  ["ru", new RegExp("\\p{Script=Cyrillic}", "u")],
+  ["ar", new RegExp("\\p{Script=Arabic}", "u")],
+  ["he", new RegExp("\\p{Script=Hebrew}", "u")],
+  ["el", new RegExp("\\p{Script=Greek}", "u")],
+  ["hi", new RegExp("\\p{Script=Devanagari}", "u")],
+  ["th", new RegExp("\\p{Script=Thai}", "u")]
+];
+function guessLang(question) {
+  if (mostlyNonLatin(question)) {
+    for (const [lang, re] of SCRIPTS) if (re.test(question)) return lang;
+    return "und";
+  }
+  const ws = words(question);
+  const counts = /* @__PURE__ */ new Map();
+  for (const [lang, markers] of LANG_MARKERS) counts.set(lang, ws.filter((w) => markers.has(w)).length);
+  for (const [lang, re] of LANG_LETTERS) counts.set(lang, (counts.get(lang) ?? 0) + (question.match(re)?.length ?? 0));
+  let best = "und";
+  let most = 0;
+  for (const [lang, n] of counts)
+    if (n > most) {
+      best = lang;
+      most = n;
+    }
+  const english = englishShare(question);
+  if (english >= ENGLISH_SHARE && most < 2) return "en";
+  return most ? best : english > 0 ? "en" : "und";
+}
+
+// src/refresh.ts
+import { readFileSync as readFileSync27, renameSync as renameSync8, writeFileSync as writeFileSync11 } from "fs";
+import { resolve as resolve20 } from "path";
+function carriedOver(viewText) {
+  if (viewText === void 0) return {};
+  let prev;
+  try {
+    prev = JSON.parse(viewText);
+  } catch {
+    return {};
+  }
+  if (!prev || prev.schema !== VIEW_SCHEMA || !Array.isArray(prev.nodes)) return {};
+  const churn = /* @__PURE__ */ new Map();
+  for (const n of prev.nodes) {
+    const c2 = n?.metrics?.churn;
+    if (n?.kind === "file" && typeof n.id === "string" && n.id.startsWith("file:") && typeof c2 === "number" && c2 > 0) churn.set(n.id.slice(5), c2);
+  }
+  const insights = Array.isArray(prev.insights) ? prev.insights : [];
+  return { churn, insights };
+}
+function readText2(abs) {
+  try {
+    return readFileSync27(abs, "utf8");
+  } catch {
+    return void 0;
+  }
+}
+function freshView(repoArg) {
+  const repo = resolve20(repoArg);
+  const loaded2 = loadViewInputs(repo, carriedOver(readText2(viewPaths(repo).view)));
+  const assembled = assembleWithNotes(loaded2.inputs);
+  const view = assembled.view;
+  return { view, text: stableJson(view), assembled, loaded: loaded2, byId: new Map(view.nodes.map((n) => [n.id, n])) };
+}
+function writeView(file, text2) {
+  if (readText2(file) === text2) return false;
+  const tmp = `${file}.${process.pid}.tmp`;
+  writeFileSync11(tmp, text2);
+  renameSync8(tmp, file);
+  return true;
+}
+function indexStaleness(repoArg) {
+  const repo = resolve20(repoArg);
+  const r = runCheck(viewPaths(repo).index, repo);
+  return {
+    index: r.stale,
+    changed: r.changed.length,
+    added: r.added.length,
+    removed: r.removed.length,
+    files: [...r.changed, ...r.added, ...r.removed].slice(0, 20)
+  };
+}
+
+// src/save.ts
+import { existsSync as existsSync21, mkdirSync as mkdirSync9, readFileSync as readFileSync28, statSync as statSync17, writeFileSync as writeFileSync12 } from "fs";
+import { dirname as dirname15, join as join45, relative as relative14, resolve as resolve21, sep as sep10 } from "path";
+var LENS = {
+  dir: LENSES_DIR,
+  validate: validateLens,
+  prose: (l) => [{ path: "answer", text: l.answer }],
+  identity: (l) => l.question,
+  noun: "question"
+};
+var FLOW = {
+  dir: FLOWS_DIR,
+  validate: validateFlow,
+  prose: (f) => f.steps.map((s, i2) => ({ path: `steps[${i2}].note`, text: s.note })),
+  identity: (f) => f.title,
+  noun: "title"
+};
+function prepare(kind, repo, input) {
+  let value = input;
+  if (typeof input === "string") {
+    const parsed2 = parseJson(input);
+    if (parsed2.problems.length) return { sources: {}, errors: parsed2.problems };
+    value = parsed2.value;
+  }
+  const schemaErrors = kind.validate(value);
+  if (schemaErrors.length) return { sources: {}, errors: schemaErrors };
+  const item = value;
+  const errors = [];
+  const graph = loadGraph(viewPaths(repo).index);
+  const lineTable2 = graph ? fileLineTable(graph) : void 0;
+  const cited = /* @__PURE__ */ new Set();
+  for (const { path, text: text2 } of kind.prose(item)) {
+    if (lineTable2) for (const u of checkCitations(text2, lineTable2).unresolved) errors.push({ path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
+    for (const c2 of parseCitations(text2)) {
+      const abs = resolve21(repo, c2.path);
+      const inside = abs.startsWith(repo + sep10);
+      if (!inside || !existsSync21(abs) || !statSync17(abs).isFile()) {
+        if (inside && !c2.path.includes("/") && !existsSync21(abs)) continue;
+        errors.push({ path, message: `cites ${c2.path}, which is not a file in the repo` });
+        continue;
+      }
+      cited.add(relative14(repo, abs).split(sep10).join("/"));
+    }
+  }
+  if (errors.length) return { item, sources: {}, errors };
+  const sources = {};
+  for (const rel2 of [...cited].sort()) sources[rel2] = fileSha256(join45(repo, rel2));
+  return { item, sources, errors: [] };
+}
+function prepareLens(repoArg, input) {
+  return prepare(LENS, resolve21(repoArg), input);
+}
+function save(kind, repoArg, input, opts) {
+  const repo = resolve21(repoArg);
+  const fail = (errors, extra = {}) => ({ ok: false, sources: {}, replaced: false, errors, ...extra });
+  const prepared = prepare(kind, repo, input);
+  const item = prepared.item;
+  if (!item) return fail(prepared.errors);
+  const file = `${kind.dir}/${item.id}.json`;
+  if (prepared.errors.length) return fail(prepared.errors, { file, id: item.id });
+  const sources = prepared.sources;
+  const abs = join45(repo, file);
+  let replaced = false;
+  if (existsSync21(abs)) {
+    const prev = parseJson(readFileSync28(abs, "utf8")).value;
+    const prevIdentity = prev && kind.validate(prev).length === 0 ? kind.identity(prev) : void 0;
+    if (prevIdentity !== void 0 && prevIdentity !== kind.identity(item) && !opts.force) {
+      return fail(
+        [{ path: "id", message: `${file} already holds a different ${kind.noun} ("${prevIdentity}"): pick another id, or pass --force to replace it` }],
+        { file, id: item.id }
+      );
+    }
+    replaced = true;
+  }
+  mkdirSync9(dirname15(abs), { recursive: true });
+  writeFileSync12(abs, stableJson({ ...item, sources }));
+  return { ok: true, file, id: item.id, sources, replaced, errors: [] };
+}
+function saveLens(repo, input, opts = {}) {
+  return save(LENS, repo, input, opts);
+}
+function saveFlow(repo, input, opts = {}) {
+  return save(FLOW, repo, input, opts);
+}
+
+// src/show.ts
+import { resolve as resolve22 } from "path";
+var CARD_EDGES = 10;
+var CARD_LIST = 20;
+function liveView(repo) {
+  const loaded2 = loadViewInputs(resolve22(repo));
+  const assembled = assembleWithNotes(loaded2.inputs);
+  return { ...assembled, loaded: loaded2, byId: new Map(assembled.view.nodes.map((n) => [n.id, n])) };
+}
+var cmp8 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function listOf(nodes) {
+  const byKind = {};
+  for (const n of nodes) byKind[n.kind] = (byKind[n.kind] ?? 0) + 1;
+  const ids = nodes.map((n) => n.id).sort(cmp8);
+  return { total: ids.length, byKind, first: ids.slice(0, CARD_LIST) };
+}
+var byWeight = (key) => (a, b) => b.weight - a.weight || cmp8(a[key], b[key]) || cmp8(a.kind, b.kind);
+function nodeCard(live, id) {
+  const node = live.byId.get(id);
+  if (!node) return void 0;
+  const { view } = live;
+  const outs = view.edges.filter((e) => e.from === id);
+  const ins = view.edges.filter((e) => e.to === id);
+  const card = {
+    id: node.id,
+    kind: node.kind,
+    label: node.label,
+    ...node.parent ? { parent: node.parent } : {},
+    ...node.summary ? { summary: node.summary } : {},
+    cites: node.cites,
+    ...node.at ? { at: node.at } : {},
+    caps: node.caps,
+    tags: node.tags,
+    metrics: node.metrics,
+    ...node.role ? { role: node.role } : {},
+    ...node.actors ? { actors: node.actors } : {},
+    ...node.fields ? { fields: node.fields } : {},
+    ...node.slice ? { slice: node.slice } : {},
+    children: listOf(view.nodes.filter((n) => n.parent === id)),
+    edges: { in: ins.length, out: outs.length },
+    out: [...outs].sort(byWeight("to")).slice(0, CARD_EDGES),
+    in: [...ins].sort(byWeight("from")).slice(0, CARD_EDGES)
+  };
+  if (node.kind === "mod" && !node.slice) {
+    const slices = view.nodes.filter((n) => n.slice?.of === id).map((n) => n.id);
+    if (slices.length) card.slices = slices;
+  }
+  if (node.kind === "cap") {
+    const serving = view.nodes.filter((n) => n.caps.includes(id));
+    const coarse = serving.filter((n) => n.kind !== "file" && n.kind !== "sym");
+    card.members = { ...listOf(serving), first: listOf(coarse.length ? coarse : serving).first };
+  }
+  if (id === UNASSIGNED_SYS) {
+    const codeFiles = new Set(view.nodes.filter((n) => n.kind === "file" && n.tags.includes("code")).map((n) => n.id.slice("file:".length)));
+    card.unassignedFiles = [...live.fileSystems].filter(([rel2, sys]) => sys === UNASSIGNED_SYS && codeFiles.has(rel2)).map(([rel2]) => rel2).sort(cmp8);
+  }
+  return card;
+}
+function similarIds(view, query, n = 5) {
+  const q = query.toLowerCase().replace(/^[a-z]+:/, "");
+  if (!q) return [];
+  return view.nodes.filter((x) => x.id.toLowerCase().includes(q) || x.label.toLowerCase().includes(q)).map((x) => x.id).sort((a, b) => a.length - b.length || cmp8(a, b)).slice(0, n);
+}
+function fmtList(l) {
+  const kinds2 = Object.entries(l.byKind).sort((a, b) => cmp8(a[0], b[0])).map(([k, v]) => `${v} ${k}`).join(", ");
+  return `${l.total}${kinds2 ? ` (${kinds2})` : ""}`;
+}
+function fmtEdge(e, other, arrow) {
+  return `  ${arrow} ${other}  ${e.kind} w${e.weight}${e.derived ? "" : " (model)"}${e.label ? `  "${e.label}"` : ""}${e.cite ? `  [${e.cite}]` : ""}`;
+}
+function formatNodeCard(c2) {
+  const lines = [`${c2.id}  (${c2.kind}${c2.role ? `, ${c2.role}` : ""})  ${c2.label}`];
+  const row2 = (k, v) => lines.push(`${k.padEnd(9)} ${v}`);
+  if (c2.summary) row2("summary", c2.summary.replace(/\s+/g, " "));
+  if (c2.at) row2("at", c2.at);
+  if (c2.cites.length) row2("cites", c2.cites.join(", "));
+  row2("parent", c2.parent ?? "(top level)");
+  if (c2.slice) row2("slice of", `${c2.slice.of} ${c2.slice.qualifier}`);
+  if (c2.slices) row2("slices", c2.slices.join(", "));
+  if (c2.kind !== "cap") row2("caps", c2.caps.length ? c2.caps.join(", ") : "(none)");
+  if (c2.actors?.length) row2("actors", c2.actors.join(", "));
+  if (c2.tags.length) row2("tags", c2.tags.join(", "));
+  const m = c2.metrics;
+  row2("metrics", `loc ${m.loc} \xB7 pagerank ${m.pagerank} \xB7 tests ${m.tests} \xB7 churn ${m.churn}`);
+  if (c2.fields?.length) row2("fields", c2.fields.map((f) => `${f.name}: ${f.type}${f.relation ? ` -> ${f.relation}` : ""}`).join(", "));
+  if (c2.children.total) {
+    row2("children", fmtList(c2.children));
+    for (const id of c2.children.first) lines.push(`  ${id}`);
+    if (c2.children.total > c2.children.first.length) lines.push(`  \u2026 and ${c2.children.total - c2.children.first.length} more`);
+  }
+  if (c2.members) {
+    row2("members", fmtList(c2.members));
+    for (const id of c2.members.first) lines.push(`  ${id}`);
+  }
+  if (c2.unassignedFiles) {
+    row2("unmatched", `${c2.unassignedFiles.length} code file(s) no system's paths match`);
+    for (const rel2 of c2.unassignedFiles.slice(0, CARD_LIST)) lines.push(`  ${rel2}`);
+    if (c2.unassignedFiles.length > CARD_LIST) lines.push(`  \u2026 and ${c2.unassignedFiles.length - CARD_LIST} more`);
+  }
+  row2("out", `${c2.edges.out} edge(s)${c2.edges.out > c2.out.length ? `, top ${c2.out.length} by weight` : ""}`);
+  for (const e of c2.out) lines.push(fmtEdge(e, e.to, "->"));
+  row2("in", `${c2.edges.in} edge(s)${c2.edges.in > c2.in.length ? `, top ${c2.in.length} by weight` : ""}`);
+  for (const e of c2.in) lines.push(fmtEdge(e, e.from, "<-"));
+  return `${lines.join("\n")}
+`;
+}
+
+// src/chat.ts
+var CONVERSATIONS_DIR = `${VIEW_DIR}/conversations`;
+var CHAT_ID_MAX = 64;
+var CHAT_TURNS_MAX = 40;
+var CHAT_QUESTION_MAX = 500;
+var CHAT_TITLE_MAX = 120;
+var FOLLOW_UP_MAX = 300;
+var CONTEXT_MAX = 300;
+var DEFAULT_CHAT_TITLE = "Conversation";
+var DIGEST_BUDGET = 400;
+var DIGEST_TURNS = 6;
+var DIGEST_QUESTION = 200;
+var DIGEST_SUMMARY = 160;
+var DIGEST_NODES = 8;
+var IN_PLAY = 12;
+var CHARS_PER_TOKEN3 = 4;
+var cmp9 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+function isChatId(id) {
+  return typeof id === "string" && id.length <= CHAT_ID_MAX && SLUG_RE.test(id);
+}
+var conversationFile = (id) => `${CONVERSATIONS_DIR}/${id}.json`;
+var draftFile = (id) => `${CONVERSATIONS_DIR}/${id}.draft.json`;
+function assertId(id) {
+  if (!isChatId(id)) throw new Error(`not a conversation id (lowercase letters, digits and dashes, at most ${CHAT_ID_MAX}): ${id}`);
+}
+function readConversation(repoArg, id) {
+  assertId(id);
+  const abs = join46(resolve23(repoArg), conversationFile(id));
+  if (!existsSync22(abs)) return void 0;
+  const { value, problems } = parseJson(readFileSync29(abs, "utf8"));
+  const found = problems.length ? problems : validateConversation(value);
+  if (!found.length && value.id !== id)
+    found.push({ path: "id", message: `"${value.id}" must match the file name (${id}.json)` });
+  return found.length ? { problems: found } : { conversation: value, problems: [] };
+}
+function loadConversation(repo, id) {
+  const r = readConversation(repo, id);
+  if (!r) throw new Error(`unknown conversation: ${id} (\`ultraview chat list\` lists them; \`ultraview chat new\` starts one)`);
+  if (!r.conversation) throw new Error(`${conversationFile(id)} is invalid: ${r.problems.map((p) => `${p.path || "(root)"}: ${p.message}`).join("; ")}`);
+  return r.conversation;
+}
+function conversationIds(repoArg) {
+  const dir = join46(resolve23(repoArg), CONVERSATIONS_DIR);
+  if (!existsSync22(dir)) return [];
+  return readdirSync7(dir).filter((n) => n.endsWith(".json") && isChatId(n.slice(0, -".json".length))).map((n) => n.slice(0, -".json".length)).sort();
+}
+function loadConversations(repo) {
+  const conversations = [];
+  const problems = [];
+  for (const id of conversationIds(repo)) {
+    const r = readConversation(repo, id);
+    if (r.conversation) conversations.push(r.conversation);
+    for (const p of r.problems) problems.push({ file: conversationFile(id), ...p });
+  }
+  return { conversations, problems };
+}
+function staleTurns(repoArg, c2) {
+  const repo = resolve23(repoArg);
+  const out2 = [];
+  c2.turns.forEach((t, i2) => {
+    if (Object.entries(t.sources).some(([rel2, sha2]) => fileSha256(join46(repo, rel2)) !== sha2)) out2.push(i2);
+  });
+  return out2;
+}
+var updatedAt = (c2) => c2.turns.at(-1)?.at ?? c2.createdAt;
+function chatList(repoArg) {
+  const repo = resolve23(repoArg);
+  const { conversations, problems } = loadConversations(repo);
+  const list = conversations.map((c2) => ({ id: c2.id, title: c2.title, turns: c2.turns.length, updatedAt: updatedAt(c2), stale: staleTurns(repo, c2).length })).sort((a, b) => cmp9(b.updatedAt, a.updatedAt) || cmp9(a.id, b.id));
+  return { conversations: list, invalid: problems };
+}
+function proposeChatId(repoArg, title) {
+  const taken = new Set(conversationIds(repoArg));
+  const words2 = codeindex_engine_exports.foldText(title).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  let base = "";
+  for (const w of words2) {
+    const next = base ? `${base}-${w}` : w;
+    if (next.length > 48) break;
+    base = next;
+  }
+  if (!SLUG_RE.test(base)) base = "conversation";
+  for (let n = 1; ; n++) {
+    const id = n === 1 ? base : `${base}-${n}`;
+    if (!taken.has(id)) return id;
+  }
+}
+var oneLine = (s) => s.replace(/\s+/g, " ").trim();
+function cut(s, max) {
+  if (s.length <= max) return s;
+  const head = s.slice(0, max - 1);
+  const sp = head.lastIndexOf(" ");
+  return `${(sp > max / 2 ? head.slice(0, sp) : head).trimEnd()}\u2026`;
+}
+function checkTitle(title) {
+  const t = oneLine(title ?? "");
+  if (!t) return DEFAULT_CHAT_TITLE;
+  if (t.length > CHAT_TITLE_MAX) return { error: `the title is longer than ${CHAT_TITLE_MAX} characters` };
+  return t;
+}
+function chatNew(repoArg, opts = {}) {
+  const repo = resolve23(repoArg);
+  const title = checkTitle(opts.title);
+  if (typeof title !== "string") throw new Error(title.error);
+  const id = opts.id ?? proposeChatId(repo, title);
+  assertId(id);
+  if (existsSync22(join46(repo, conversationFile(id)))) throw new Error(`${conversationFile(id)} already exists`);
+  const c2 = { id, title, createdAt: (opts.now ?? /* @__PURE__ */ new Date()).toISOString(), turns: [] };
+  writeFileAtomic(join46(repo, conversationFile(id)), stableJson(c2));
+  return c2;
+}
+function checkContext(v) {
+  if (v === void 0 || v === null) return {};
+  if (typeof v !== "object" || Array.isArray(v)) return { error: "`context` must be an object: {node?, edge?, insight?, step?}" };
+  const out2 = {};
+  for (const [k, val] of Object.entries(v)) {
+    if (k !== "node" && k !== "edge" && k !== "insight" && k !== "step") return { error: `unknown context key "${k}" (node, edge, insight, step)` };
+    if (val === void 0) continue;
+    if (typeof val !== "string" || !val.trim()) return { error: `context.${k} must be a non-empty string` };
+    if (val.length > CONTEXT_MAX) return { error: `context.${k} is longer than ${CONTEXT_MAX} characters` };
+    out2[k] = val.trim();
+  }
+  return out2;
+}
+var hasContext = (c2) => !!c2 && Object.keys(c2).length > 0;
+function resolveContext(view, ctx) {
+  const nodes = [];
+  const lines = [];
+  const known = (id, what) => view.byId.has(id) ? void 0 : `unknown ${what}: ${id}`;
+  const label = (id) => view.byId.get(id)?.label ?? id;
+  if (ctx.node !== void 0) {
+    const e = known(ctx.node, "node");
+    if (e) return { error: `context.node: ${e}` };
+    nodes.push(ctx.node);
+    lines.push(`node ${ctx.node} (${label(ctx.node)})`);
+  }
+  if (ctx.edge !== void 0) {
+    const m = /^(.+?)\s*->\s*(.+)$/.exec(ctx.edge);
+    if (!m) return { error: 'context.edge must be "<from-id> -> <to-id>"' };
+    for (const id of [m[1], m[2]]) {
+      const e = known(id, "node");
+      if (e) return { error: `context.edge: ${e}` };
+    }
+    nodes.push(m[1], m[2]);
+    lines.push(`edge ${m[1]} -> ${m[2]} (${label(m[1])} to ${label(m[2])})`);
+  }
+  if (ctx.insight !== void 0) {
+    const ins = view.insights.find((i2) => i2.id === ctx.insight);
+    if (!ins) return { error: `context.insight: unknown insight: ${ctx.insight}` };
+    nodes.push(...ins.nodes.filter((n) => view.byId.has(n)).slice(0, 8));
+    lines.push(`insight ${ins.id}: ${ins.title}`);
+  }
+  if (ctx.step !== void 0) {
+    const m = /^([a-z0-9][a-z0-9-]*):(\d+)$/.exec(ctx.step);
+    if (!m) return { error: 'context.step must be "<flow-id>:<n>" (n from 1)' };
+    const flow = view.flows.find((f) => f.id === m[1]);
+    const step = flow?.steps[Number(m[2]) - 1];
+    if (!flow || !step) return { error: `context.step: unknown flow step: ${ctx.step}` };
+    if (view.byId.has(step.node)) nodes.push(step.node);
+    lines.push(`step ${m[2]} of flow ${flow.id} ("${flow.title}"): ${step.node}`);
+  }
+  return { nodes: [...new Set(nodes)], lines };
+}
+function answerSummary(answer) {
+  const first = splitSentences(answer)[0] ?? answer;
+  return cut(oneLine(first.replace(/\[[^\]\n]*\]/g, " ").replace(/[*_`#>]/g, "")), DIGEST_SUMMARY);
+}
+function turnNodes(t) {
+  const out2 = [...t.answer.nodes];
+  if (t.answer.focus && !out2.includes(t.answer.focus)) out2.unshift(t.answer.focus);
+  for (const v of [t.context?.node, ...t.context?.edge ? t.context.edge.split(/\s*->\s*/) : []]) if (v && kindOf2(v) && !out2.includes(v)) out2.push(v);
+  return out2;
+}
+function inPlay(c2, max = IN_PLAY) {
+  const out2 = [];
+  for (const t of [...c2.turns].reverse().slice(0, DIGEST_TURNS)) for (const n of turnNodes(t)) if (!out2.includes(n)) out2.push(n);
+  return out2.slice(0, max);
+}
+function digestTurn(t, n) {
+  const nodes = turnNodes(t);
+  const lines = [
+    `${n}. [${t.lang}, ${t.mode}] ${JSON.stringify(cut(oneLine(t.question), DIGEST_QUESTION))}`,
+    `   answer: ${answerSummary(t.answer.answer)}`,
+    `   nodes: ${nodes.slice(0, DIGEST_NODES).join(", ") || "(none)"}${nodes.length > DIGEST_NODES ? ` (+${nodes.length - DIGEST_NODES})` : ""}`
+  ];
+  const about = [
+    t.context?.node && `node ${t.context.node}`,
+    t.context?.edge && `edge ${t.context.edge}`,
+    t.context?.insight && `insight ${t.context.insight}`,
+    t.context?.step && `step ${t.context.step}`
+  ].filter(Boolean);
+  if (about.length) lines.push(`   asked about: ${about.join("; ")}`);
+  return lines.join("\n");
+}
+function chatDigest(c2, budget = DIGEST_BUDGET) {
+  if (!c2.turns.length) return "";
+  const max = budget * CHARS_PER_TOKEN3;
+  const from = Math.max(0, c2.turns.length - DIGEST_TURNS);
+  const blocks = c2.turns.slice(from).map((t, i2) => digestTurn(t, from + i2 + 1));
+  const play = inPlay(c2);
+  const tail = play.length ? [`In play (most recent first): ${play.join(", ")}`] : [];
+  const render = (bs) => {
+    const left = c2.turns.length - bs.length;
+    const head = `## Conversation so far (thread ${c2.id}: ${c2.turns.length} turn(s)${left ? `, the ${left} oldest left out` : ""}; most recent last)`;
+    return [head, ...bs, ...tail].join("\n");
+  };
+  let kept = blocks;
+  let text2 = render(kept);
+  while (text2.length > max && kept.length > 1) {
+    kept = kept.slice(1);
+    text2 = render(kept);
+  }
+  return text2.length > max ? `${text2.slice(0, max - 1)}\u2026` : text2;
+}
+var TURN_KEYS = /* @__PURE__ */ new Set(["lang", "mode", "followUps", "context"]);
+var LENS_KEYS = /* @__PURE__ */ new Set(["schema", "id", "question", "answer", "nodes", "edges", "focus"]);
+function saveTurn(repoArg, input, opts = {}) {
+  const repo = resolve23(repoArg);
+  const source = opts.source ?? "agent";
+  let value = input;
+  if (typeof input === "string") {
+    const parsed2 = parseJson(input);
+    value = parsed2.value;
+    if (parsed2.problems.length) value = void 0;
+  }
+  const rec = value && typeof value === "object" && !Array.isArray(value) ? value : void 0;
+  let conv;
+  let thread;
+  const errors = [];
+  if (opts.thread !== void 0) {
+    thread = opts.thread;
+    conv = loadConversation(repo, thread);
+    if (conv.turns.length >= CHAT_TURNS_MAX)
+      errors.push({ path: "turns", message: `the conversation already holds ${CHAT_TURNS_MAX} turns: start a new one (\`ultraview chat new\`)` });
+  } else {
+    const question2 = typeof (opts.question ?? rec?.question) === "string" ? String(opts.question ?? rec?.question) : "";
+    const title2 = checkTitle(opts.create?.title ?? cut(oneLine(question2), CHAT_TITLE_MAX));
+    thread = opts.create?.id ?? proposeChatId(repo, typeof title2 === "string" ? title2 : DEFAULT_CHAT_TITLE);
+    assertId(thread);
+    if (typeof title2 !== "string") errors.push({ path: "title", message: title2.error });
+  }
+  const file = conversationFile(thread);
+  const index = conv?.turns.length ?? 0;
+  const fail = (more = []) => ({ ok: false, thread, file, index, created: false, errors: [...errors, ...more] });
+  if (!rec)
+    return fail([{ path: "", message: typeof input === "string" ? parseJson(input).problems[0]?.message ?? "not a JSON object" : "must be an object" }]);
+  const lensPart = {};
+  for (const [k, v] of Object.entries(rec)) {
+    if (LENS_KEYS.has(k)) lensPart[k] = v;
+    else if (!TURN_KEYS.has(k)) errors.push({ path: k, message: `unknown key "${k}" (allowed: ${[...LENS_KEYS, ...TURN_KEYS].join(", ")})` });
+  }
+  const question = opts.question ?? lensPart.question;
+  if (typeof question === "string" && question.length > CHAT_QUESTION_MAX)
+    errors.push({ path: "question", message: `longer than ${CHAT_QUESTION_MAX} characters` });
+  const prepared = prepareLens(repo, { ...lensPart, schema: 1, id: thread, question });
+  errors.push(...prepared.errors);
+  const lens = prepared.item;
+  let view = opts.view;
+  const mapView = () => view ??= contextView(repo);
+  if (lens && !prepared.errors.length) errors.push(...answerProblems(lens, new Set(mapView().byId.keys())));
+  const followUps = rec.followUps ?? [];
+  if (!Array.isArray(followUps) || followUps.some((f) => typeof f !== "string" || !oneLine(f)))
+    errors.push({ path: "followUps", message: "must be an array of non-empty strings" });
+  const ups = Array.isArray(followUps) ? followUps.filter((f) => typeof f === "string").map(oneLine) : [];
+  if (source === "agent" && Array.isArray(followUps) && followUps.length !== FOLLOW_UPS)
+    errors.push({ path: "followUps", message: `exactly ${FOLLOW_UPS} follow-up questions, in the question's language (got ${followUps.length})` });
+  if (source === "facts" && ups.length > FOLLOW_UPS) errors.push({ path: "followUps", message: `at most ${FOLLOW_UPS} follow-ups (got ${ups.length})` });
+  ups.forEach((f, i2) => {
+    if (f.length > FOLLOW_UP_MAX) errors.push({ path: `followUps[${i2}]`, message: `longer than ${FOLLOW_UP_MAX} characters` });
+  });
+  let lang = typeof question === "string" ? guessLang(question) : "und";
+  if (rec.lang !== void 0) {
+    if (typeof rec.lang !== "string" || !LANG_RE.test(rec.lang))
+      errors.push({ path: "lang", message: `"${String(rec.lang)}" is not a language tag (en, fr, pt-BR\u2026)` });
+    else lang = rec.lang;
+  }
+  let mode = opts.mode ?? conv?.turns.at(-1)?.mode ?? "business";
+  if (opts.mode === void 0 && rec.mode !== void 0) {
+    if (!CHAT_MODES.includes(rec.mode)) errors.push({ path: "mode", message: `must be one of ${CHAT_MODES.join(", ")}` });
+    else mode = rec.mode;
+  }
+  let context = opts.context;
+  if (context === void 0 && rec.context !== void 0) {
+    const c2 = checkContext(rec.context);
+    if ("error" in c2) errors.push({ path: "context", message: c2.error });
+    else context = c2;
+  }
+  if (hasContext(context)) {
+    const r = resolveContext(mapView(), context);
+    if ("error" in r) errors.push({ path: "context", message: r.error });
+  }
+  if (errors.length || !lens) return fail();
+  const turn = {
+    question: lens.question,
+    lang,
+    mode,
+    ...hasContext(context) ? { context } : {},
+    source,
+    answer: { answer: lens.answer, nodes: lens.nodes, ...lens.edges ? { edges: lens.edges } : {}, ...lens.focus ? { focus: lens.focus } : {} },
+    followUps: ups,
+    sources: prepared.sources,
+    at: (opts.now ?? /* @__PURE__ */ new Date()).toISOString(),
+    ...opts.ms !== void 0 ? { ms: Math.max(0, Math.round(opts.ms)) } : {}
+  };
+  const created = !conv;
+  const title = checkTitle(opts.create?.title ?? cut(oneLine(lens.question), CHAT_TITLE_MAX));
+  const next = conv ? {
+    ...conv,
+    ...conv.turns.length === 0 && conv.title === DEFAULT_CHAT_TITLE ? { title: cut(oneLine(lens.question), CHAT_TITLE_MAX) } : {},
+    turns: [...conv.turns, turn]
+  } : { id: thread, title: typeof title === "string" ? title : DEFAULT_CHAT_TITLE, createdAt: turn.at, turns: [turn] };
+  if (created && existsSync22(join46(repo, file))) return fail([{ path: "id", message: `${file} already exists` }]);
+  writeFileAtomic(join46(repo, file), stableJson(next));
+  return { ok: true, thread, file, index, created, turn, errors: [] };
+}
+function contextView(repoArg) {
+  const repo = resolve23(repoArg);
+  const live = liveView(repo);
+  let viewText;
+  try {
+    viewText = readFileSync29(viewPaths(repo).view, "utf8");
+  } catch {
+    viewText = void 0;
+  }
+  return { byId: live.byId, flows: live.view.flows, insights: carriedOver(viewText).insights ?? [] };
+}
+function promoteTurn(repoArg, id, n, opts) {
+  const repo = resolve23(repoArg);
+  const c2 = loadConversation(repo, id);
+  const t = c2.turns[n - 1];
+  if (!Number.isInteger(n) || !t) throw new Error(`${id} has no turn ${n} (it holds ${c2.turns.length}; turns count from 1)`);
+  const lensId = opts.lensId ?? opts.proposeId(t.question);
+  return saveLens(repo, { schema: 1, id: lensId, question: t.question, ...t.answer }, { force: opts.force });
+}
+function formatChatList(r) {
+  if (!r.conversations.length && !r.invalid.length) return "conversations none yet: `ultraview chat new` starts one\n";
+  const lines = [`conversations ${r.conversations.length}`];
+  for (const c2 of r.conversations)
+    lines.push(`  ${c2.id}  ${c2.turns} turn(s)  updated ${c2.updatedAt.slice(0, 10)}${c2.stale ? `  [${c2.stale} stale]` : ""}`, `    ${c2.title}`);
+  if (r.invalid.length) {
+    lines.push("invalid (run `ultraview check`)");
+    for (const p of r.invalid) lines.push(`  ${p.file}: ${p.path ? `${p.path}: ` : ""}${p.message}`);
+  }
+  return `${lines.join("\n")}
+`;
+}
+function formatConversation(c2, stale = []) {
+  const lines = [`conversation ${c2.id}  "${c2.title}"  created ${c2.createdAt}  ${c2.turns.length} turn(s)`];
+  c2.turns.forEach((t, i2) => {
+    lines.push(
+      "",
+      `## Turn ${i2 + 1}  [${t.lang}, ${t.mode}, ${t.source}]  ${t.at}${stale.includes(i2) ? "  STALE" : ""}`,
+      `Q: ${t.question}`,
+      ...hasContext(t.context) ? [
+        `about: ${Object.entries(t.context).map(([k, v]) => `${k} ${v}`).join("; ")}`
+      ] : [],
+      "",
+      t.answer.answer,
+      "",
+      `nodes: ${t.answer.nodes.join(", ") || "(none)"}${t.answer.focus ? `  focus: ${t.answer.focus}` : ""}`,
+      ...t.followUps.length ? ["follow-ups:", ...t.followUps.map((f) => `  - ${f}`)] : []
+    );
+  });
+  lines.push("", `open it: #chat=${c2.id} (live when \`ultraview serve\` runs); promote a turn to a lens: \`ultraview chat promote ${c2.id} <turn>\``);
+  return `${lines.join("\n")}
+`;
+}
+
+// src/check.ts
+var FILES_IN_SYSTEMS_MIN = 0.9;
+var MODULES_IN_CAPABILITIES_MIN = 0.7;
+var THRESHOLDS = { filesInSystems: FILES_IN_SYSTEMS_MIN, modulesInCapabilities: MODULES_IN_CAPABILITIES_MIN };
+function formatIssue(i2) {
+  return `${i2.file}${i2.path ? ` ${i2.path}` : ""}: ${i2.message}`;
+}
+var pct = (x) => `${(x * 100).toFixed(1)}%`;
+function checkMap(repoArg, opts = {}) {
+  const repo = resolve24(repoArg);
+  if (!existsSync23(repo)) throw new Error(`repo not found: ${repo}`);
+  const paths = viewPaths(repo);
+  const errors = [];
+  const warnings = [];
+  let view;
+  const report = () => ({
+    repo,
+    ok: errors.length === 0,
+    errors,
+    warnings,
+    coverage: view?.coverage ?? { filesInSystems: 0, modulesInCapabilities: 0 },
+    thresholds: THRESHOLDS,
+    stale: view?.stale ?? { lenses: [], flows: [], prose: [] }
+  });
+  if (!indexExists(paths.index)) {
+    errors.push({ file: ".ultraindex", path: "", message: "no ultraindex index: run `ultraview build` first" });
+    return report();
+  }
+  const idx = runCheck(paths.index, paths.repo);
+  if (idx.stale) {
+    errors.push({
+      file: ".ultraindex",
+      path: "",
+      message: `index is stale (${idx.changed.length} changed, ${idx.added.length} added, ${idx.removed.length} removed): run \`ultraview build\`, then check again`
+    });
+  }
+  if (!existsSync23(paths.facts)) errors.push({ file: ".ultraview/facts.json", path: "", message: "missing: run `ultraview build`" });
+  if (!existsSync23(paths.model)) errors.push({ file: MODEL_FILE, path: "", message: "missing: write it (systems first, then capabilities)" });
+  const loaded2 = loadViewInputs(repo);
+  errors.push(...loaded2.problems);
+  const assembled = assembleWithNotes(loaded2.inputs);
+  view = assembled.view;
+  const ids = new Set(view.nodes.map((n) => n.id));
+  const { model, flows, lenses, timeline, graph } = loaded2.inputs;
+  const lineTable2 = fileLineTable(graph);
+  const resolveId = (file, path, id) => {
+    if (id !== void 0 && !ids.has(id)) errors.push({ file, path, message: unknownNode(id) });
+  };
+  const prose = (file, path, text2) => {
+    for (const p of proseProblems(path, text2, lineTable2)) errors.push({ file, ...p });
+  };
+  if (model) {
+    prose(MODEL_FILE, "app.summary", model.app.summary);
+    model.systems.forEach((s, i2) => {
+      if (s.summary === void 0) warnings.push({ file: MODEL_FILE, path: `systems[${i2}]`, message: `system "${s.id}" has no summary` });
+      prose(MODEL_FILE, `systems[${i2}].summary`, s.summary);
+    });
+    model.capabilities.forEach((c2, i2) => {
+      if (c2.summary === void 0) warnings.push({ file: MODEL_FILE, path: `capabilities[${i2}]`, message: `capability "${c2.id}" has no summary` });
+      prose(MODEL_FILE, `capabilities[${i2}].summary`, c2.summary);
+      (c2.members ?? []).forEach((m, j) => resolveId(MODEL_FILE, `capabilities[${i2}].members[${j}]`, m));
+    });
+    (model.edges ?? []).forEach((e, i2) => {
+      resolveId(MODEL_FILE, `edges[${i2}].from`, e.from);
+      resolveId(MODEL_FILE, `edges[${i2}].to`, e.to);
+      if (e.cite === void 0) {
+        errors.push({ file: MODEL_FILE, path: `edges[${i2}]`, message: "a hand-written edge needs a `cite` (path:line it rests on)" });
+        return;
+      }
+      const c2 = checkCitations(`[${e.cite}]`, lineTable2);
+      if (c2.unresolved.length) errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `dead citation [${e.cite}]: ${c2.unresolved[0].reason}` });
+      else if (!c2.resolved.length || !lineTable2.has(c2.resolved[0].path))
+        errors.push({ file: MODEL_FILE, path: `edges[${i2}].cite`, message: `"${e.cite}" is not an indexed path:line` });
+    });
+    (model.tour ?? []).forEach((t, i2) => {
+      resolveId(MODEL_FILE, `tour[${i2}].node`, t.node);
+      prose(MODEL_FILE, `tour[${i2}].note`, t.note);
+    });
+    (model.glossary ?? []).forEach((g, i2) => prose(MODEL_FILE, `glossary[${i2}].meaning`, g.meaning));
+    for (const g of assembled.emptyGlobs) warnings.push({ file: MODEL_FILE, path: g.path, message: `glob "${g.glob}" matches no indexed file` });
+    if (view.coverage.filesInSystems < FILES_IN_SYSTEMS_MIN) {
+      errors.push({
+        file: MODEL_FILE,
+        path: "systems",
+        message: `systems hold ${pct(view.coverage.filesInSystems)} of code files, below ${pct(FILES_IN_SYSTEMS_MIN)}: widen \`paths\` (\`ultraview show sys:_unassigned\` lists the rest)`
+      });
+    }
+    if (view.coverage.modulesInCapabilities < MODULES_IN_CAPABILITIES_MIN) {
+      errors.push({
+        file: MODEL_FILE,
+        path: "capabilities",
+        message: `capabilities claim ${pct(view.coverage.modulesInCapabilities)} of non-test code modules, below ${pct(MODULES_IN_CAPABILITIES_MIN)}: add members (\`ultraview show cap:_foundations\` lists the unclaimed)`
+      });
+    }
+  }
+  for (const f of flows) {
+    const file = `${FLOWS_DIR}/${f.id}.json`;
+    resolveId(file, "trigger", f.trigger);
+    f.steps.forEach((s, i2) => {
+      resolveId(file, `steps[${i2}].node`, s.node);
+      prose(file, `steps[${i2}].note`, s.note);
+    });
+    if (!f.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview flow save`" });
+  }
+  for (const l of lenses) {
+    const file = `${LENSES_DIR}/${l.id}.json`;
+    for (const p of answerProblems(l, ids, lineTable2)) errors.push({ file, ...p });
+    if (!l.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview lens save`" });
+  }
+  const chats = loadConversations(repo);
+  errors.push(...chats.problems);
+  for (const c2 of chats.conversations) {
+    const file = conversationFile(c2.id);
+    c2.turns.forEach((t, i2) => {
+      for (const p of answerProblems(t.answer, ids, lineTable2, `turns[${i2}].answer.`)) errors.push({ file, ...p });
+      if (t.context?.node !== void 0) resolveId(file, `turns[${i2}].context.node`, t.context.node);
+    });
+  }
+  timeline.forEach((t, i2) => {
+    if (!t.auto) prose(TIMELINE_FILE, `line ${i2 + 1}.summary`, t.summary);
+  });
+  const staleSink = opts.strict ? errors : warnings;
+  for (const id of view.stale.lenses)
+    staleSink.push({
+      file: `${LENSES_DIR}/${id}.json`,
+      path: "",
+      message: "stale: a cited file changed since it was saved; re-ask, then `ultraview lens save`"
+    });
+  for (const id of view.stale.flows)
+    staleSink.push({
+      file: `${FLOWS_DIR}/${id}.json`,
+      path: "",
+      message: "stale: a cited file changed since it was saved; re-check, then `ultraview flow save`"
+    });
+  for (const c2 of chats.conversations)
+    for (const i2 of staleTurns(repo, c2))
+      staleSink.push({
+        file: conversationFile(c2.id),
+        path: `turns[${i2}]`,
+        message: `stale: a cited file changed since turn ${i2 + 1} was saved; ask it again in the thread (\`ultraview lens new --thread ${c2.id}\`)`
+      });
+  for (const id of view.stale.prose)
+    warnings.push({ file: ".ultraindex", path: id, message: "ultraindex prose is stale (the module's code changed since it was written)" });
+  return report();
+}
+
+// src/dossier.ts
+import { join as join47, resolve as resolve25 } from "path";
+var DOSSIER_BUDGET = 6e3;
+var CHARS_PER_TOKEN4 = 4;
+var KEY_FILES = 8;
+var HEAD_LINES2 = 60;
+var NEIGHBOURS = 12;
+var FACTS_PER_KIND = 25;
+var SITES = 12;
+var cmp10 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var CITE_RULE = "Every sentence you write cites the file it rests on as `[path:line]` (or `[path:start-end]`); `ultraview check` fails a dead citation and an uncited sentence.";
+function readLines(repo, rel2) {
+  try {
+    return codeindex_engine_exports.readText(join47(repo, rel2)).split(/\r?\n/);
+  } catch {
+    return void 0;
+  }
+}
+function excerpt(repo, rel2, from, to) {
+  const lines = readLines(repo, rel2);
+  if (!lines) return void 0;
+  const a = Math.max(1, from);
+  const b = Math.min(lines.length, to);
+  if (a > b) return void 0;
+  const width = String(b).length;
+  return lines.slice(a - 1, b).map((l, i2) => `${String(a + i2).padStart(width)}  ${l}`).join("\n");
+}
+function atParts(at) {
+  if (!at) return void 0;
+  const i2 = at.lastIndexOf(":");
+  return i2 > 0 ? { file: at.slice(0, i2), line: Number(at.slice(i2 + 1)) } : void 0;
+}
+function withinBudget(sections, budget) {
+  const max = budget * CHARS_PER_TOKEN4;
+  const out2 = [];
+  let used = 0;
+  for (let i2 = 0; i2 < sections.length; i2++) {
+    const s = sections[i2];
+    if (used + s.length + 2 <= max) {
+      out2.push(s);
+      used += s.length + 2;
+      continue;
+    }
+    const room = max - used;
+    const nl = room > 0 ? s.lastIndexOf("\n", room) : -1;
+    if (nl > 0) {
+      let kept = s.slice(0, nl);
+      if ((kept.match(/```/g)?.length ?? 0) % 2 === 1) kept += "\n```";
+      out2.push(kept);
+    }
+    out2.push(`\u2026 (cut to the ~${budget}-token budget: ${sections.length - i2 - (nl > 0 ? 1 : 0)} more section(s); pass --budget to see more)`);
+    break;
+  }
+  return `${out2.join("\n\n")}
+`;
+}
+function neighbourLines(live, id, leafOnly = false) {
+  const label = (x) => live.byId.get(x)?.label ?? x;
+  const coarse = /* @__PURE__ */ new Set(["cap", "sys", "mod"]);
+  const keep = (other) => !leafOnly || !coarse.has(kindOf2(other) ?? "");
+  const byW = (key) => (a, b) => b.weight - a.weight || cmp10(a[key], b[key]) || cmp10(a.kind, b.kind);
+  const outs = live.view.edges.filter((e) => e.from === id && keep(e.to)).sort(byW("to"));
+  const ins = live.view.edges.filter((e) => e.to === id && keep(e.from)).sort(byW("from"));
+  const lines = [];
+  for (const e of outs.slice(0, NEIGHBOURS)) lines.push(`- -> ${e.to} (${label(e.to)})  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`);
+  if (outs.length > NEIGHBOURS) lines.push(`- \u2026 and ${outs.length - NEIGHBOURS} more outgoing`);
+  for (const e of ins.slice(0, NEIGHBOURS)) lines.push(`- <- ${e.from} (${label(e.from)})  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`);
+  if (ins.length > NEIGHBOURS) lines.push(`- \u2026 and ${ins.length - NEIGHBOURS} more incoming`);
+  return lines.length ? ["## Neighbours", ...lines] : [];
+}
+function factLines(nodes) {
+  const order = [
+    ["route", "routes"],
+    ["screen", "screens"],
+    ["entity", "entities"],
+    ["job", "jobs"],
+    ["ext", "externals"],
+    ["infra", "infra"]
+  ];
+  const lines = [];
+  for (const [kind, plural4] of order) {
+    const of = nodes.filter((n) => n.kind === kind).sort((a, b) => cmp10(a.id, b.id));
+    if (!of.length) continue;
+    lines.push(`${plural4} (${of.length}):`);
+    for (const n of of.slice(0, FACTS_PER_KIND)) lines.push(`- ${n.id}${n.tags.length ? ` (${n.tags.join(", ")})` : ""}${n.at ? `  [${n.at}]` : ""}`);
+    if (of.length > FACTS_PER_KIND) lines.push(`- \u2026 and ${of.length - FACTS_PER_KIND} more`);
+  }
+  return lines.length ? ["## Facts", ...lines] : [];
+}
+function evidenceBlocks(repo, rels) {
+  return gatherEvidence(repo, rels, HEAD_LINES2).map((e) => {
+    const parts2 = [`### ${e.rel} (${e.lines} lines)`];
+    if (e.exported.length) {
+      parts2.push("Exported:");
+      for (const s of e.exported) parts2.push(`- ${s.kind} ${s.name} @ line ${s.line}`);
+    }
+    parts2.push(`Source (lines 1-${e.headTo}${e.headTo < e.lines ? ", file continues" : ""}):`, "```", excerpt(repo, e.rel, 1, e.headTo) ?? e.head, "```");
+    return parts2.join("\n");
+  });
+}
+function header(n, task) {
+  const lines = [`# Dossier \u2014 ${n.id}  "${n.label}"`, "", `Task: ${task} ${CITE_RULE}`];
+  if (n.summary) lines.push("", `Current summary: ${n.summary.replace(/\s+/g, " ")}`);
+  const meta = [n.parent ? `parent ${n.parent}` : "", n.caps.length ? `caps ${n.caps.join(", ")}` : "", n.at ? `defined at ${n.at}` : ""].filter(Boolean);
+  if (meta.length) lines.push("", meta.join(" \xB7 "));
+  return lines.join("\n");
+}
+function topFiles(files) {
+  const isCode3 = (f) => f.tags.includes("code") ? 0 : 1;
+  return files.filter((f) => !f.tags.includes("test") && !f.tags.includes("doc")).sort((a, b) => isCode3(a) - isCode3(b) || b.metrics.pagerank - a.metrics.pagerank || cmp10(a.id, b.id)).slice(0, KEY_FILES).map((f) => fileOfId(f.id));
+}
+function groupDossier(live, repo, n, budget) {
+  const nodes = live.view.nodes;
+  let members;
+  if (n.kind === "cap") members = nodes.filter((x) => x.caps.includes(n.id));
+  else {
+    const under2 = /* @__PURE__ */ new Set([n.id]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const x of nodes) {
+        if (x.parent && under2.has(x.parent) && !under2.has(x.id)) {
+          under2.add(x.id);
+          grew = true;
+        }
+      }
+    }
+    under2.delete(n.id);
+    members = nodes.filter((x) => under2.has(x.id));
+  }
+  const files = members.filter((x) => x.kind === "file");
+  const fileSet = new Set(files.map((f) => f.id));
+  const exts = new Set(live.view.edges.filter((e) => fileSet.has(e.from) && kindOf2(e.to) === "ext").map((e) => e.to));
+  const factNodes = [...members, ...[...exts].map((x) => live.byId.get(x))].filter((x) => x && x.kind !== "file" && x.kind !== "sym" && x.kind !== "mod");
+  const mods = members.filter((x) => x.kind === "mod").sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp10(a.id, b.id));
+  const modLines = mods.map(
+    (m) => `- ${m.id} (${m.label}): ${nodes.filter((x) => x.parent === m.id && x.kind === "file").length} file(s), pagerank ${m.metrics.pagerank}`
+  );
+  const memberSection = [
+    `## Members: ${mods.length} module(s), ${files.length} file(s)`,
+    ...modLines.length ? modLines : files.slice(0, 20).map((f) => `- ${f.id}`)
+  ].join("\n");
+  const task = n.kind === "cap" ? `write this capability's \`summary\` in .ultraview/model.json: what it does for the people using the app, in plain words, from the evidence below.` : `write this system's \`summary\` in .ultraview/model.json: what it is and what it does for the app, in plain words, from the evidence below.`;
+  const sections = [header(n, task), memberSection];
+  const facts = factLines(factNodes);
+  if (facts.length) sections.push(facts.join("\n"));
+  const neigh = neighbourLines(live, n.id);
+  if (neigh.length) sections.push(neigh.join("\n"));
+  const key = topFiles(files);
+  if (key.length) sections.push(`## Key source (top ${key.length} file(s) by PageRank)`, ...evidenceBlocks(repo, key));
+  return withinBudget(sections, budget);
+}
+function sitesOf(facts, n) {
+  const p = parseId(n.id);
+  if (!p) return [];
+  switch (p.kind) {
+    case "route":
+      return facts.calls.filter((c2) => c2.route === n.id).map((c2) => ({ file: c2.file, line: c2.line, what: `${c2.method} ${c2.url}` }));
+    case "entity":
+      return facts.entityUses.filter((u) => u.entity === p.name).map((u) => ({ file: u.file, line: u.line, what: u.op }));
+    case "ext":
+      return facts.externals.filter((x) => x.id === p.name).map((x) => ({ file: x.file, line: x.line, what: `via ${x.via}` }));
+    case "job":
+      return facts.jobs.filter((j) => j.id === p.name).map((j) => ({ file: j.file, line: j.line, what: j.kind }));
+    default:
+      return [];
+  }
+}
+function leafDossier(live, repo, n, budget) {
+  const sections = [
+    header(n, `explain what \`${n.id}\` does and who relies on it, from the evidence below (a flow step, a lens answer or a capability summary).`)
+  ];
+  const at = atParts(n.at);
+  if (n.kind === "file") {
+    sections.push(...evidenceBlocks(repo, [fileOfId(n.id)]));
+  } else if (at) {
+    const end = n.metrics.loc > 0 ? at.line + n.metrics.loc - 1 : at.line + 15;
+    const ex = excerpt(repo, at.file, at.line - 3, Math.min(end + 2, at.line + 60));
+    if (ex) sections.push(`## Definition [${n.at}]
+\`\`\`
+${ex}
+\`\`\``);
+  }
+  if (n.fields?.length)
+    sections.push(["## Fields", ...n.fields.map((f) => `- ${f.name}: ${f.type}${f.relation ? ` -> entity:${f.relation}` : ""}`)].join("\n"));
+  const sites = sitesOf(live.loaded.inputs.facts, n).sort((a, b) => cmp10(a.file, b.file) || a.line - b.line);
+  const neigh = neighbourLines(live, n.id, true);
+  if (neigh.length) sections.push(neigh.join("\n"));
+  if (sites.length) {
+    sections.push(`## Used at (${sites.length} site(s))`);
+    for (const s of sites.slice(0, SITES)) {
+      const ex = excerpt(repo, s.file, s.line - 2, s.line + 3);
+      sections.push(`### [${s.file}:${s.line}] ${s.what}${ex ? `
+\`\`\`
+${ex}
+\`\`\`` : ""}`);
+    }
+    if (sites.length > SITES) sections.push(`\u2026 and ${sites.length - SITES} more site(s)`);
+  }
+  return withinBudget(sections, budget);
+}
+function renderNodeDossier(live, repo, id, opts = {}) {
+  const n = live.byId.get(id);
+  if (!n) return void 0;
+  const budget = opts.budget ?? DOSSIER_BUDGET;
+  if (n.kind === "mod") {
+    const whole = baseModuleOf(id);
+    const slug = whole.slice("mod:".length);
+    const module2 = live.loaded.inputs.graph.modules.find((m) => m.slug === slug);
+    if (!module2) return void 0;
+    const base = renderModuleDossier(repo, live.loaded.inputs.graph, module2, budget).trimEnd();
+    const slices = live.view.nodes.filter((x) => x.slice?.of === whole);
+    const roots = new Set(n.slice ? [id] : [id, ...slices.map((x) => x.id)]);
+    const under2 = live.view.nodes.filter((x) => x.parent && (roots.has(x.parent) || roots.has(live.byId.get(x.parent)?.parent ?? "")));
+    const facts = factLines(under2);
+    const sliceLine = n.slice ? [`slice of ${n.slice.of} ${n.slice.qualifier}`] : slices.length ? [`slices ${slices.map((x) => `${x.id} (${x.slice.qualifier})`).join(", ")}`] : [];
+    const extra = [`## ultraview`, `node ${id} \xB7 parent ${n.parent ?? "-"} \xB7 caps ${n.caps.join(", ") || "(none)"}`, ...sliceLine, ...facts].join("\n");
+    return `${base}
+
+${extra}
+`;
+  }
+  if (n.kind === "cap" || n.kind === "sys") return groupDossier(live, repo, n, budget);
+  return leafDossier(live, repo, n, budget);
+}
+
+// src/export.ts
+import { resolve as resolve26 } from "path";
+var EXPORT_LEVELS = ["cap", "sys", "mod"];
+var BRIEF_INSIGHTS = 10;
+var LEVEL_EXTRAS = { cap: ["ext", "entity"], sys: ["ext"], mod: ["ext"] };
+var cmp11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var byRank = (a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp11(a.id, b.id);
+var labelOf = (n) => n.slice ? `${n.label} ${n.slice.qualifier}` : n.label;
+function edgesAmong(view, keep) {
+  const pairs = /* @__PURE__ */ new Map();
+  for (const e of view.edges) {
+    if (e.from === e.to || !keep.has(e.from) || !keep.has(e.to) || e.kind === "contains") continue;
+    const key = `${e.from}
+${e.to}`;
+    const p = pairs.get(key) ?? { from: e.from, to: e.to, weight: 0, kinds: /* @__PURE__ */ new Set(), declared: false };
+    p.weight += e.weight;
+    if (e.kind !== "import" && e.kind !== "call" && e.kind !== "extends") p.kinds.add(e.kind);
+    if (!e.derived) {
+      p.declared = true;
+      if (e.label) p.label ??= e.label;
+    }
+    pairs.set(key, p);
+  }
+  return [...pairs.values()].sort((a, b) => b.weight - a.weight || cmp11(a.from, b.from) || cmp11(a.to, b.to)).slice(0, MERMAID_MAX_EDGES).map((p) => {
+    const label = p.label ?? ([...p.kinds].sort().join("+") || void 0);
+    return { from: p.from, to: p.to, ...label ? { label } : {}, ...p.declared ? { dotted: true } : {} };
+  });
+}
+function pickView(view, opts = {}) {
+  const byId = new Map(view.nodes.map((n) => [n.id, n]));
+  const asPicked = (n, cls) => ({ id: n.id, label: labelOf(n), kind: n.kind, ...cls ? { cls } : {} });
+  if (opts.lens !== void 0) {
+    const lens = view.lenses.find((l) => l.id === opts.lens);
+    if (!lens) throw new Error(`unknown lens "${opts.lens}" (saved: ${view.lenses.map((l) => l.id).join(", ") || "none"})`);
+    const nodes2 = lens.nodes.flatMap((id) => byId.has(id) ? [byId.get(id)] : []).slice(0, MERMAID_MAX_NODES);
+    const keep = new Set(nodes2.map((n) => n.id));
+    const declared2 = (lens.edges ?? []).filter((e) => keep.has(e.from) && keep.has(e.to)).map((e) => ({ from: e.from, to: e.to, ...e.kind ? { label: e.kind } : {} }));
+    const seen = new Set(declared2.map((e) => `${e.from}
+${e.to}`));
+    return {
+      nodes: nodes2.map((n) => asPicked(n, n.id === lens.focus ? "focus" : void 0)),
+      edges: [...declared2, ...edgesAmong(view, keep).filter((e) => !seen.has(`${e.from}
+${e.to}`))].slice(0, MERMAID_MAX_EDGES)
+    };
+  }
+  if (opts.flow !== void 0) {
+    const flow = view.flows.find((f) => f.id === opts.flow);
+    if (!flow) throw new Error(`unknown flow "${opts.flow}" (saved: ${view.flows.map((f) => f.id).join(", ") || "none"})`);
+    const order = [...flow.trigger ? [flow.trigger] : [], ...flow.steps.map((s) => s.node)].filter((id) => byId.has(id));
+    const nodes2 = [...new Set(order)].slice(0, MERMAID_MAX_NODES);
+    const keep = new Set(nodes2);
+    const edges = [];
+    for (let i2 = 1; i2 < order.length; i2++) {
+      const [from, to] = [order[i2 - 1], order[i2]];
+      if (from !== to && keep.has(from) && keep.has(to)) edges.push({ from, to, label: String(edges.length + 1) });
+    }
+    return { nodes: nodes2.map((id) => asPicked(byId.get(id), flow.trigger === id ? "focus" : void 0)), edges: edges.slice(0, MERMAID_MAX_EDGES) };
+  }
+  const level = opts.level ?? "sys";
+  const primary = view.nodes.filter((n) => n.kind === level).sort(byRank).slice(0, MERMAID_MAX_NODES);
+  const prim = new Set(primary.map((n) => n.id));
+  const extraWeight = /* @__PURE__ */ new Map();
+  for (const e of view.edges) {
+    for (const [a, b] of [
+      [e.from, e.to],
+      [e.to, e.from]
+    ]) {
+      if (prim.has(a) && LEVEL_EXTRAS[level].includes(kindOf2(b))) extraWeight.set(b, (extraWeight.get(b) ?? 0) + e.weight);
+    }
+  }
+  const extras = [...extraWeight].sort((a, b) => b[1] - a[1] || cmp11(a[0], b[0])).slice(0, MERMAID_MAX_NODES - primary.length).map(([id]) => byId.get(id));
+  const nodes = [...primary, ...extras];
+  return { nodes: nodes.map((n) => asPicked(n, n.id === FOUNDATIONS_CAP ? "derived" : void 0)), edges: edgesAmong(view, new Set(nodes.map((n) => n.id))) };
+}
+var EXPORT_CLASSES = { focus: "stroke-width:3px", derived: "stroke-dasharray:4 2" };
+function exportMermaid(view, opts = {}) {
+  return mermaidFlowchart(pickView(view, opts), { classes: EXPORT_CLASSES });
+}
+var NODE_W = 180;
+var NODE_H = 40;
+var GAP_X = 70;
+var GAP_Y = 22;
+var PAD = 20;
+var LABEL_MAX = 24;
+var xml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+var FILL = { cap: "#eef4ff", sys: "#f4f3ff", mod: "#f9fafb", ext: "#fff6ed", entity: "#ecfdf3" };
+function exportSvg(view, opts = {}) {
+  const pick = pickView(view, opts);
+  const ids = pick.nodes.map((n) => n.id);
+  const out2 = new Map(ids.map((id) => [id, []]));
+  const edges = pick.edges.filter((e) => out2.has(e.from) && out2.has(e.to));
+  for (const e of edges) out2.get(e.from).push(e.to);
+  const forward = new Map(ids.map((id) => [id, []]));
+  const state = /* @__PURE__ */ new Map();
+  const visit = (id) => {
+    state.set(id, 1);
+    for (const to of [...out2.get(id)].sort(cmp11)) {
+      if (state.get(to) === 1) continue;
+      forward.get(id).push(to);
+      if (!state.has(to)) visit(to);
+    }
+    state.set(id, 2);
+  };
+  for (const id of [...ids].sort(cmp11)) if (!state.has(id)) visit(id);
+  const layer = new Map(ids.map((id) => [id, 0]));
+  for (let changed = true, guard = 0; changed && guard <= ids.length; guard++) {
+    changed = false;
+    for (const [from, tos] of forward) {
+      for (const to of tos) {
+        if (layer.get(to) <= layer.get(from)) {
+          layer.set(to, layer.get(from) + 1);
+          changed = true;
+        }
+      }
+    }
+  }
+  const layers = [];
+  for (const id of [...ids].sort(cmp11)) (layers[layer.get(id)] ??= []).push(id);
+  const row2 = /* @__PURE__ */ new Map();
+  layers.forEach((ls, x) => {
+    if (x > 0) {
+      const bary = (id) => {
+        const ps = edges.filter((e) => e.to === id && layer.get(e.from) < x).map((e) => row2.get(e.from));
+        return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : Number.POSITIVE_INFINITY;
+      };
+      ls.sort((a, b) => bary(a) - bary(b) || cmp11(a, b));
+    }
+    ls.forEach((id, y) => row2.set(id, y));
+  });
+  const pos = (id) => ({ x: PAD + layer.get(id) * (NODE_W + GAP_X), y: PAD + row2.get(id) * (NODE_H + GAP_Y) });
+  const width = PAD * 2 + Math.max(1, layers.length) * NODE_W + Math.max(0, layers.length - 1) * GAP_X;
+  const height = PAD * 2 + Math.max(1, ...layers.map((l) => l.length)) * (NODE_H + GAP_Y) - GAP_Y;
+  const byId = new Map(pick.nodes.map((n) => [n.id, n]));
+  const lines = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="system-ui, sans-serif" font-size="13">`,
+    `<defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#667085"/></marker></defs>`
+  ];
+  for (const e of edges) {
+    const a = pos(e.from);
+    const b = pos(e.to);
+    const [x1, y1] = [a.x + NODE_W, a.y + NODE_H / 2];
+    const [x2, y2] = [b.x, b.y + NODE_H / 2];
+    const bend = Math.max(40, Math.abs(x2 - x1) / 2);
+    lines.push(
+      `<path d="M${x1},${y1} C${x1 + bend},${y1} ${x2 - bend},${y2} ${x2},${y2}" fill="none" stroke="#98a2b3" stroke-width="1.5"${e.dotted ? ' stroke-dasharray="5 4"' : ""} marker-end="url(#arrow)"/>`
+    );
+    if (e.label)
+      lines.push(
+        `<text x="${Math.round((x1 + x2) / 2)}" y="${Math.round((y1 + y2) / 2) - 4}" text-anchor="middle" fill="#475467" font-size="11">${xml(e.label)}</text>`
+      );
+  }
+  for (const id of ids) {
+    const n = byId.get(id);
+    const { x, y } = pos(id);
+    const text2 = n.label.length > LABEL_MAX ? `${n.label.slice(0, LABEL_MAX - 1)}\u2026` : n.label;
+    lines.push(
+      `<g><title>${xml(n.label)}</title><rect x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="8" fill="${n.kind && FILL[n.kind] || "#ffffff"}" stroke="#475467" stroke-width="${n.cls === "focus" ? 3 : 1}"${n.cls === "derived" ? ' stroke-dasharray="4 2"' : ""}/><text x="${x + NODE_W / 2}" y="${y + NODE_H / 2 + 4}" text-anchor="middle" fill="#101828">${xml(text2)}</text></g>`
+    );
+  }
+  lines.push("</svg>");
+  return `${lines.join("\n")}
+`;
+}
+var cell2 = (s) => (s ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+function exportBrief(view) {
+  const byId = new Map(view.nodes.map((n) => [n.id, n]));
+  const kinds2 = (kind) => view.nodes.filter((n) => n.kind === kind).sort((a, b) => Number(a.tags.includes("derived")) - Number(b.tags.includes("derived")) || cmp11(a.id, b.id));
+  const out2 = [`# ${view.app.name}`, ""];
+  if (view.app.summary) out2.push(view.app.summary, "");
+  const systems = kinds2("sys");
+  if (systems.length) {
+    out2.push("## Systems", "", "| System | Kind | Files | Lines | Summary |", "|---|---|---|---|---|");
+    for (const s of systems) {
+      const files = view.nodes.filter((n) => n.kind === "file" && byId.get(n.parent ?? "")?.parent === s.id).length;
+      out2.push(`| ${cell2(s.label)} | ${s.role ?? "\u2014"} | ${files} | ${s.metrics.loc} | ${cell2(s.summary) || "\u2014"} |`);
+    }
+    out2.push("");
+  }
+  const caps = kinds2("cap");
+  if (caps.length) {
+    out2.push("## Capabilities", "");
+    for (const c2 of caps) {
+      out2.push(`### ${c2.label}`, "");
+      if (c2.summary) out2.push(c2.summary, "");
+      const serving = (k) => view.nodes.filter((n) => n.kind === k && n.caps.includes(c2.id));
+      const sys = serving("sys").map((n) => n.label);
+      const routes = serving("route").map((n) => `\`${n.label}\``);
+      const entities2 = serving("entity").map((n) => n.label);
+      if (c2.actors?.length) out2.push(`- Used by: ${c2.actors.join(", ")}`);
+      if (sys.length) out2.push(`- Systems: ${sys.join(", ")}`);
+      if (routes.length) out2.push(`- Routes: ${routes.join(", ")}`);
+      if (entities2.length) out2.push(`- Data: ${entities2.join(", ")}`);
+      out2.push(`- Size: ${c2.metrics.loc} lines${c2.cites.length ? `; evidence: ${c2.cites.map((x) => `\`${x}\``).join(", ")}` : ""}`, "");
+    }
+  }
+  const entities = kinds2("entity");
+  if (entities.length) {
+    out2.push("## Data", "", "| Entity | Fields | Defined at |", "|---|---|---|");
+    for (const e of entities)
+      out2.push(
+        `| ${cell2(e.label)} | ${cell2((e.fields ?? []).map((f) => f.relation ? `${f.name} \u2192 ${f.relation}` : f.name).join(", ")) || "\u2014"} | \`${e.at ?? ""}\` |`
+      );
+    out2.push("");
+  }
+  const exts = kinds2("ext");
+  if (exts.length) {
+    out2.push("## External services", "");
+    for (const x of exts) out2.push(`- **${x.label}** (${x.tags.join(", ") || "detected"})${x.at ? `: \`${x.at}\`` : ""}`);
+    out2.push("");
+  }
+  if (view.flows.length) {
+    out2.push("## Flows", "");
+    for (const f of view.flows) {
+      out2.push(`### ${f.title}`, "");
+      f.steps.forEach((s, i2) => {
+        out2.push(`${i2 + 1}. **${byId.get(s.node) ? labelOf(byId.get(s.node)) : s.node}**: ${s.note}`);
+      });
+      out2.push("");
+    }
+  }
+  if (view.insights.length) {
+    out2.push("## Insights", "");
+    for (const i2 of view.insights.slice(0, BRIEF_INSIGHTS)) out2.push(`- **${i2.severity}** ${i2.title}: ${i2.detail}`);
+    out2.push("");
+  }
+  const pct2 = (x) => `${(x * 100).toFixed(1)}%`;
+  out2.push(
+    `_Coverage: ${pct2(view.coverage.filesInSystems)} of code files in systems, ${pct2(view.coverage.modulesInCapabilities)} of modules in capabilities._`
+  );
+  return `${out2.join("\n")}
+`;
+}
+function exportView(repoArg, opts = {}) {
+  const repo = resolve26(repoArg);
+  const graph = loadGraph(viewPaths(repo).index);
+  if (!graph) throw new Error(`no ultraindex index at ${viewPaths(repo).index}: run \`ultraview build\` first`);
+  const insights = opts.insights ? insightsOf(repo, { graph }) : [];
+  return assembleView(loadViewInputs(repo, { graph, insights }).inputs);
+}
+
+// src/hook.ts
+import { existsSync as existsSync24, readFileSync as readFileSync30 } from "fs";
+import { join as join48, resolve as resolve27 } from "path";
+var HOOK_AGENTS = ["claude"];
+var LOCAL_SETTINGS_FILE = ".claude/settings.local.json";
+var SHARED_SETTINGS_FILE = ".claude/settings.json";
+var SETTINGS_FILES = [LOCAL_SETTINGS_FILE, SHARED_SETTINGS_FILE];
+var HOOK_MARKER = "--source agent --hook";
+var HOOK_TIMEOUT_SECONDS = 30;
+var shQuote = (s) => `'${s.replace(/'/g, `'\\''`)}'`;
+function hookCommand(script) {
+  return `node ${shQuote(script)} diff --worktree --record --quiet ${HOOK_MARKER} --repo "$CLAUDE_PROJECT_DIR"`;
+}
+function sharedWarning(script) {
+  return `${SHARED_SETTINGS_FILE} is shared with everyone who clones the repo, but the hook command holds an absolute path specific to this machine (${script}): on another machine it will not run. Prefer the default, ${LOCAL_SETTINGS_FILE}.`;
+}
+var isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+function lineDiff(before, after, file) {
+  if (before === after) return "";
+  const a = before ? before.replace(/\n$/, "").split("\n") : [];
+  const b = after.replace(/\n$/, "").split("\n");
+  const lcs = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i3 = a.length - 1; i3 >= 0; i3--)
+    for (let j2 = b.length - 1; j2 >= 0; j2--) lcs[i3][j2] = a[i3] === b[j2] ? lcs[i3 + 1][j2 + 1] + 1 : Math.max(lcs[i3 + 1][j2], lcs[i3][j2 + 1]);
+  const out2 = [`--- a/${file}`, `+++ b/${file}`];
+  let i2 = 0;
+  let j = 0;
+  while (i2 < a.length || j < b.length) {
+    if (i2 < a.length && j < b.length && a[i2] === b[j]) {
+      out2.push(` ${a[i2++]}`);
+      j++;
+    } else if (j < b.length && (i2 >= a.length || lcs[i2][j + 1] >= lcs[i2 + 1][j])) out2.push(`+${b[j++]}`);
+    else out2.push(`-${a[i2++]}`);
+  }
+  return `${out2.join("\n")}
+`;
+}
+function parseSpans(text2) {
+  let i2 = 0;
+  const ws = () => {
+    while (i2 < text2.length && /\s/.test(text2[i2])) i2++;
+  };
+  const str3 = () => {
+    const start2 = i2++;
+    while (text2[i2] !== '"') i2 += text2[i2] === "\\" ? 2 : 1;
+    i2++;
+    return { start: start2, end: i2, str: JSON.parse(text2.slice(start2, i2)) };
+  };
+  const value = () => {
+    ws();
+    const start2 = i2;
+    const c2 = text2[i2];
+    if (c2 === '"') return str3();
+    if (c2 === "{" || c2 === "[") {
+      i2++;
+      const members = [];
+      const items = [];
+      for (ws(); text2[i2] !== (c2 === "{" ? "}" : "]"); ws()) {
+        if (text2[i2] === ",") {
+          i2++;
+          continue;
+        }
+        if (c2 === "{") {
+          const key = str3();
+          ws();
+          i2++;
+          members.push({ key: key.str, start: key.start, value: value() });
+        } else items.push(value());
+      }
+      i2++;
+      return c2 === "{" ? { start: start2, end: i2, members } : { start: start2, end: i2, items };
+    }
+    while (i2 < text2.length && !/[\s,\]}]/.test(text2[i2])) i2++;
+    return { start: start2, end: i2 };
+  };
+  return value();
+}
+var elemsOf = (n) => n.members ? n.members.map((m) => ({ start: m.start, end: m.value.end })) : n.items ?? [];
+var memberOf = (n, key) => n?.members?.find((m) => m.key === key)?.value;
+var splice = (text2, start2, end, by) => text2.slice(0, start2) + by + text2.slice(end);
+function indentAt2(text2, pos) {
+  const line2 = text2.lastIndexOf("\n", pos - 1) + 1;
+  return /^[ \t]*/.exec(text2.slice(line2))[0];
+}
+function appendElem(text2, container, elem, unit) {
+  const elems = elemsOf(container);
+  const last = elems[elems.length - 1];
+  if (last) {
+    const base2 = indentAt2(text2, last.start);
+    return splice(text2, last.end, last.end, `,
+${base2}${elem.split("\n").join(`
+${base2}`)}`);
+  }
+  const outer = indentAt2(text2, container.start);
+  const base = outer + unit;
+  return splice(text2, container.start + 1, container.end - 1, `
+${base}${elem.split("\n").join(`
+${base}`)}
+${outer}`);
+}
+function removeElem(text2, container, idx) {
+  const elems = elemsOf(container);
+  if (idx > 0) return splice(text2, elems[idx - 1].end, elems[idx].end, "");
+  if (elems.length > 1) return splice(text2, elems[0].start, elems[1].start, "");
+  return splice(text2, container.start + 1, container.end - 1, "");
+}
+function oursIn(stop2) {
+  const out2 = [];
+  (stop2.items ?? []).forEach((g, gi) => {
+    (memberOf(g, "hooks")?.items ?? []).forEach((h, hi) => {
+      const command = memberOf(h, "command");
+      if (command?.str?.includes(HOOK_MARKER)) out2.push({ group: gi, hook: hi, command });
+    });
+  });
+  return out2;
+}
+function readSettings(repo, file) {
+  const abs = join48(repo, file);
+  if (!existsSync24(abs)) return { file, abs, before: "", unit: "  " };
+  const before = readFileSync30(abs, "utf8");
+  let value;
+  try {
+    value = JSON.parse(before);
+  } catch (e) {
+    return { error: `${file} is not valid JSON (${e.message}): fix it first, nothing was changed` };
+  }
+  if (!isObject(value)) return { error: `${file} is not a JSON object: nothing was changed` };
+  if (value.hooks !== void 0 && !isObject(value.hooks)) return { error: `${file}: "hooks" is not an object: nothing was changed` };
+  if (isObject(value.hooks) && value.hooks.Stop !== void 0 && !Array.isArray(value.hooks.Stop))
+    return { error: `${file}: "hooks.Stop" is not an array: nothing was changed` };
+  return { file, abs, before, unit: /^[ \t]+(?=")/m.exec(before)?.[0] ?? "  " };
+}
+function finish(s, after, action, dryRun, command) {
+  if (after !== s.before) {
+    try {
+      JSON.parse(after);
+    } catch {
+      return failed2(`could not edit ${s.file} safely: nothing was changed`, dryRun, s.file);
+    }
+  }
+  if (!dryRun && after !== s.before) writeFileAtomic(s.abs, after);
+  return {
+    ok: true,
+    file: s.file,
+    files: after !== s.before ? [s.file] : [],
+    action,
+    dryRun,
+    diff: lineDiff(s.before, after, s.file),
+    ...command ? { command } : {},
+    errors: []
+  };
+}
+function checkAgent(agent) {
+  return agent === void 0 || HOOK_AGENTS.includes(agent) ? void 0 : `unsupported agent "${agent}" (supported: ${HOOK_AGENTS.join(", ")})`;
+}
+var failed2 = (error, dryRun, file = LOCAL_SETTINGS_FILE) => ({
+  ok: false,
+  file,
+  files: [],
+  action: "unchanged",
+  dryRun,
+  diff: "",
+  errors: [error]
+});
+function installHook(repoArg, script, opts = {}) {
+  const dryRun = !!opts.dryRun;
+  const file = opts.shared ? SHARED_SETTINGS_FILE : LOCAL_SETTINGS_FILE;
+  const bad = checkAgent(opts.agent);
+  if (bad) return failed2(bad, dryRun, file);
+  const repo = resolve27(repoArg);
+  if (!existsSync24(repo)) return failed2(`repo not found: ${repo}`, dryRun, file);
+  const s = readSettings(repo, file);
+  if ("error" in s) return failed2(s.error, dryRun, file);
+  const command = hookCommand(resolve27(script));
+  const warned = (r) => opts.shared && r.ok ? { ...r, warning: sharedWarning(resolve27(script)) } : r;
+  const group = { hooks: [{ type: "command", command, timeout: HOOK_TIMEOUT_SECONDS }] };
+  const pretty = (v) => JSON.stringify(v, null, s.unit);
+  if (!s.before) return warned(finish(s, `${pretty({ hooks: { Stop: [group] } })}
+`, "installed", dryRun, command));
+  const root = parseSpans(s.before);
+  const hooks = memberOf(root, "hooks");
+  if (!hooks) return warned(finish(s, appendElem(s.before, root, `"hooks": ${pretty({ Stop: [group] })}`, s.unit), "installed", dryRun, command));
+  const stop2 = memberOf(hooks, "Stop");
+  if (!stop2) return warned(finish(s, appendElem(s.before, hooks, `"Stop": ${pretty([group])}`, s.unit), "installed", dryRun, command));
+  const ours = oursIn(stop2);
+  if (!ours.length) return warned(finish(s, appendElem(s.before, stop2, pretty(group), s.unit), "installed", dryRun, command));
+  if (ours.every((o) => o.command.str === command)) return warned(finish(s, s.before, "unchanged", dryRun, command));
+  let after = s.before;
+  for (const o of [...ours].sort((a, b) => b.command.start - a.command.start)) after = splice(after, o.command.start, o.command.end, JSON.stringify(command));
+  return warned(finish(s, after, "updated", dryRun, command));
+}
+function uninstallFrom(repo, file, dryRun) {
+  const s = readSettings(repo, file);
+  if ("error" in s) return failed2(s.error, dryRun, file);
+  if (!s.before) return finish(s, s.before, "absent", dryRun);
+  let text2 = s.before;
+  let removed = 0;
+  for (; ; ) {
+    const stop2 = memberOf(memberOf(parseSpans(text2), "hooks"), "Stop");
+    const o = stop2 ? oursIn(stop2)[0] : void 0;
+    if (!stop2 || !o) break;
+    const group = stop2.items[o.group];
+    const list = memberOf(group, "hooks");
+    text2 = list.items.length === 1 ? removeElem(text2, stop2, o.group) : removeElem(text2, list, o.hook);
+    removed++;
+  }
+  if (!removed) return finish(s, s.before, "absent", dryRun);
+  const root = parseSpans(text2);
+  const hooks = memberOf(root, "hooks");
+  const stopAt = hooks.members.findIndex((m) => m.key === "Stop");
+  if (!hooks.members[stopAt].value.items.length) {
+    text2 = removeElem(text2, hooks, stopAt);
+    const after = parseSpans(text2);
+    const h = memberOf(after, "hooks");
+    if (!h.members.length)
+      text2 = removeElem(
+        text2,
+        after,
+        after.members.findIndex((m) => m.key === "hooks")
+      );
+  }
+  return finish(s, text2, "removed", dryRun);
+}
+function uninstallHook(repoArg, opts = {}) {
+  const dryRun = !!opts.dryRun;
+  const bad = checkAgent(opts.agent);
+  if (bad) return failed2(bad, dryRun);
+  const repo = resolve27(repoArg);
+  const results = SETTINGS_FILES.map((f) => uninstallFrom(repo, f, dryRun));
+  const bad2 = results.find((r) => !r.ok);
+  if (bad2) return bad2;
+  const removed = results.filter((r) => r.action === "removed");
+  if (!removed.length) return { ...results[0], action: "absent" };
+  return { ...removed[0], files: removed.map((r) => r.file), diff: removed.map((r) => r.diff).join("") };
+}
+
+// src/render.ts
+import { spawn as spawn2 } from "child_process";
+import { existsSync as existsSync25, mkdirSync as mkdirSync10, readFileSync as readFileSync31, renameSync as renameSync9, writeFileSync as writeFileSync13 } from "fs";
+import { dirname as dirname16, join as join49, relative as relative15, resolve as resolve28 } from "path";
+import { fileURLToPath as fileURLToPath3 } from "url";
+var DATA_TAG = '<script type="application/json" id="ultraview-data">';
+var ENV_TAG = '<script type="application/json" id="ultraview-env">';
+function viewerTemplatePath() {
+  const here = dirname16(fileURLToPath3(import.meta.url));
+  const candidates = [join49(here, "../assets/viewer.html"), join49(here, "../skills/ultraview/assets/viewer.html")];
+  const found = candidates.find((c2) => existsSync25(c2));
+  if (!found) throw new Error(`viewer not found (looked in ${candidates.map((c2) => relative15(process.cwd(), c2) || c2).join(", ")}): run \`pnpm run build\``);
+  return found;
+}
+function scriptJson(value) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+function fill(html, tag, body2) {
+  const start2 = html.indexOf(tag);
+  if (start2 === -1) throw new Error(`viewer template has no ${tag}`);
+  const from = start2 + tag.length;
+  const end = html.indexOf("</script>", from);
+  if (end === -1) throw new Error(`viewer template: unterminated ${tag}`);
+  return html.slice(0, from) + body2 + html.slice(end);
+}
+function renderHtml(template, view, env) {
+  return fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
+}
+function renderMap(opts) {
+  const repo = resolve28(opts.repo);
+  const paths = viewPaths(repo);
+  const missing = !indexExists(paths.index) ? paths.index : !existsSync25(paths.facts) ? paths.facts : void 0;
+  if (missing) throw new Error(`no ${relative15(process.cwd(), missing) || missing}: run \`ultraview build\` first`);
+  const viewText = freshView(repo).text;
+  const updated = writeView(paths.view, viewText);
+  const view = JSON.parse(viewText);
+  let stale = false;
+  try {
+    stale = indexStaleness(repo).index;
+  } catch {
+  }
+  const templatePath = opts.template ?? viewerTemplatePath();
+  const template = readFileSync31(templatePath, "utf8");
+  const html = renderHtml(template, view, { root: repo });
+  const out2 = resolve28(opts.out ?? paths.html);
+  mkdirSync10(dirname16(out2), { recursive: true });
+  const tmp = `${out2}.${process.pid}.tmp`;
+  writeFileSync13(tmp, html);
+  renameSync9(tmp, out2);
+  return { repo, out: out2, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template), updated, stale };
+}
+function openerFor(platform, file) {
+  if (platform === "darwin") return { cmd: "open", args: [file] };
+  if (platform === "win32") return { cmd: "cmd", args: ["/c", "start", '""', file] };
+  return { cmd: "xdg-open", args: [file] };
+}
+function spawnDetached(cmd, args2) {
+  return new Promise((done) => {
+    try {
+      const child2 = spawn2(cmd, args2, { detached: true, stdio: "ignore", windowsHide: true });
+      child2.once("error", () => done(false));
+      child2.once("spawn", () => {
+        child2.unref();
+        done(true);
+      });
+    } catch {
+      done(false);
+    }
+  });
+}
+function openFile(file, platform = process.platform) {
+  const { cmd, args: args2 } = openerFor(platform, file);
+  return spawnDetached(cmd, args2);
+}
+
+// src/ask.ts
+import { spawn as spawn3 } from "child_process";
+import { accessSync as accessSync2, closeSync as closeSync2, constants, existsSync as existsSync27, mkdirSync as mkdirSync11, mkdtempSync as mkdtempSync4, openSync as openSync2, readFileSync as readFileSync33, rmSync as rmSync8, statSync as statSync19, writeSync } from "fs";
+import { tmpdir as tmpdir2 } from "os";
+import { delimiter, dirname as dirname17, join as join51, resolve as resolve30 } from "path";
+import { fileURLToPath as fileURLToPath4 } from "url";
 
 // src/lens.ts
+import { existsSync as existsSync26, readdirSync as readdirSync8, readFileSync as readFileSync32, statSync as statSync18 } from "fs";
+import { join as join50, resolve as resolve29 } from "path";
 var LENS_BUDGET = 6e3;
-var CHARS_PER_TOKEN4 = 4;
+var CHARS_PER_TOKEN5 = 4;
 var FIND_K = 6;
 var MATCHES = 25;
 var EDGES = 30;
@@ -41322,15 +41832,15 @@ var EVIDENCE_FILES = 10;
 var HEAD_LINES3 = 60;
 var AROUND = 8;
 var ID_MAX = 48;
-var cmp11 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var cmp12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function savedQuestions(repo) {
-  const dir = join49(repo, LENSES_DIR);
+  const dir = join50(repo, LENSES_DIR);
   const out2 = /* @__PURE__ */ new Map();
-  if (!existsSync25(dir)) return out2;
-  for (const name2 of readdirSync7(dir).filter((n) => n.endsWith(".json")).sort()) {
+  if (!existsSync26(dir)) return out2;
+  for (const name2 of readdirSync8(dir).filter((n) => n.endsWith(".json")).sort()) {
     let question;
     try {
-      const v = JSON.parse(readFileSync31(join49(dir, name2), "utf8"));
+      const v = JSON.parse(readFileSync32(join50(dir, name2), "utf8"));
       if (typeof v.question === "string") question = v.question;
     } catch {
     }
@@ -41350,7 +41860,7 @@ function questionSlug(question) {
   return SLUG_RE.test(slug) ? slug : "lens";
 }
 function proposeLensId(repo, question) {
-  const saved = savedQuestions(resolve28(repo));
+  const saved = savedQuestions(resolve29(repo));
   for (const [id, q] of saved) if (q === question) return { id, reask: true };
   const base = questionSlug(question);
   for (let n = 1; ; n++) {
@@ -41366,6 +41876,13 @@ var METHOD_BONUS = 0.75;
 var CARDINALITY_BONUS = 0.5;
 var CAP_SHARE = 0.5;
 var BODY_LINES = 40;
+var THREAD_DECAY = 0.5;
+var CONTEXT_WEIGHT = 2;
+var THREAD_WEIGHT = 1.5;
+var SELF = 1.5;
+var SIBLING = 0.5;
+var LINKED = 0.4;
+var MENTION_MIN = 4;
 var lowerTokens = (text2) => {
   const out2 = /* @__PURE__ */ new Set();
   for (const raw of codeindex_engine_exports.keywords(text2, () => true)) for (const t of codeindex_engine_exports.subtokens(raw)) out2.add(codeindex_engine_exports.foldText(t).toLowerCase());
@@ -41388,7 +41905,7 @@ function detailText(repo, n, files) {
     if (!files.has(rel2)) {
       let text3;
       try {
-        text3 = codeindex_engine_exports.readText(join49(repo, rel2));
+        text3 = codeindex_engine_exports.readText(join50(repo, rel2));
       } catch {
         text3 = void 0;
       }
@@ -41405,10 +41922,11 @@ function detailText(repo, n, files) {
   return parts2.join("\n");
 }
 var namesOne = (path) => /[:{[][^/]*[\]}]?$/.test(path.split("?")[0].replace(/\/+$/, ""));
-function nameMatches(repo, view, q) {
-  if (!q.terms.length) return [];
+function nameMatches(repo, view, q, seeds = /* @__PURE__ */ new Map()) {
+  if (!q.terms.length && !seeds.size) return [];
   const files = /* @__PURE__ */ new Map();
   const pool = view.nodes.filter((n) => NAME_KINDS.has(n.kind) && n.id !== "cap:_foundations").map((n) => ({ n, name: hay(`${n.label} ${n.id.slice(n.kind.length + 1)}`), detail: hay(detailText(repo, n, files)) }));
+  const threadScore = seeds.size ? threadScores(repo, view, pool, seeds, files) : /* @__PURE__ */ new Map();
   const df = /* @__PURE__ */ new Map();
   for (const t of q.terms) df.set(t, pool.filter((p) => has(p.name, t) || has(p.detail, t)).length);
   const idf = (t) => Math.log(1 + pool.length / (df.get(t) || 1));
@@ -41427,9 +41945,10 @@ function nameMatches(repo, view, q) {
   }
   const out2 = [];
   for (const { n } of pool) {
-    const b = base.get(n.id);
+    const t = threadScore.get(n.id) ?? 0;
+    const b = base.get(n.id) ?? (t > 0 ? { score: 0, matched: [] } : void 0);
     if (!b) continue;
-    let score = b.score;
+    let score = b.score + t;
     if (q.kinds.has(n.kind)) score += KIND_BONUS;
     if (n.kind === "sym" && verbMethods(n.label).some((m) => q.methods.has(m))) score += METHOD_BONUS;
     if (n.kind === "route") {
@@ -41447,12 +41966,85 @@ function nameMatches(repo, view, q) {
       kind: n.kind,
       label: n.label,
       ...n.at ? { at: n.at } : {},
-      via: "name",
+      via: b.matched.length ? "name" : "thread",
       score: Math.round(score * 1e3) / 1e3,
-      matched: b.matched
+      matched: b.matched,
+      ...t > 0 ? { thread: Math.round(t * 1e3) / 1e3 } : {}
     });
   }
-  return out2.sort((a, b) => b.score - a.score || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || cmp11(a.id, b.id)).slice(0, MATCHES);
+  return out2.sort((a, b) => b.score - a.score || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || cmp12(a.id, b.id)).slice(0, MATCHES);
+}
+function fileOfNode(n) {
+  if (n.kind === "file") return n.id.slice("file:".length);
+  if (n.at && n.kind !== "cap") return n.at.slice(0, n.at.lastIndexOf(":"));
+  return fileOfId(n.id);
+}
+function threadScores(repo, view, pool, seeds, files) {
+  const byId = new Map(view.nodes.map((n) => [n.id, n]));
+  const edges = /* @__PURE__ */ new Set();
+  const fileLinks = /* @__PURE__ */ new Set();
+  for (const e of view.edges) {
+    edges.add(`${e.from}\0${e.to}`);
+    edges.add(`${e.to}\0${e.from}`);
+    if (e.from.startsWith("file:")) fileLinks.add(`${e.from.slice(5)}\0${e.to.startsWith("file:") ? e.to.slice(5) : e.to}`);
+    if (e.to.startsWith("file:")) fileLinks.add(`${e.to.slice(5)}\0${e.from.startsWith("file:") ? e.from.slice(5) : e.from}`);
+  }
+  const detailOf = new Map(pool.map((p) => [p.n.id, p.detail]));
+  const entities = view.nodes.filter((n) => n.kind === "entity").map((n) => ({
+    id: n.id,
+    name: codeindex_engine_exports.foldText(n.label).toLowerCase(),
+    relations: (n.fields ?? []).filter((f) => f.relation && byId.has(`entity:${f.relation}`) && f.name.length >= MENTION_MIN).map((f) => ({ field: codeindex_engine_exports.foldText(f.name).toLowerCase(), to: `entity:${f.relation}` }))
+  }));
+  const reached = (tokens) => {
+    const out3 = /* @__PURE__ */ new Set();
+    for (const e of entities) {
+      if (e.name.length < MENTION_MIN || !tokens.has(e.name)) continue;
+      out3.add(e.id);
+      for (const r of e.relations) if (tokens.has(r.field)) out3.add(r.to);
+    }
+    return out3;
+  };
+  const seedInfo = [...seeds].map(([id, weight]) => {
+    const n = byId.get(id);
+    if (!n) return void 0;
+    const detail = detailOf.get(id) ?? hay(detailText(repo, n, files));
+    const tokens = new Set(detail.tokens);
+    return { id, weight, n, file: fileOfNode(n), name: codeindex_engine_exports.foldText(n.label).toLowerCase(), tokens, reached: reached(tokens) };
+  }).filter((x) => x !== void 0);
+  const out2 = /* @__PURE__ */ new Map();
+  for (const { n, detail } of pool) {
+    const file = fileOfNode(n);
+    const name2 = codeindex_engine_exports.foldText(n.label).toLowerCase();
+    const tokens = new Set(detail.tokens);
+    const reaches = reached(tokens);
+    let sum = 0;
+    for (const s of seedInfo) {
+      let rel2 = 0;
+      if (s.id === n.id) rel2 = SELF;
+      else if (edges.has(`${n.id}\0${s.id}`)) rel2 = 1;
+      else if (s.name.length >= MENTION_MIN && tokens.has(s.name) || name2.length >= MENTION_MIN && s.tokens.has(name2) || reaches.has(s.id) || s.reached.has(n.id))
+        rel2 = 1;
+      else if (file && s.file && file === s.file) rel2 = SIBLING;
+      else if (file && s.file && fileLinks.has(`${s.file}\0${file}`) || s.file && fileLinks.has(`${s.file}\0${n.id}`) || file && fileLinks.has(`${file}\0${s.id}`))
+        rel2 = LINKED;
+      sum += s.weight * rel2;
+    }
+    if (sum > 0) out2.set(n.id, sum * THREAD_WEIGHT);
+  }
+  return out2;
+}
+function threadSeeds(conv, contextNodes, known) {
+  const seeds = /* @__PURE__ */ new Map();
+  const add = (id, w) => {
+    if (known.has(id) && w > (seeds.get(id) ?? 0)) seeds.set(id, w);
+  };
+  for (const id of contextNodes) add(id, CONTEXT_WEIGHT);
+  const turns = [...conv?.turns ?? []].reverse().slice(0, DIGEST_TURNS);
+  turns.forEach((t, d) => {
+    const ids = turnNodes(t).filter((id) => known.has(id));
+    for (const id of ids) add(id, THREAD_DECAY ** d / Math.sqrt(ids.length));
+  });
+  return seeds;
 }
 function findMatches(live, indexDir, question) {
   const found = runFind(indexDir, question, FIND_K) ?? [];
@@ -41487,7 +42079,7 @@ function topEdges(view, ids) {
     seen.add(key);
     out2.push(e);
   }
-  return out2.sort((a, b) => b.weight - a.weight || cmp11(a.from, b.from) || cmp11(a.to, b.to) || cmp11(a.kind, b.kind)).slice(0, EDGES);
+  return out2.sort((a, b) => b.weight - a.weight || cmp12(a.from, b.from) || cmp12(a.to, b.to) || cmp12(a.kind, b.kind)).slice(0, EDGES);
 }
 function numbered(lines, from, to) {
   const width = String(to).length;
@@ -41495,7 +42087,7 @@ function numbered(lines, from, to) {
 }
 function readLines2(repo, rel2) {
   try {
-    return codeindex_engine_exports.readText(join49(repo, rel2)).split(/\r?\n/);
+    return codeindex_engine_exports.readText(join50(repo, rel2)).split(/\r?\n/);
   } catch {
     return void 0;
   }
@@ -41542,7 +42134,7 @@ ${numbered(lines, from, to)}
   return out2;
 }
 function fmtCandidate(c2) {
-  return `- ${c2.id}  (${c2.label})${c2.at ? `  [${c2.at}]` : ""}  score ${c2.score}: ${c2.matched.join(", ") || "-"}`;
+  return `- ${c2.id}  (${c2.label})${c2.at ? `  [${c2.at}]` : ""}  score ${c2.score}: ${c2.matched.join(", ") || "-"}${c2.thread ? `  (thread +${c2.thread})` : ""}`;
 }
 function instructions(pack) {
   const lines = [
@@ -41556,28 +42148,59 @@ function instructions(pack) {
   ];
   return lines.join("\n");
 }
+function turnInstructions(pack) {
+  return [
+    "## Next",
+    '1. Read the question with the conversation above: "it", "that", "this", "and then?" refer to the most recent turn\'s nodes ("In play") unless the question names something else; a question about something new is a new topic. `ultraview show <node-id>` and `ultraview dossier <node-id>` give more about one node.',
+    "2. Every sentence of `answer` cites the file it rests on as `[path:line]` (or `[path:start-end]`): `lens save --thread` refuses a dead citation, an uncited sentence and an unknown node id.",
+    "3. Answer in the language of the question (`lang`: its BCP-47 tag, e.g. en, fr, ja; citations stay as they are). `mode` business: plain words for someone who does not read code, no function, file or symbol names unless the question asks for them; `mode` dev: the technical detail (symbols, calls, files, routes).",
+    "4. `nodes`: the node ids the answer is about; `edges` (optional): the links that matter; `focus`: the one node to centre the map on.",
+    "5. `followUps`: exactly 3 short questions the user could ask next about this app, in the question's language.",
+    `6. Write the JSON above, filled in, to ${pack.file}, run \`ultraview lens save ${pack.file} --thread ${pack.thread}\` (it appends the turn), then \`ultraview check\`, and fix what they report.`,
+    `7. Point the user at \`#chat=${pack.thread}\` in the map (live when \`ultraview serve\` runs).`
+  ].join("\n");
+}
 function lensNew(repoArg, question, opts = {}) {
-  const repo = resolve28(repoArg);
+  const repo = resolve29(repoArg);
   const q = question.trim();
   if (!q) throw new Error("the question is empty");
   if (opts.id !== void 0 && !SLUG_RE.test(opts.id)) throw new Error(`--id must be a slug (lowercase letters, digits, dashes): ${opts.id}`);
+  if (opts.id !== void 0 && opts.thread !== void 0) throw new Error("--id names a lens; a thread's turn has no id of its own: drop --id or --thread");
   const live = liveView(repo);
   const budget = opts.budget ?? LENS_BUDGET;
+  const conv = opts.thread !== void 0 ? loadConversation(repo, opts.thread) : void 0;
+  let context;
+  if (opts.context && Object.keys(opts.context).length) {
+    let viewText;
+    try {
+      viewText = readFileSync32(viewPaths(repo).view, "utf8");
+    } catch {
+      viewText = void 0;
+    }
+    const cv = { byId: live.byId, flows: live.view.flows, insights: carriedOver(viewText).insights ?? [] };
+    const r = resolveContext(cv, opts.context);
+    if ("error" in r) throw new Error(r.error);
+    context = { value: opts.context, ...r };
+  }
+  const seeds = threadSeeds(conv, context?.nodes ?? [], live.byId);
   let id;
   let reask;
   let conflict;
-  if (opts.id !== void 0) {
+  if (conv) {
+    id = conv.id;
+    reask = false;
+  } else if (opts.id !== void 0) {
     id = opts.id;
     const saved = savedQuestions(repo);
     reask = saved.has(id) && saved.get(id) === q;
     if (saved.has(id) && !reask) conflict = saved.get(id) ?? "(unreadable file)";
   } else ({ id, reask } = proposeLensId(repo, q));
-  const file = `${LENSES_DIR}/${id}.json`;
+  const file = conv ? draftFile(conv.id) : `${LENSES_DIR}/${id}.json`;
   const supplied = opts.terms?.trim() || void 0;
   const reading = readQuestion(q, supplied);
   const terms = reading.terms;
   const found = findMatches(live, viewPaths(repo).index, supplied ? reading.bridged ? supplied : `${q} ${supplied}` : q);
-  const named = nameMatches(repo, live.view, reading);
+  const named = nameMatches(repo, live.view, reading, seeds);
   const candidates = [...named, ...found.candidates.filter((f) => !named.some((n) => n.id === f.id))];
   const capIds = /* @__PURE__ */ new Set();
   for (const c2 of candidates) {
@@ -41585,23 +42208,27 @@ function lensNew(repoArg, question, opts = {}) {
     for (const cap of live.byId.get(c2.id)?.caps ?? []) capIds.add(cap);
   }
   capIds.delete("cap:_foundations");
-  const capabilities = [...capIds].sort(cmp11).map((cid) => ({ id: cid, label: live.byId.get(cid)?.label ?? cid }));
+  const capabilities = [...capIds].sort(cmp12).map((cid) => ({ id: cid, label: live.byId.get(cid)?.label ?? cid }));
   const neighbourhood = topEdges(live.view, new Set(candidates.map((c2) => c2.id)));
   const focus = named.find((c2) => c2.kind !== "cap")?.id ?? candidates[0]?.id ?? "";
-  const template = {
-    schema: 1,
-    id,
+  const nodes = (named.some((c2) => c2.kind !== "cap") ? named.filter((c2) => c2.kind !== "cap") : candidates.filter((c2) => c2.kind !== "mod")).slice(0, 5).map((c2) => c2.id);
+  const template = conv ? {
     question: q,
-    answer: "Markdown. Every sentence cites [path:line].",
-    nodes: (named.some((c2) => c2.kind !== "cap") ? named.filter((c2) => c2.kind !== "cap") : candidates.filter((c2) => c2.kind !== "mod")).slice(0, 5).map((c2) => c2.id),
+    answer: "Markdown, in the question's language. Every sentence cites [path:line].",
+    nodes,
     edges: [],
-    focus
-  };
+    focus,
+    lang: guessLang(q),
+    mode: conv.turns.at(-1)?.mode ?? (live.view.app.audience === "developers" ? "dev" : "business"),
+    followUps: ["\u2026", "\u2026", "\u2026"]
+  } : { schema: 1, id, question: q, answer: "Markdown. Every sentence cites [path:line].", nodes, edges: [], focus };
+  const digest = conv ? chatDigest(conv) : "";
   const head = [
-    `# Lens evidence \u2014 "${q}"`,
+    `# ${conv ? "Conversation turn" : "Lens"} evidence \u2014 "${q}"`,
     "",
-    `id        ${id}${reask ? "  (re-ask: a saved lens holds this question)" : ""}`,
+    conv ? `thread    ${conv.id} (turn ${conv.turns.length + 1})` : `id        ${id}${reask ? "  (re-ask: a saved lens holds this question)" : ""}`,
     `file      ${file}`,
+    ...context ? [`about     ${context.lines.join("; ")}`] : [],
     ...conflict !== void 0 ? [`conflict  ${file} holds a different question ("${conflict}"): pick another --id, or save with --force`] : [],
     `terms     ${terms.join(", ") || "(none)"}`,
     ...reading.bridged ? [
@@ -41611,7 +42238,9 @@ function lensNew(repoArg, question, opts = {}) {
   const cand = ["## Candidate nodes"];
   const fromFind = candidates.filter((c2) => c2.via === "find");
   const fromName = candidates.filter((c2) => c2.via === "name");
+  const fromThread = candidates.filter((c2) => c2.via === "thread");
   if (fromName.length) cand.push("Named like the question (routes, screens, entities, jobs, symbols, capabilities):", ...fromName.map(fmtCandidate));
+  if (fromThread.length) cand.push(`Pointed at by the ${conv ? "conversation" : "context"} (no question word matched):`, ...fromThread.map(fmtCandidate));
   if (fromFind.length) cand.push("Modules (ultraindex find):", ...fromFind.map(fmtCandidate));
   if (!candidates.length) cand.push("(nothing matched: try other words, or `ultraview show` / `dossier` on a node you know)");
   if (capabilities.length) cand.push(`Capabilities touched: ${capabilities.map((c2) => `${c2.id} (${c2.label})`).join(", ")}`);
@@ -41619,9 +42248,9 @@ function lensNew(repoArg, question, opts = {}) {
     "\n"
   ) : "";
   const tmpl = ["## Template", "```json", stableJson(template).trimEnd(), "```"].join("\n");
-  const close = instructions({ id, file, reask, conflict });
-  const fixed = [head, cand.join("\n"), neigh, tmpl, close].filter(Boolean);
-  const max = budget * CHARS_PER_TOKEN4;
+  const close = conv ? turnInstructions({ thread: conv.id, file }) : instructions({ id, file, reask, conflict });
+  const fixed = [head, digest, cand.join("\n"), neigh, tmpl, close].filter(Boolean);
+  const max = budget * CHARS_PER_TOKEN5;
   let room = max - fixed.reduce((n, s) => n + s.length + 2, 0) - "## Source\n".length;
   const all = collectEvidence(repo, candidates, found.files);
   const evidence = [];
@@ -41634,7 +42263,7 @@ function lensNew(repoArg, question, opts = {}) {
   if (evidence.length < all.length)
     source.push(`\u2026 (cut to the ~${budget}-token budget: ${all.length - evidence.length} more excerpt(s); pass --budget to see more)`);
   if (!all.length) source.push("(no readable source matched)");
-  const text2 = `${[head, cand.join("\n"), neigh, source.join("\n\n"), tmpl, close].filter(Boolean).join("\n\n")}
+  const text2 = `${[head, digest, cand.join("\n"), neigh, source.join("\n\n"), tmpl, close].filter(Boolean).join("\n\n")}
 `;
   return {
     question: q,
@@ -41646,6 +42275,16 @@ function lensNew(repoArg, question, opts = {}) {
     bridged: reading.bridged,
     ...supplied ? { suppliedTerms: supplied } : {},
     template,
+    ...conv ? {
+      thread: {
+        id: conv.id,
+        turns: conv.turns.length,
+        digest,
+        inPlay: inPlay(conv),
+        seeds: [...seeds].map(([sid, weight]) => ({ id: sid, weight })).sort((a, b) => b.weight - a.weight || cmp12(a.id, b.id))
+      }
+    } : {},
+    ...context ? { context: { value: context.value, nodes: context.nodes } } : {},
     candidates,
     capabilities,
     neighbourhood,
@@ -41655,13 +42294,13 @@ function lensNew(repoArg, question, opts = {}) {
   };
 }
 function lensList(repoArg) {
-  const repo = resolve28(repoArg);
+  const repo = resolve29(repoArg);
   const live = liveView(repo);
   const stale = new Set(live.view.stale.lenses);
   const lenses = live.view.lenses.map((l) => {
     let saved;
     try {
-      saved = statSync18(join49(repo, LENSES_DIR, `${l.id}.json`)).mtime.toISOString();
+      saved = statSync18(join50(repo, LENSES_DIR, `${l.id}.json`)).mtime.toISOString();
     } catch {
       saved = void 0;
     }
@@ -41692,7 +42331,7 @@ function formatLensList(r) {
 var ASK_AGENTS = ["claude", "codex"];
 var ASK_MODES = ["auto", ...ASK_AGENTS, "none"];
 var ASK_TIMEOUT_MS = 18e4;
-var ASK_QUESTION_MAX = 500;
+var ASK_QUESTION_MAX = CHAT_QUESTION_MAX;
 var OUTPUT_MAX = 4 * 1024 * 1024;
 var ASK_LOG = `${VIEW_DIR}/ask.log`;
 var ASK_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:/@[\]-]{0,99}$/;
@@ -41704,7 +42343,7 @@ function findOnPath(name2, pathEnv, platform = process.platform) {
   for (const dir of (pathEnv ?? "").split(platform === "win32" ? ";" : delimiter)) {
     if (!dir) continue;
     for (const ext of exts) {
-      const abs = join50(dir, name2 + ext);
+      const abs = join51(dir, name2 + ext);
       try {
         if (!statSync19(abs).isFile()) continue;
         if (platform !== "win32") accessSync2(abs, constants.X_OK);
@@ -41727,7 +42366,7 @@ function resolveAskAgent(mode, pathEnv, platform = process.platform) {
 function ultraviewScript() {
   const here = fileURLToPath4(import.meta.url);
   if (here.endsWith(".mjs")) return here;
-  return resolve29(dirname17(here), "../scripts/ultraview.mjs");
+  return resolve30(dirname17(here), "../scripts/ultraview.mjs");
 }
 function scriptCommand(script) {
   return /^[A-Za-z0-9_./:\\-]+$/.test(script) ? `node ${script}` : `node "${script}"`;
@@ -41753,6 +42392,49 @@ function askPrompt(question, id, script) {
     "   - answer: Markdown in plain words; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
+    ""
+  ].join("\n");
+}
+var shellQuote2 = (v) => `'${v.replace(/'/g, "'\\''")}'`;
+function chatPrompt(input, script) {
+  const uv = scriptCommand(script);
+  const { question, mode, thread, context } = input;
+  const flags2 = [
+    ...thread ? [`--thread ${thread.id}`] : [],
+    ...context && Object.keys(context.value).length ? [`--context ${shellQuote2(JSON.stringify(context.value))}`] : []
+  ].join(" ");
+  const digest = thread ? chatDigest(thread) : "";
+  const register = mode === "business" ? "Mode business: the reader does not read code. Use plain business words (what the app does for whom); do not name functions, files, symbols or routes unless the question asks for them (citations still name files)." : "Mode dev: the reader is a developer. Give the technical detail: the symbols, the calls between them, the files, routes and data they touch.";
+  return [
+    "You answer one turn of a conversation about the repository in the current directory for ultraview, a cited map of the app.",
+    "You are read-only: never create, edit, move or delete any file, and never run a command that writes. ultraview saves your answer itself.",
+    "",
+    ...digest ? [
+      digest,
+      "",
+      `Read the question with the conversation above: "it", "that", "this", "and then?" refer to the most recent turn's nodes unless the question names something else.`,
+      ""
+    ] : [],
+    ...context ? [`The user asked from the map, about: ${context.lines.join("; ")}. "This" and "it" mean that, unless the question names something else.`, ""] : [],
+    `Question: ${question}`,
+    "",
+    register,
+    "Answer in the language of the question (a French question gets a French answer, a Japanese one a Japanese answer); citations stay [path:line].",
+    "",
+    "Steps:",
+    // Single-quoted: nothing in the question ($, backticks) is expanded by the shell the agent runs it in.
+    `1. Gather the evidence with ultraview: ${uv} lens new ${shellQuote2(question)}${flags2 ? ` ${flags2}` : ""}`,
+    "   It prints the conversation so far, candidate nodes (those the conversation points at among them), their edges, source excerpts and the JSON template to fill.",
+    '   If the question is not in English, you MUST add --terms "<English code keywords>" to that command: 3-8 words the code would use for what is',
+    "   asked, including what its pronouns refer to in the conversation (e.g. order cancel delete), plus this repository's own names when you know them.",
+    "   Keep the question exactly as asked; the terms carry the search.",
+    `2. Read more source if you need to (Read, Grep, Glob; or ${uv} show <node-id> and ${uv} dossier <node-id>).`,
+    "3. Reply with ONLY the turn JSON object (no prose before or after it):",
+    `   {"question": ${JSON.stringify(question)}, "answer": "...", "nodes": [...], "edges": [...], "focus": "...", "lang": "<the question's language: en, fr, ja...>", "followUps": ["...", "...", "..."]}`,
+    "   - answer: Markdown, in the question's language; EVERY sentence ends with the citation it rests on, as [path:line] or [path:start-end], a file of this repository.",
+    "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
+    "   - followUps: exactly 3 short questions the user could ask next about this app, in the question's language.",
+    "   - Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     ""
   ].join("\n");
 }
@@ -41787,7 +42469,7 @@ function agentInvocation(agent, ctx) {
       ]
     };
   }
-  const lastMessageFile = join50(ctx.tmpDir, "last-message.txt");
+  const lastMessageFile = join51(ctx.tmpDir, "last-message.txt");
   return {
     cmd: agent.path,
     args: [
@@ -41900,17 +42582,16 @@ function openAskLog(file) {
     }
   };
 }
-function askAgent(req, id = askLensId(req.repo, req.question)) {
-  const repo = resolve29(req.repo);
-  const { question, agent } = req;
-  const base = { id, question };
-  const tmpDir = mkdtempSync4(join50(tmpdir2(), "ultraview-ask-"));
+function runAgent(req, label, prompt, fail, accept) {
+  const repo = resolve30(req.repo);
+  const { agent } = req;
+  const tmpDir = mkdtempSync4(join51(tmpdir2(), "ultraview-ask-"));
   const inv = agentInvocation(agent, { script: ultraviewScript(), repo, tmpDir, ...req.model ? { model: req.model } : {} });
-  mkdirSync11(join50(repo, VIEW_DIR), { recursive: true });
-  const log = openAskLog(join50(repo, ASK_LOG));
+  mkdirSync11(join51(repo, VIEW_DIR), { recursive: true });
+  const log = openAskLog(join51(repo, ASK_LOG));
   log.write(
-    `=== ${(/* @__PURE__ */ new Date()).toISOString()} ask ${id} (${agent.name})
-question: ${question}
+    `=== ${(/* @__PURE__ */ new Date()).toISOString()} ${label} (${agent.name})
+question: ${req.question}
 $ ${[inv.cmd, ...inv.args].map((a) => /\s/.test(a) ? JSON.stringify(a) : a).join(" ")}
 `
   );
@@ -41941,7 +42622,7 @@ ${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : 
     try {
       child2 = spawn3(inv.cmd, inv.args, { cwd: repo, env: agentEnv(req.env), stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
     } catch (e) {
-      finish2({ ...base, ok: false, error: `cannot start ${agent.name}: ${e.message}` });
+      finish2(fail(`cannot start ${agent.name}: ${e.message}`));
       return;
     }
     req.onChild?.(child2);
@@ -41961,15 +42642,15 @@ ${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : 
     child2.stderr.on("data", onData("stderr"));
     child2.stdin.on("error", () => {
     });
-    child2.stdin.end(askPrompt(question, id, ultraviewScript()));
-    child2.once("error", (e) => finish2({ ...base, ok: false, error: `cannot start ${agent.name}: ${e.message}` }));
+    child2.stdin.end(prompt);
+    child2.once("error", (e) => finish2(fail(`cannot start ${agent.name}: ${e.message}`)));
     const timeoutMs = req.timeoutMs ?? ASK_TIMEOUT_MS;
     timer = setTimeout(() => {
       log.write(`--- timed out after ${Math.round(timeoutMs / 1e3)} s: stopping ${agent.name}
 `);
       child2.kill("SIGTERM");
       killTimer = setTimeout(() => child2.kill("SIGKILL"), 3e3);
-      finish2({ ...base, ok: false, error: `${agent.name} did not answer within ${Math.round(timeoutMs / 1e3)} s` });
+      finish2(fail(`${agent.name} did not answer within ${Math.round(timeoutMs / 1e3)} s`));
     }, timeoutMs);
     child2.once("close", (code, signal) => {
       if (finished) return;
@@ -41977,31 +42658,81 @@ ${o.problems.map((p) => `  ${p.path || "(root)"}: ${p.message}`).join("\n")}` : 
 --- exit ${code ?? signal}
 `);
       if (code !== 0) {
-        finish2({ ...base, ok: false, error: `${agent.name} exited with ${code ?? signal} (see ${ASK_LOG})` });
+        finish2(fail(`${agent.name} exited with ${code ?? signal} (see ${ASK_LOG})`));
         return;
       }
       req.onProgress?.("validating", { bytes });
       let reply = out2;
-      if (inv.lastMessageFile && existsSync26(inv.lastMessageFile)) reply = readFileSync32(inv.lastMessageFile, "utf8");
-      const lens = extractLensJson(reply);
-      if (!lens) {
-        finish2({ ...base, ok: false, error: `${agent.name} replied without a lens JSON object (see ${ASK_LOG})` });
+      if (inv.lastMessageFile && existsSync27(inv.lastMessageFile)) reply = readFileSync33(inv.lastMessageFile, "utf8");
+      const json2 = extractLensJson(reply);
+      if (!json2) {
+        finish2(fail(`${agent.name} replied without a JSON object (see ${ASK_LOG})`));
         return;
       }
-      const { sources: _ignored, ...rest } = lens;
-      const r = saveLens(repo, { schema: 1, ...rest, id, question });
-      if (!r.ok) {
-        finish2({ ...base, ok: false, error: "the answer did not pass `lens save`", problems: r.errors });
-        return;
+      let o;
+      try {
+        o = accept(json2);
+      } catch (e) {
+        o = fail(e.message);
       }
-      finish2({ ...base, ok: true, file: r.file, replaced: r.replaced, sources: r.sources });
+      finish2(o);
     });
   });
 }
+function askAgent(req, id = askLensId(req.repo, req.question)) {
+  const repo = resolve30(req.repo);
+  const { question } = req;
+  const base = { id, question };
+  return runAgent(
+    req,
+    `ask ${id}`,
+    askPrompt(question, id, ultraviewScript()),
+    (error, problems) => ({ ...base, ok: false, error, ...problems ? { problems } : {} }),
+    (lens) => {
+      const { sources: _ignored, ...rest } = lens;
+      const r = saveLens(repo, { schema: 1, ...rest, id, question });
+      if (!r.ok) return { ...base, ok: false, error: "the answer did not pass `lens save`", problems: r.errors };
+      return { ...base, ok: true, file: r.file, replaced: r.replaced, sources: r.sources };
+    }
+  );
+}
+function chatAgent(req) {
+  const repo = resolve30(req.repo);
+  const thread = req.thread?.id ?? req.newThread;
+  if (!thread) return Promise.resolve({ ok: false, thread: "", error: "internal: no thread id" });
+  let context;
+  if (req.context && Object.keys(req.context).length) {
+    const r = resolveContext(req.view, req.context);
+    if ("error" in r) return Promise.resolve({ ok: false, thread, error: r.error });
+    context = { value: req.context, lines: r.lines };
+  }
+  const started = Date.now();
+  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context }, ultraviewScript());
+  return runAgent(
+    req,
+    `chat ${thread} turn ${(req.thread?.turns.length ?? 0) + 1}`,
+    prompt,
+    (error, problems) => ({ ok: false, thread, error, ...problems ? { problems } : {} }),
+    (reply) => {
+      const { sources: _s, id: _i, schema: _v, mode: _m, context: _c, ...rest } = reply;
+      const r = saveTurn(repo, rest, {
+        ...req.thread ? { thread: req.thread.id } : { create: { id: thread } },
+        question: req.question,
+        mode: req.mode,
+        ...req.context && Object.keys(req.context).length ? { context: req.context } : {},
+        source: "agent",
+        ms: Date.now() - started,
+        view: req.view
+      });
+      if (!r.ok) return { ok: false, thread, error: "the answer did not pass the turn's gates (`lens save --thread`)", problems: r.errors };
+      return { ok: true, thread, file: r.file, index: r.index, turn: r.turn };
+    }
+  );
+}
 
 // src/explain.ts
-import { existsSync as existsSync27, statSync as statSync20 } from "fs";
-import { join as join51 } from "path";
+import { existsSync as existsSync28, statSync as statSync20 } from "fs";
+import { join as join52 } from "path";
 
 // src/explain-strings.ts
 var en = {
@@ -42117,8 +42848,8 @@ function explainText(lang, key, params = {}) {
 var EXPLAIN_MODES = ["business", "dev"];
 var EXPLAIN_LIST = 6;
 var ESCALATE_FACTS = 2;
-var LANG_RE = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8}){0,3}$/;
-var cmp12 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+var LANG_RE2 = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8}){0,3}$/;
+var cmp13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function push(map, key, value) {
   const list = map.get(key);
   if (list) list.push(value);
@@ -42128,8 +42859,8 @@ var siteCache;
 function loadCallSites(root) {
   if (!root) return /* @__PURE__ */ new Map();
   const index = viewPaths(root).index;
-  const file = join51(index, "cache.json");
-  const key = existsSync27(file) ? `${file}:${statSync20(file).mtimeMs}` : "none";
+  const file = join52(index, "cache.json");
+  const key = existsSync28(file) ? `${file}:${statSync20(file).mtimeMs}` : "none";
   if (siteCache?.key === key) return siteCache.sites;
   const sites = /* @__PURE__ */ new Map();
   for (const [rel2, entry2] of loadCache(index) ?? []) {
@@ -42418,7 +43149,7 @@ function callersOf(w, sym) {
   const span = spanOf(w, sym);
   if (!span) return;
   const items = [];
-  const files = [span.file, ...[...w.ctx.importers.get(span.file) ?? []].sort(cmp12)];
+  const files = [span.file, ...[...w.ctx.importers.get(span.file) ?? []].sort(cmp13)];
   for (const f of files) {
     for (const site of w.ctx.callSites().get(f) ?? []) {
       if (site.name !== sym.label) continue;
@@ -42523,7 +43254,7 @@ function businessReach(w, holder) {
       }
     }
   }
-  return names.size ? [...names].sort(cmp12) : [w.place(holder)];
+  return names.size ? [...names].sort(cmp13) : [w.place(holder)];
 }
 function explainEntity(w, n) {
   const e = w.ctx.entityFacts.get(n.id);
@@ -42560,10 +43291,10 @@ function explainEntity(w, n) {
   w.list("rel.writtenBy", writtenBy);
 }
 function explainExternal(w, n) {
-  const sites = [...w.ctx.extsById.get(n.id) ?? []].sort((a, b) => cmp12(a.file, b.file) || a.line - b.line);
+  const sites = [...w.ctx.extsById.get(n.id) ?? []].sort((a, b) => cmp13(a.file, b.file) || a.line - b.line);
   const first = sites[0];
   if (!first) return;
-  const vias = [...new Set(sites.map((s) => s.via))].sort(cmp12).join(", ");
+  const vias = [...new Set(sites.map((s) => s.via))].sort(cmp13).join(", ");
   w.is(w.dev ? "is.ext.dev" : "is.ext.business", { name: n.label, via: vias }, w.cite(first.file, first.line));
   const items = [];
   for (const s of sites) {
@@ -42591,7 +43322,7 @@ function explainSym(w, n) {
 function byPlace(a, b) {
   const x = atOf(a.at);
   const y = atOf(b.at);
-  return cmp12(x?.file ?? "", y?.file ?? "") || (x?.line ?? 0) - (y?.line ?? 0) || cmp12(a.id, b.id);
+  return cmp13(x?.file ?? "", y?.file ?? "") || (x?.line ?? 0) - (y?.line ?? 0) || cmp13(a.id, b.id);
 }
 function explainFiles(w, self, files, declared2, keep = () => true) {
   const byKind = (kind) => declared2.filter((x) => x.kind === kind).sort(byPlace).flatMap((x) => {
@@ -42606,7 +43337,7 @@ function explainFiles(w, self, files, declared2, keep = () => true) {
   const reads = [];
   const writes = [];
   const exts = [];
-  for (const rel2 of files.map((f) => fileOfId(f.id)).sort(cmp12)) {
+  for (const rel2 of files.map((f) => fileOfId(f.id)).sort(cmp13)) {
     for (const u of w.ctx.usesByFile.get(rel2) ?? []) {
       const ent = w.ctx.byId.get(entityId(u.entity));
       const cite = w.cite(u.file, u.line);
@@ -42654,7 +43385,7 @@ function explainGroup(w, n) {
     files.flatMap((f) => w.ctx.children.get(f.id) ?? [])
   );
   if (w.dev && n.kind === "mod") {
-    const items = [...files].sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp12(a.id, b.id)).flatMap((f) => {
+    const items = [...files].sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp13(a.id, b.id)).flatMap((f) => {
       const cite = w.cite(fileOfId(f.id), 1);
       return cite ? [{ name: w.name(f), cite, node: f.id }] : [];
     });
@@ -42709,8 +43440,8 @@ function explainNode(ctx, id, opts = {}) {
     lang,
     ...fallback ? { langFallback: fallback } : {},
     answer,
-    nodes: [n.id, ...[...w.nodes].sort(cmp12)],
-    edges: [...w.edges.values()].sort((a, b) => cmp12(a.from, b.from) || cmp12(a.to, b.to) || cmp12(a.kind ?? "", b.kind ?? "")),
+    nodes: [n.id, ...[...w.nodes].sort(cmp13)],
+    edges: [...w.edges.values()].sort((a, b) => cmp13(a.from, b.from) || cmp13(a.to, b.to) || cmp13(a.kind ?? "", b.kind ?? "")),
     citations,
     counts: { prose: proseCount, facts: w.facts },
     escalate: proseCount === 0 && w.facts < ESCALATE_FACTS,
@@ -42729,7 +43460,7 @@ function explainRequest(ctx, body2, suggest = () => []) {
   const mode = req.mode ?? "business";
   if (typeof mode !== "string" || !EXPLAIN_MODES.includes(mode))
     return { status: 400, value: { error: `\`mode\` must be one of ${EXPLAIN_MODES.join(", ")}` } };
-  if (req.lang !== void 0 && (typeof req.lang !== "string" || !LANG_RE.test(req.lang)))
+  if (req.lang !== void 0 && (typeof req.lang !== "string" || !LANG_RE2.test(req.lang)))
     return { status: 400, value: { error: "`lang` must be a language tag (en, fr, pt-BR\u2026)" } };
   const x = explainNode(ctx, req.node, { mode, lang: req.lang });
   if (!x) return { status: 404, value: { error: `unknown node id: ${req.node}`, suggestions: suggest(req.node) } };
@@ -42747,10 +43478,10 @@ function formatExplanation(x) {
 }
 
 // src/serve.ts
-import { existsSync as existsSync28, readdirSync as readdirSync8, readFileSync as readFileSync33, statSync as statSync21, watch } from "fs";
+import { existsSync as existsSync29, readdirSync as readdirSync9, readFileSync as readFileSync34, statSync as statSync21, watch } from "fs";
 import { createServer } from "http";
 import { isIP } from "net";
-import { dirname as dirname18, join as join52, relative as relative16, resolve as resolve30, sep as sep11 } from "path";
+import { dirname as dirname18, join as join53, relative as relative16, resolve as resolve31, sep as sep11 } from "path";
 var SERVE_PORT = 4178;
 var SERVE_HOST = "127.0.0.1";
 var SERVE_DEBOUNCE_MS = 150;
@@ -42768,6 +43499,7 @@ var CALLGRAPH_NODES = 200;
 var CALLGRAPH_EDGES = 400;
 var IGNORED_VIEW_FILES = /* @__PURE__ */ new Set(["index.html", "ask.log", ".gitignore"]);
 var AGENT_DIRS = ["flows", "lenses", "changes"];
+var CHAT_DIR = CONVERSATIONS_DIR.slice(`${VIEW_DIR}/`.length);
 var NOT_SOURCE = [VIEW_DIR, INDEX_DIR_NAME, ".git", "node_modules"];
 function isLoopbackHost(host) {
   const h = host.replace(/^\[|\]$/g, "").toLowerCase();
@@ -42837,8 +43569,8 @@ function searchNodes(view, q, n = SEARCH_NODES) {
   }));
 }
 async function startServe(opts) {
-  const repo = resolve30(opts.repo);
-  if (!existsSync28(repo) || !statSync21(repo).isDirectory()) throw new Error(`repo not found: ${repo}`);
+  const repo = resolve31(opts.repo);
+  if (!existsSync29(repo) || !statSync21(repo).isDirectory()) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
   if (!indexExists(paths.index)) throw new Error("no ultraindex index: run `ultraview build` first");
   const host = opts.host ?? SERVE_HOST;
@@ -42853,7 +43585,7 @@ async function startServe(opts) {
   if (askModelError) throw new Error(askModelError);
   const askModel = opts.askModel;
   const agent = resolveAskAgent(opts.ask ?? "auto", env.PATH ?? env.Path);
-  const template = readFileSync33(opts.template ?? viewerTemplatePath(), "utf8");
+  const template = readFileSync34(opts.template ?? viewerTemplatePath(), "utf8");
   let state = { ...freshView(repo), version: 1 };
   writeView(paths.view, state.text);
   let html;
@@ -42869,6 +43601,35 @@ data: ${JSON.stringify(data)}
     for (const c2 of clients) c2.write(": ping\n\n");
   }, opts.heartbeatMs ?? HEARTBEAT_MS);
   heartbeat.unref();
+  const chatDir = join53(paths.dir, CHAT_DIR);
+  const chatStamp = (id) => {
+    try {
+      return readFileSync34(join53(chatDir, `${id}.json`), "utf8");
+    } catch {
+      return void 0;
+    }
+  };
+  let chats = /* @__PURE__ */ new Map();
+  const scanChats = (announce) => {
+    const next = /* @__PURE__ */ new Map();
+    for (const id of conversationIds(repo)) {
+      const text2 = chatStamp(id);
+      if (text2 !== void 0) next.set(id, text2);
+    }
+    if (announce) {
+      for (const [id, text2] of next) if (chats.get(id) !== text2) broadcast("chat", { id });
+    }
+    chats = next;
+  };
+  scanChats(false);
+  let chatTimer;
+  const scheduleChats = () => {
+    if (chatTimer) clearTimeout(chatTimer);
+    chatTimer = setTimeout(() => {
+      chatTimer = void 0;
+      scanChats(true);
+    }, debounceMs);
+  };
   const refresh = () => {
     signature = agentSignature();
     let next;
@@ -42909,22 +43670,45 @@ data: ${JSON.stringify(data)}
       } catch {
       }
     };
-    for (const f of ["model.json", "facts.json", "timeline.jsonl"]) stamp(join52(paths.dir, f), f);
+    for (const f of ["model.json", "facts.json", "timeline.jsonl"]) stamp(join53(paths.dir, f), f);
     for (const d of AGENT_DIRS) {
-      const abs = join52(paths.dir, d);
+      const abs = join53(paths.dir, d);
       let names = [];
       try {
-        names = readdirSync8(abs).sort();
+        names = readdirSync9(abs).sort();
       } catch {
         continue;
       }
-      for (const n of names) stamp(join52(abs, n), `${d}/${n}`);
+      for (const n of names) stamp(join53(abs, n), `${d}/${n}`);
     }
-    for (const f of ["graph.json", "manifest.json"]) stamp(join52(paths.index, f), `index/${f}`);
+    for (const f of ["graph.json", "manifest.json"]) stamp(join53(paths.index, f), `index/${f}`);
     return parts2.join("\n");
   };
   let signature = agentSignature();
+  const chatSignature = () => {
+    const parts2 = [];
+    let names = [];
+    try {
+      names = readdirSync9(chatDir).sort();
+    } catch {
+      return "";
+    }
+    for (const n of names) {
+      try {
+        const st = statSync21(join53(chatDir, n));
+        parts2.push(`${n}:${st.size}:${st.mtimeMs}`);
+      } catch {
+      }
+    }
+    return parts2.join("\n");
+  };
+  let chatSig = chatSignature();
   const agentPoll = setInterval(() => {
+    const nextChat = chatSignature();
+    if (nextChat !== chatSig) {
+      chatSig = nextChat;
+      scheduleChats();
+    }
     const next = agentSignature();
     if (next === signature) return;
     signature = next;
@@ -42973,13 +43757,18 @@ data: ${JSON.stringify(data)}
       const name2 = file.split(/[\\/]/).pop();
       if (IGNORED_VIEW_FILES.has(name2) || name2.endsWith(".tmp")) return;
       if (AGENT_DIRS.includes(name2)) {
-        const sub = join52(paths.dir, name2);
-        if (existsSync28(sub)) watchDir(sub, false, onViewDirEvent);
+        const sub = join53(paths.dir, name2);
+        if (existsSync29(sub)) watchDir(sub, false, onViewDirEvent);
+      }
+      if (name2 === CHAT_DIR) {
+        if (existsSync29(chatDir)) watchDir(chatDir, false, onChatDirEvent);
+        scheduleChats();
+        return;
       }
       if (name2 === "view.json") {
         let disk;
         try {
-          disk = readFileSync33(paths.view, "utf8");
+          disk = readFileSync34(paths.view, "utf8");
         } catch {
           disk = void 0;
         }
@@ -42988,8 +43777,13 @@ data: ${JSON.stringify(data)}
     }
     scheduleRefresh();
   };
+  function onChatDirEvent(file) {
+    if (file !== null && !String(file).endsWith(".json")) return;
+    scheduleChats();
+  }
   if (!watchDir(paths.dir, false, onViewDirEvent)) warn(`cannot watch ${paths.dir}: live updates are off`);
-  for (const d of AGENT_DIRS) if (existsSync28(join52(paths.dir, d))) watchDir(join52(paths.dir, d), false, onViewDirEvent);
+  if (existsSync29(chatDir)) watchDir(chatDir, false, onChatDirEvent);
+  for (const d of AGENT_DIRS) if (existsSync29(join53(paths.dir, d))) watchDir(join53(paths.dir, d), false, onViewDirEvent);
   watchDir(paths.index, false, () => {
     scheduleRefresh();
     scheduleCheck();
@@ -43002,12 +43796,12 @@ data: ${JSON.stringify(data)}
   });
   if (!watchedRecursively) {
     const dirs = /* @__PURE__ */ new Set([repo]);
-    for (const f of state.loaded.inputs.graph.files) dirs.add(dirname18(join52(repo, f.rel)));
+    for (const f of state.loaded.inputs.graph.files) dirs.add(dirname18(join53(repo, f.rel)));
     if (dirs.size <= WATCH_DIRS_MAX) {
       for (const d of [...dirs].sort())
         watchDir(d, false, (file) => {
           if (file === null) return scheduleCheck();
-          const rel2 = relative16(repo, join52(d, file)).split(sep11).join("/");
+          const rel2 = relative16(repo, join53(d, file)).split(sep11).join("/");
           if (isSource(rel2)) scheduleCheck();
         });
     } else {
@@ -43017,8 +43811,8 @@ data: ${JSON.stringify(data)}
   }
   let symCache;
   const symbolGraph = () => {
-    const graphFile = join52(paths.index, "graph.json");
-    const key = existsSync28(graphFile) ? String(statSync21(graphFile).mtimeMs) : "none";
+    const graphFile = join53(paths.index, "graph.json");
+    const key = existsSync29(graphFile) ? String(statSync21(graphFile).mtimeMs) : "none";
     if (symCache?.key === key) return symCache.graph;
     const scan2 = loadManifest(paths.index)?.scan;
     const s = codeindex_engine_exports.scanRepo(repo, {
@@ -43062,6 +43856,97 @@ data: ${JSON.stringify(data)}
       } else broadcast("ask-error", { id, question, agent: who, error: o.error, ...o.problems ? { problems: o.problems } : {} });
     });
     return id;
+  };
+  const contextView2 = () => ({ byId: state.byId, flows: state.view.flows, insights: state.view.insights });
+  const startChat = (res, body2) => {
+    const conv = body2.thread !== void 0 ? readConversation(repo, body2.thread)?.conversation : void 0;
+    const newThread = conv ? void 0 : proposeChatId(repo, body2.question);
+    const id = conv?.id ?? newThread;
+    const current = { id: `chat:${id}`, question: body2.question };
+    asking = current;
+    const who = agent.name;
+    res.writeHead(200, { ...SECURITY_HEADERS, "Content-Type": "text/event-stream; charset=utf-8", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+    let open = true;
+    res.on("close", () => {
+      open = false;
+    });
+    const emit2 = (event, data) => {
+      if (open) res.write(`event: ${event}
+data: ${JSON.stringify(data)}
+
+`);
+    };
+    const beat = setInterval(() => {
+      if (open) res.write(": ping\n\n");
+    }, opts.heartbeatMs ?? HEARTBEAT_MS);
+    beat.unref();
+    emit2("progress", { text: `asking ${who}${conv ? ` (turn ${conv.turns.length + 1} of ${conv.id})` : ""}` });
+    void chatAgent({
+      repo,
+      question: body2.question,
+      agent,
+      env,
+      timeoutMs: opts.askTimeoutMs,
+      mode: body2.mode,
+      ...conv ? { thread: conv } : { newThread },
+      ...body2.context ? { context: body2.context } : {},
+      view: contextView2(),
+      onProgress: (stage, detail) => emit2("progress", {
+        text: stage === "started" ? `${who} started` : stage === "running" ? `${who} is reading the code${detail.bytes ? ` (${Math.max(1, Math.round(detail.bytes / 1024))} KB of output)` : ""}` : "checking the answer: schema, node ids, citations"
+      }),
+      onChild: (child2) => {
+        current.child = child2;
+      }
+    }).then((o) => {
+      if (asking === current) asking = void 0;
+      clearInterval(beat);
+      if (o.ok && o.turn && o.index !== void 0) {
+        emit2("turn", { thread: o.thread, index: o.index, turn: o.turn });
+        scanChats(true);
+        chatSig = chatSignature();
+      } else
+        emit2("error", {
+          message: `${o.error ?? "the turn failed"}${o.problems?.length ? `: ${o.problems.map((p) => `${p.path || "(root)"}: ${p.message}`).join("; ")}` : ""}`
+        });
+      if (open) res.end();
+    });
+  };
+  const postBody = async (req, res) => {
+    if (!loopbackOnly && !isLoopbackHost(req.socket.remoteAddress ?? "")) {
+      sendJson(res, 403, { error: "asking is only allowed from this machine" });
+      return void 0;
+    }
+    const origin = req.headers.origin;
+    if (origin !== void 0 && origin !== `http://${req.headers.host}`) {
+      sendJson(res, 403, { error: "cross-origin request refused" });
+      return void 0;
+    }
+    const site = req.headers["sec-fetch-site"];
+    if (site !== void 0 && site !== "same-origin" && site !== "none") {
+      sendJson(res, 403, { error: "cross-site request refused" });
+      return void 0;
+    }
+    if (!(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+      sendJson(res, 415, { error: "send application/json" });
+      return void 0;
+    }
+    const body2 = await readBody(req, BODY_MAX);
+    if (body2 === void 0) {
+      sendJson(res, 413, { error: `body over ${BODY_MAX} bytes` });
+      return void 0;
+    }
+    let parsed2;
+    try {
+      parsed2 = JSON.parse(body2);
+    } catch {
+      sendJson(res, 400, { error: "body is not JSON" });
+      return void 0;
+    }
+    if (!parsed2 || typeof parsed2 !== "object" || Array.isArray(parsed2)) {
+      sendJson(res, 400, { error: "body must be a JSON object" });
+      return void 0;
+    }
+    return parsed2;
   };
   const handle2 = async (req, res) => {
     if (!allowedHostHeader(req.headers.host, host)) return send(res, 403, "text/plain; charset=utf-8", "forbidden host\n");
@@ -43169,25 +44054,68 @@ data: ${JSON.stringify({ version: state.version, stale, ask: agent ? { agent: ag
       case "/api/ask": {
         if (!agent) return sendJson(res, 404, { error: "the Ask bridge is off (no agent CLI found, or --ask none)" });
         if (method !== "POST") return send(res, 405, "text/plain; charset=utf-8", "method not allowed\n", false, { Allow: "POST" });
-        if (!loopbackOnly && !isLoopbackHost(req.socket.remoteAddress ?? "")) return sendJson(res, 403, { error: "asking is only allowed from this machine" });
-        const origin = req.headers.origin;
-        if (origin !== void 0 && origin !== `http://${req.headers.host}`) return sendJson(res, 403, { error: "cross-origin request refused" });
-        const site = req.headers["sec-fetch-site"];
-        if (site !== void 0 && site !== "same-origin" && site !== "none") return sendJson(res, 403, { error: "cross-site request refused" });
-        if (!(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) return sendJson(res, 415, { error: "send application/json" });
-        const body2 = await readBody(req, BODY_MAX);
-        if (body2 === void 0) return sendJson(res, 413, { error: `body over ${BODY_MAX} bytes` });
-        let parsed2;
-        try {
-          parsed2 = JSON.parse(body2);
-        } catch {
-          return sendJson(res, 400, { error: "body is not JSON" });
-        }
-        const q = checkQuestion(parsed2?.question);
+        const parsed2 = await postBody(req, res);
+        if (!parsed2) return;
+        const q = checkQuestion(parsed2.question);
         if ("error" in q) return sendJson(res, 400, { error: q.error });
         if (asking) return sendJson(res, 409, { error: "an ask is already running", id: asking.id });
         const id = startAsk(q.question);
         return sendJson(res, 202, { id, question: q.question, agent: agent.name });
+      }
+      case "/api/chat": {
+        if (method === "GET" || head) {
+          const id = param("id");
+          if (!id) return sendJson(res, 400, { error: "missing ?id=" }, head);
+          if (!isChatId(id)) return sendJson(res, 400, { error: "not a conversation id" }, head);
+          const r = readConversation(repo, id);
+          if (!r) return sendJson(res, 404, { error: `unknown conversation: ${id}` }, head);
+          if (!r.conversation)
+            return sendJson(res, 500, { error: `${CONVERSATIONS_DIR}/${id}.json is invalid (run \`ultraview check\`)`, problems: r.problems }, head);
+          return sendJson(res, 200, r.conversation, head);
+        }
+        if (method !== "POST") return send(res, 405, "text/plain; charset=utf-8", "method not allowed\n", false, { Allow: "GET, HEAD, POST" });
+        if (!agent) return sendJson(res, 404, { error: "the Ask bridge is off (no agent CLI found, or --ask none)" });
+        const parsed2 = await postBody(req, res);
+        if (!parsed2) return;
+        for (const k of Object.keys(parsed2))
+          if (!["thread", "question", "mode", "context"].includes(k))
+            return sendJson(res, 400, { error: `unknown key "${k}" (thread, question, mode, context)` });
+        const q = checkQuestion(parsed2.question);
+        if ("error" in q) return sendJson(res, 400, { error: q.error });
+        if (!CHAT_MODES.includes(parsed2.mode)) return sendJson(res, 400, { error: `\`mode\` must be one of ${CHAT_MODES.join(", ")}` });
+        let thread;
+        if (parsed2.thread !== void 0) {
+          if (!isChatId(parsed2.thread)) return sendJson(res, 400, { error: "`thread` is not a conversation id" });
+          const r = readConversation(repo, parsed2.thread);
+          if (!r) return sendJson(res, 404, { error: `unknown conversation: ${parsed2.thread}` });
+          if (!r.conversation) return sendJson(res, 409, { error: `${CONVERSATIONS_DIR}/${parsed2.thread}.json is invalid (run \`ultraview check\`)` });
+          if (r.conversation.turns.length >= CHAT_TURNS_MAX)
+            return sendJson(res, 409, { error: `the conversation already holds ${CHAT_TURNS_MAX} turns: start a new one` });
+          thread = parsed2.thread;
+        }
+        const ctx = checkContext(parsed2.context);
+        if ("error" in ctx) return sendJson(res, 400, { error: ctx.error });
+        if (Object.keys(ctx).length) {
+          const r = resolveContext(contextView2(), ctx);
+          if ("error" in r) return sendJson(res, 400, { error: r.error });
+        }
+        if (asking) return sendJson(res, 409, { error: "an ask is already running", id: asking.id });
+        startChat(res, {
+          ...thread ? { thread } : {},
+          question: q.question,
+          mode: parsed2.mode,
+          ...Object.keys(ctx).length ? { context: ctx } : {}
+        });
+        return;
+      }
+      case "/api/chats": {
+        if (!getOnly()) return;
+        return sendJson(
+          res,
+          200,
+          chatList(repo).conversations.map(({ id, title, turns, updatedAt: updatedAt2 }) => ({ id, title, turns, updatedAt: updatedAt2 })),
+          head
+        );
       }
       default:
         return send(res, 404, "text/plain; charset=utf-8", "not found\n", head);
@@ -43227,6 +44155,7 @@ data: ${JSON.stringify({ version: state.version, stale, ask: agent ? { agent: ag
       clearInterval(agentPoll);
       if (viewTimer) clearTimeout(viewTimer);
       if (sourceTimer) clearTimeout(sourceTimer);
+      if (chatTimer) clearTimeout(chatTimer);
       for (const w of watchers.values()) w.close();
       watchers.clear();
       asking?.child?.kill("SIGTERM");
@@ -43337,8 +44266,8 @@ function formatBuildSummary(r) {
 }
 
 // src/status.ts
-import { existsSync as existsSync29 } from "fs";
-import { resolve as resolve31 } from "path";
+import { existsSync as existsSync30 } from "fs";
+import { resolve as resolve32 } from "path";
 var build = (s) => `run \`ultraview build --repo ${s.paths.repo}\``;
 var noIndex = (s) => s.index.exists ? void 0 : { situation: "no-index", reasons: ["no ultraindex index at .ultraindex/"], worklist: [build(s)] };
 var indexStale = (s) => {
@@ -43397,15 +44326,15 @@ function indexState(paths) {
   };
 }
 function readStatus(repoArg, probes = PROBES) {
-  const repo = resolve31(repoArg);
-  if (!existsSync29(repo)) throw new Error(`repo not found: ${repo}`);
+  const repo = resolve32(repoArg);
+  if (!existsSync30(repo)) throw new Error(`repo not found: ${repo}`);
   const paths = viewPaths(repo);
   let report;
   const inputs = {
     paths,
     index: indexState(paths),
-    facts: { exists: existsSync29(paths.facts) },
-    model: { exists: existsSync29(paths.model) },
+    facts: { exists: existsSync30(paths.facts) },
+    model: { exists: existsSync30(paths.model) },
     check: () => report ??= checkMap(repo)
   };
   let hit = { situation: "ready", reasons: ["index fresh, model checks clean, nothing stale"], worklist: [] };
@@ -43464,7 +44393,8 @@ Commands:
                      resolve, citations that resolve (ultraindex
                      checkCitations), one citation per sentence, coverage
                      (systems >= 90% of code files, capabilities >= 70% of
-                     non-test modules), stale lenses / flows (warnings).
+                     non-test modules), stale lenses / flows / conversation
+                     turns (warnings).
                      Exit 1 on failure.
   dossier <node-id>  Evidence pack to write about one node: real source,
                      facts with file:line, neighbours. Cut to --budget tokens.
@@ -43483,10 +44413,27 @@ Commands:
                      nodes (ultraindex find + names matching the question),
                      their strongest edges, source excerpts cut to --budget
                      tokens, then the steps to write and save it.
+  lens new "<question>" --thread <id>
+                     The same pack for a conversation's next turn: the
+                     thread's digest (earlier questions, one-line answers,
+                     node ids in play), candidates ranked with the earlier
+                     turns' nodes and their neighbours, a turn template
+                     (lang, mode, 3 follow-ups) and its draft path.
   lens list          Saved lenses: id, question, node count, stale flag.
   lens save <file>   Validate a lens (one saved question and its cited
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
+  lens save <file> --thread <id>
+                     Validate one turn the same way (plus node ids, every
+                     sentence cited, lang, mode, 3 follow-ups) and append it
+                     to .ultraview/conversations/<id>.json.
+  chat new           Start a conversation (--title): an empty thread in
+                     .ultraview/conversations/<id>.json; prints its id.
+  chat list          Conversations: id, title, turns, last update, stale turns.
+  chat show <id>     One conversation, turn by turn (stale turns flagged).
+  chat promote <id> <turn>
+                     Save turn <turn> (from 1) of a conversation as a lens
+                     (--lens-id <slug>, default: a slug of its question).
   flow save <file>   Same for a flow: .ultraview/flows/<id>.json.
   render             Re-assemble .ultraview/view.json from the current model,
                      flows, lenses, timeline and changes (no re-indexing),
@@ -43534,7 +44481,9 @@ Commands:
                      change), /api/node, /api/search, /api/callgraph,
                      POST /api/explain (the explain answer), and the
                      optional Ask bridge (POST /api/ask: a read-only run of
-                     the claude or codex CLI whose answer is saved as a lens).
+                     the claude or codex CLI whose answer is saved as a lens;
+                     POST /api/chat: the same for one conversation turn, as
+                     an event stream), GET /api/chat, GET /api/chats.
                      Binds ${SERVE_HOST}:${SERVE_PORT}; Ctrl-C stops it.
 
 Options:
@@ -43543,7 +44492,7 @@ Options:
                  no network). Grammars are otherwise pulled once per machine
                  into the shared codeindex cache; CODEINDEX_NO_GRAMMARS_PULL=1
                  forbids the download.
-  --strict       check: stale lenses / flows fail instead of warning
+  --strict       check: stale lenses / flows / turns fail instead of warning
   --budget <n>   dossier / lens new: token budget (default ${DOSSIER_BUDGET} / ${LENS_BUDGET},
                  ~4 characters a token)
   --id <slug>    lens new: the lens id (default: a slug of the question,
@@ -43551,8 +44500,14 @@ Options:
   --terms "<w>"  lens new: English code keywords for the question, merged
                  into its reading; required when the question is not in
                  English (its own words then weigh less)
-  --force        lens save / flow save: replace a different question / title
-                 saved under the same id
+  --thread <id>  lens new / lens save: the conversation the question follows
+                 up in (new: its digest and ranking; save: append the turn)
+  --context <j>  lens new: what the question is about in the map, as JSON:
+                 '{"node":"<id>"}', '{"edge":"<from> -> <to>"}',
+                 '{"insight":"<id>"}' or '{"step":"<flow-id>:<n>"}'
+  --lens-id <s>  chat promote: the lens id (default: a slug of the question)
+  --force        lens save / flow save / chat promote: replace a different
+                 question / title saved under the same id
   --open         render / serve: open the page with the OS opener afterwards
   --port <n>     serve: port (default ${SERVE_PORT}; 0 picks a free one)
   --host <addr>  serve: address to bind (default ${SERVE_HOST}). A non-loopback
@@ -43573,7 +44528,8 @@ Options:
   --record       diff: write the change set and append a timeline entry
   --source <s>   diff --record / timeline add: agent, pr or manual (default:
                  manual for diff, agent for timeline add)
-  --title <t>    diff --record / timeline add: entry title (diff: from counts)
+  --title <t>    diff --record / timeline add: entry title (diff: from
+                 counts); chat new: the conversation's title
   --summary <s>  diff --record / timeline add: cited summary (diff: an auto
                  summary from counts, flagged auto)
   --request <r>  diff --record / timeline add: what was asked
@@ -43621,7 +44577,8 @@ var COMMANDS = [
   "insights",
   "export",
   "serve",
-  "explain"
+  "explain",
+  "chat"
 ];
 var VALUE_FLAGS2 = [
   "repo",
@@ -43648,7 +44605,10 @@ var VALUE_FLAGS2 = [
   "ask",
   "ask-model",
   "mode",
-  "lang"
+  "lang",
+  "thread",
+  "context",
+  "lens-id"
 ];
 var BOOL_FLAGS = [
   "json",
@@ -43683,7 +44643,8 @@ var ARITY = {
   insights: { min: 0, max: 0, usage: "insights" },
   export: { min: 0, max: 0, usage: "export --mermaid|--svg|--md [--level cap|sys|mod] [--lens <id>] [--flow <id>] [--out <file>]" },
   serve: { min: 0, max: 0, usage: "serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--ask-model <m>] [--open]" },
-  explain: { min: 1, max: 1, usage: "explain <node-id> [--mode business|dev] [--lang <xx>]" }
+  explain: { min: 1, max: 1, usage: "explain <node-id> [--mode business|dev] [--lang <xx>]" },
+  chat: { min: 1, max: 3, usage: "chat new [--title <t>] | chat list | chat show <id> | chat promote <id> <turn> [--lens-id <slug>]" }
 };
 var processIo = {
   out: (s) => process.stdout.write(s),
@@ -43799,7 +44760,7 @@ async function cmdExplain(p, io) {
   const mode = p.values.mode ?? "business";
   if (!EXPLAIN_MODES.includes(mode)) return usage(io, `--mode must be one of ${EXPLAIN_MODES.join(", ")} (got ${mode})`);
   const lang = p.values.lang;
-  if (lang !== void 0 && !LANG_RE.test(lang)) return usage(io, `--lang must be a language tag such as en, fr or pt-BR (got ${lang})`);
+  if (lang !== void 0 && !LANG_RE2.test(lang)) return usage(io, `--lang must be a language tag such as en, fr or pt-BR (got ${lang})`);
   const live = liveView(p.values.repo ?? ".");
   const x = explainNode(explainContext(live), id, { mode, lang });
   if (!x) return unknownId(p, io, id, similarIds(live.view, id));
@@ -43817,7 +44778,7 @@ async function cmdDossier(p, io) {
       return EXIT_USAGE;
     }
   }
-  const repo = resolve32(p.values.repo ?? ".");
+  const repo = resolve33(p.values.repo ?? ".");
   const live = liveView(repo);
   const text2 = renderNodeDossier(live, repo, id, { budget });
   if (text2 === void 0) return unknownId(p, io, id, similarIds(live.view, id));
@@ -43833,7 +44794,7 @@ async function cmdSave(p, io, what) {
   }
   let text2;
   try {
-    text2 = readFileSync34(resolve32(file), "utf8");
+    text2 = readFileSync35(resolve33(file), "utf8");
   } catch (e) {
     io.err(`ultraview: cannot read ${file}: ${e.message}
 `);
@@ -43937,7 +44898,7 @@ ${problemLines(recorded.errors)}
   return EXIT_OK;
 }
 async function cmdDiff(p, io) {
-  const repo = resolve32(p.values.repo ?? ".");
+  const repo = resolve33(p.values.repo ?? ".");
   if (!p.bools.has("hook")) return runDiff(p, io, repo, false);
   const pull = process.env.CODEINDEX_NO_GRAMMARS_PULL;
   process.env.CODEINDEX_NO_GRAMMARS_PULL = "1";
@@ -43955,7 +44916,7 @@ async function cmdDiff(p, io) {
   if (errs.length) {
     try {
       const log = viewPaths(repo).hookLog;
-      if (!existsSync30(viewPaths(repo).dir)) mkdirSync12(viewPaths(repo).dir, { recursive: true });
+      if (!existsSync31(viewPaths(repo).dir)) mkdirSync12(viewPaths(repo).dir, { recursive: true });
       appendFileSync2(log, errs.map((e) => `${(/* @__PURE__ */ new Date()).toISOString()} ${e.replace(/^ultraview: /, "")}`).join(""));
     } catch {
     }
@@ -44042,7 +45003,7 @@ async function cmdExport(p, io) {
   const content = format === "md" ? exportBrief(view) : format === "svg" ? exportSvg(view, opts) : exportMermaid(view, opts);
   if (p.values.out !== void 0) {
     writeFileAtomic(p.values.out, content);
-    io.out(p.bools.has("json") ? json({ format, file: resolve32(p.values.out) }) : `wrote      ${p.values.out}
+    io.out(p.bools.has("json") ? json({ format, file: resolve33(p.values.out) }) : `wrote      ${p.values.out}
 `);
   } else io.out(p.bools.has("json") ? json({ format, content }) : content);
   return EXIT_OK;
@@ -44068,7 +45029,24 @@ async function cmdLens(p, io) {
     }
     const budget = positiveInt(p, io, "budget");
     if (budget === null) return EXIT_USAGE;
-    const pack = lensNew(repo, arg, { budget, id: p.values.id, terms: p.values.terms });
+    let context;
+    if (p.values.context !== void 0) {
+      let raw;
+      try {
+        raw = JSON.parse(p.values.context);
+      } catch {
+        return usage(io, `--context must be JSON, e.g. '{"node":"entity:Order"}' (got ${p.values.context})`);
+      }
+      context = checkContext(raw);
+      if ("error" in context) return usage(io, `--context: ${context.error}`);
+    }
+    const pack = lensNew(repo, arg, {
+      budget,
+      id: p.values.id,
+      terms: p.values.terms,
+      ...p.values.thread !== void 0 ? { thread: p.values.thread } : {},
+      ...context ? { context } : {}
+    });
     io.out(p.bools.has("json") ? json(pack) : pack.text);
     return EXIT_OK;
   }
@@ -44087,11 +45065,82 @@ async function cmdLens(p, io) {
       io.err("ultraview: missing argument (usage: ultraview lens save <file>)\n");
       return EXIT_USAGE;
     }
+    if (p.values.thread !== void 0) return cmdSaveTurn(p, io, arg, p.values.thread);
     return cmdSave(p, io, "lens");
   }
   io.err(`ultraview: unknown lens action: ${action} (lens new "<question>", lens list, lens save <file>)
 `);
   return EXIT_USAGE;
+}
+async function cmdSaveTurn(p, io, file, thread) {
+  let text2;
+  try {
+    text2 = readFileSync35(resolve33(file), "utf8");
+  } catch (e) {
+    io.err(`ultraview: cannot read ${file}: ${e.message}
+`);
+    return EXIT_FAILURE;
+  }
+  const r = saveTurn(p.values.repo ?? ".", text2, { thread });
+  if (p.bools.has("json")) io.out(json(r));
+  else if (r.ok)
+    io.out(
+      `saved      turn ${r.index + 1} of ${r.file}; sources: ${Object.keys(r.turn.sources).length} cited file(s) hashed
+open       #chat=${r.thread} (live when \`ultraview serve\` runs)
+next step: run \`ultraview check\`
+`
+    );
+  else io.err(`ultraview: turn not saved (${r.file}):
+${problemLines(r.errors)}
+`);
+  return r.ok ? EXIT_OK : EXIT_FAILURE;
+}
+async function cmdChat(p, io) {
+  const [action, id, turn] = p.positional;
+  const repo = p.values.repo ?? ".";
+  const asJson = p.bools.has("json");
+  const extra = (n) => p.positional.length > n;
+  if (action === "new") {
+    if (extra(1)) return usage(io, `unexpected argument: ${p.positional[1]} (usage: ultraview chat new [--title <t>])`);
+    const c2 = chatNew(repo, { title: p.values.title });
+    io.out(
+      asJson ? json(c2) : `created    .ultraview/conversations/${c2.id}.json ("${c2.title}")
+thread     ${c2.id}
+next step: \`ultraview lens new "<question>" --thread ${c2.id}\`
+`
+    );
+    return EXIT_OK;
+  }
+  if (action === "list") {
+    if (extra(1)) return usage(io, `unexpected argument: ${p.positional[1]} (usage: ultraview chat list)`);
+    const r = chatList(repo);
+    io.out(asJson ? json(r) : formatChatList(r));
+    return EXIT_OK;
+  }
+  if (action === "show") {
+    if (id === void 0 || extra(2)) return usage(io, "usage: ultraview chat show <id>");
+    const c2 = loadConversation(repo, id);
+    const stale = staleTurns(repo, c2);
+    io.out(asJson ? json({ ...c2, stale }) : formatConversation(c2, stale));
+    return EXIT_OK;
+  }
+  if (action === "promote") {
+    if (id === void 0 || turn === void 0) return usage(io, "usage: ultraview chat promote <id> <turn> [--lens-id <slug>]");
+    const n = Number(turn);
+    if (!Number.isInteger(n) || n < 1) return usage(io, `<turn> must be a turn number from 1 (got ${turn})`);
+    const r = promoteTurn(repo, id, n, { lensId: p.values["lens-id"], force: p.bools.has("force"), proposeId: (q) => proposeLensId(repo, q).id });
+    if (asJson) io.out(json(r));
+    else if (r.ok)
+      io.out(`saved      ${r.file}${r.replaced ? " (replaced)" : ""} from turn ${n} of ${id}
+open       #lens=${r.id}
+next step: run \`ultraview check\`
+`);
+    else io.err(`ultraview: lens not saved${r.file ? ` (${r.file})` : ""}:
+${problemLines(r.errors)}
+`);
+    return r.ok ? EXIT_OK : EXIT_FAILURE;
+  }
+  return usage(io, `unknown chat action: ${action} (chat new, chat list, chat show <id>, chat promote <id> <turn>)`);
 }
 async function cmdServe(p, io) {
   const ask = p.values.ask ?? "auto";
@@ -44145,7 +45194,7 @@ async function cmdServe(p, io) {
     io.out(`serving    ${handle2.url}  (live: every change under .ultraview/ shows up without a reload)
 `);
     io.out(
-      `ask        ${handle2.ask ? `${handle2.ask.name} (${handle2.ask.path})${handle2.askModel ? `, model ${handle2.askModel}` : ""}, read-only; answers saved as lenses` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}
+      `ask        ${handle2.ask ? `${handle2.ask.name} (${handle2.ask.path})${handle2.askModel ? `, model ${handle2.askModel}` : ""}, read-only; answers saved as lenses and conversation turns` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}
 `
     );
     if (opened === false) io.out("open       no opener found: open the address in a browser\n");
@@ -44218,6 +45267,8 @@ async function main(argv, io = processIo) {
         return await cmdExport(p, io);
       case "serve":
         return await cmdServe(p, io);
+      case "chat":
+        return await cmdChat(p, io);
       default:
         return await cmdStatus(p, io);
     }

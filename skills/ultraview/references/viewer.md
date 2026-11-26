@@ -30,7 +30,8 @@ side).
 ## Deep links
 
 `#view=map&level=sys&node=sys:api`, `#view=data&node=entity:Order`,
-`#lens=<id>`, `#flow=<id>&step=2`, `#change=<id>`; levels are `biz sys mod
+`#lens=<id>`, `#flow=<id>&step=2`, `#change=<id>`, `#chat=<id>` (a
+conversation, beside any view); levels are `biz sys mod
 file sym`, views `map data flows lenses changes insights`. Give the user a link,
 not instructions to click.
 
@@ -46,7 +47,10 @@ not instructions to click.
   source change only marks the index stale until `build`. Loopback only unless
   `--host` is passed explicitly. `/api/node`, `/api/search`,
   `/api/callgraph` and `POST /api/explain` (the `explain` answer) answer on
-  demand. `--ask-model` is the model the Ask bridge runs.
+  demand; `/api/chat?id=` and `/api/chats` serve the conversations, and a
+  turn saved from the terminal (`lens save --thread`) reaches open pages as a
+  `chat` event. With an agent, `POST /api/chat` answers one turn.
+  `--ask-model` is the model the Ask bridge runs.
 
 ## Keyboard
 

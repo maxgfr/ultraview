@@ -11,7 +11,18 @@
 // needs the built map; this module only needs the JSON.
 
 import { kindOf, parseId, SLUG_RE } from "./ids.js";
-import { AUDIENCES, CHANGE_KINDS, EDGE_KINDS, MODEL_SCHEMA, NODE_KINDS, type NodeKind, SYSTEM_KINDS, TIMELINE_SOURCES } from "./types.js";
+import {
+  AUDIENCES,
+  CHANGE_KINDS,
+  CHAT_MODES,
+  EDGE_KINDS,
+  MODEL_SCHEMA,
+  NODE_KINDS,
+  type NodeKind,
+  SYSTEM_KINDS,
+  TIMELINE_SOURCES,
+  TURN_SOURCES,
+} from "./types.js";
 
 export interface Problem {
   path: string;
@@ -22,6 +33,7 @@ type Spec =
   | { t: "string"; enum?: readonly string[]; slug?: boolean; nonEmpty?: boolean; nodeId?: readonly NodeKind[] }
   | { t: "literal"; value: number }
   | { t: "boolean" }
+  | { t: "count" }
   | { t: "array"; of: Spec; nonEmpty?: boolean; unique?: boolean }
   | { t: "record"; of: Spec }
   | { t: "object"; fields: Record<string, Spec>; required: readonly string[] };
@@ -105,6 +117,28 @@ const LENS_SPEC = obj(
   ["schema", "id", "question", "answer", "nodes"],
 );
 
+const lensEdges = arr(obj({ from: nodeRef(), to: nodeRef(), kind: str({ enum: EDGE_KINDS }) }, ["from", "to"]));
+
+const CONTEXT_SPEC = obj({ node: nodeRef(), edge: text, insight: text, step: text }, []);
+
+const TURN_SPEC = obj(
+  {
+    question: text,
+    lang: str({ nonEmpty: true }),
+    mode: str({ enum: CHAT_MODES }),
+    context: CONTEXT_SPEC,
+    source: str({ enum: TURN_SOURCES }),
+    answer: obj({ answer: text, nodes: arr(nodeRef(), { unique: true }), edges: lensEdges, focus: nodeRef() }, ["answer", "nodes"]),
+    followUps: arr(text),
+    sources: sourcesSpec,
+    at: text,
+    ms: { t: "count" },
+  },
+  ["question", "lang", "mode", "source", "answer", "followUps", "sources", "at"],
+);
+
+const CONVERSATION_SPEC = obj({ id: str({ slug: true }), title: text, createdAt: text, turns: arr(TURN_SPEC) }, ["id", "title", "createdAt", "turns"]);
+
 const TIMELINE_SPEC = obj(
   {
     at: text,
@@ -134,6 +168,10 @@ function walkSpec(spec: Spec, value: unknown, path: string, out: Problem[]): und
       return;
     case "boolean":
       if (typeof value !== "boolean") fail(`must be true or false (got ${typeName(value)})`);
+      return;
+    case "count":
+      if (typeof value !== "number" || !Number.isInteger(value) || value < 0)
+        fail(`must be a non-negative integer (got ${JSON.stringify(value) ?? "undefined"})`);
       return;
     case "string": {
       if (typeof value !== "string") return fail(`must be a string (got ${typeName(value)})`);
@@ -216,6 +254,26 @@ export function validateFlow(value: unknown): Problem[] {
 export function validateLens(value: unknown): Problem[] {
   const out: Problem[] = [];
   walkSpec(LENS_SPEC, value, "", out);
+  return out;
+}
+
+/** A BCP-47-ish language tag: `en`, `fr`, `pt-BR`, `zh-Hant`. */
+export const LANG_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
+/** Follow-up suggestions an agent turn carries. */
+export const FOLLOW_UPS = 3;
+
+/** A conversation file: the shape, then what the walker cannot say (language tags, the follow-up count). */
+export function validateConversation(value: unknown): Problem[] {
+  const out: Problem[] = [];
+  walkSpec(CONVERSATION_SPEC, value, "", out);
+  if (out.length) return out;
+  (value as { turns: { lang: string; source: string; followUps: unknown[] }[] }).turns.forEach((t, i) => {
+    if (!LANG_RE.test(t.lang)) out.push({ path: `turns[${i}].lang`, message: `"${t.lang}" is not a language tag (en, fr, pt-BR…)` });
+    if (t.source === "agent" && t.followUps.length !== FOLLOW_UPS)
+      out.push({ path: `turns[${i}].followUps`, message: `an agent turn carries exactly ${FOLLOW_UPS} follow-ups (got ${t.followUps.length})` });
+    if (t.source === "facts" && t.followUps.length > FOLLOW_UPS)
+      out.push({ path: `turns[${i}].followUps`, message: `at most ${FOLLOW_UPS} follow-ups (got ${t.followUps.length})` });
+  });
   return out;
 }
 

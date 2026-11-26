@@ -144,6 +144,62 @@ export interface Lens {
 }
 
 // ---------------------------------------------------------------------------
+// conversations/<id>.json (docs/design.md §4): a thread of turns, each a lens
+// answer to one question, committed like lenses.
+
+export const CHAT_MODES = ["business", "dev"] as const;
+export type ChatMode = (typeof CHAT_MODES)[number];
+/** `agent`: answered by the user's coding agent; `facts`: written by ultraview from the facts alone. */
+export const TURN_SOURCES = ["agent", "facts"] as const;
+export type TurnSource = (typeof TURN_SOURCES)[number];
+
+/**
+ * What the question was asked about, when the user asked from the map: a node
+ * id; an edge, `"<from-id> -> <to-id>"`; an insight id; a flow step,
+ * `"<flow-id>:<n>"` (n from 1, like `#flow=<id>&step=<n>`).
+ */
+export interface ChatContext {
+  node?: string;
+  edge?: string;
+  insight?: string;
+  step?: string;
+}
+
+/** A turn's answer: the fields of a lens that answer (`answer` prose, every sentence cited; `nodes`; `edges`; `focus`). */
+export interface TurnAnswer {
+  answer: string;
+  nodes: string[];
+  edges?: LensEdge[];
+  focus?: string;
+}
+
+export interface ChatTurn {
+  question: string;
+  /** BCP-47 tag of the question's language (`en`, `fr`, `ja`…). */
+  lang: string;
+  mode: ChatMode;
+  context?: ChatContext;
+  source: TurnSource;
+  answer: TurnAnswer;
+  /** Exactly 3 for an agent turn (in the question's language); at most 3 for a facts turn. */
+  followUps: string[];
+  /** Stamped when the turn is saved, like a lens's. */
+  sources: SourceHashes;
+  /** When the turn was saved (ISO-8601). */
+  at: string;
+  /** How long the answer took, in milliseconds. */
+  ms?: number;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  /** ISO-8601. */
+  createdAt: string;
+  turns: ChatTurn[];
+}
+
+// ---------------------------------------------------------------------------
 // timeline.jsonl (one JSON object per line)
 
 export interface TimelineItem {

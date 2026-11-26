@@ -63,6 +63,39 @@ fails), `lens list` flags it, the viewer greys it with "re-ask". Re-ask with
 the same question: `lens new` keeps the id; read the new code; save. Never
 delete a stale lens to silence the warning.
 
+## Conversations: follow-ups that keep the thread
+
+A conversation (`.ultraview/conversations/<id>.json`, committed) is a thread
+of turns; each turn is a lens answer plus its question's language, the mode
+and 3 follow-up suggestions. Shape: [schema](schema.md).
+
+- `chat new [--title "<t>"] --json` starts one (id: a slug of the title;
+  without a title, the first question names it). `chat list`, `chat show
+  <id>` read them; `chat promote <id> <turn>` saves turn `<turn>` (from 1) as
+  a lens.
+- `lens new "<question>" --thread <id>` is the pack for the next turn. It
+  opens with **the conversation so far**: the last 6 turns' questions, a
+  one-line summary of each answer, their node ids, and the ids in play (most
+  recent first), cut to ~400 tokens. Its ranking adds the earlier turns'
+  nodes (the last turn weighs most) and their neighbours: the node itself,
+  what an edge links it to, what its definition names or is named by (a
+  call, a data access, a relation field), its file's siblings. So "and who
+  calls it?" ranks the route that calls the last turn's function even with no
+  word to match. `--context '{"node":"<id>"}'` (also `edge`, `insight`,
+  `step`) says what the user clicked; it weighs more than the thread.
+- Resolve pronouns with the digest ("it" is the most recent turn's nodes
+  unless the question names something else); a question about something new
+  is a new topic, and its own words still rank first.
+- Write the turn to the printed draft (`.ultraview/conversations/<id>.draft.json`,
+  gitignored) and run `lens save <draft> --thread <id>`: the schema, every
+  citation, node ids, every sentence cited, `lang` (a BCP-47 tag; guessed
+  when absent), `mode` (`business` | `dev`; default the thread's last),
+  exactly 3 `followUps` in the question's language. Nothing is written when
+  any fails. `check` re-checks every turn and warns on stale ones.
+- Register: `business` answers in plain words, no function, file or symbol
+  names unless asked; `dev` gives the symbols, calls, files and routes.
+  Always in the question's language; citations stay `[path:line]`.
+
 ## The Ask bridge
 
 `serve --ask auto|claude|codex|none` (default `auto`: claude, then codex, when
@@ -74,6 +107,13 @@ prompt asks the agent to add `--terms` when the question is not in English),
 and saves the reply with `lens save`. One ask at a time, 180 s timeout;
 nothing is written but the lens; the agent's output goes to `.ultraview/ask.log`. An ask never replaces
 another question's lens.
+
+`POST /api/chat` does the same for one conversation turn: the prompt carries
+the thread's digest, what was clicked, the mode's register and the language
+rule; the agent runs `lens new --thread <id> --context '<json>'` and replies
+with the turn JSON, which ultraview validates like `lens save --thread` and
+appends. The answer comes back as an event stream (progress, then the turn
+or an error), and every open page gets a `chat` event.
 
 `serve --ask-model <model>` picks the model the agent CLI runs (handed to
 Claude Code or Codex as its model option; letters, digits and

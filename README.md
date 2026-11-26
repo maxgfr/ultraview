@@ -81,7 +81,11 @@ your repo
    evidence (the agent adds English code keywords with `--terms` when the
    question is not in English), the agent writes a cited answer, `lens save` stamps the hash of every cited file, and
    the answer is a view anyone can reopen at `#lens=<id>`, greyed when the code
-   under it changes.
+   under it changes. Follow-ups keep a **conversation**
+   (`.ultraview/conversations/<id>.json`): `lens new --thread <id>` reads the
+   next question with a digest of the earlier turns, so "and who calls it?"
+   finds the right nodes; each turn is cited and checked like a lens, in the
+   question's language, with 3 follow-up suggestions (`#chat=<id>`).
 5. A change becomes a **change set** and a **timeline** entry: `diff
    --worktree --record` maps the delta on every level, with blast radius,
    per-module risk and broken imports; `diff --markdown` prints the PR body.
@@ -146,9 +150,9 @@ suite on every push.
 
 | file | who | committed |
 |---|---|---|
-| `model.json`, `flows/`, `lenses/` | the agent | yes: the meaning, reviewable in PRs |
+| `model.json`, `flows/`, `lenses/`, `conversations/` | the agent | yes: the meaning, reviewable in PRs |
 | `timeline.jsonl`, `changes/` | `diff --record`, `timeline add` | yes: the history |
-| `facts.json`, `view.json`, `index.html`, `hook.log`, `ask.log` | the CLI | no (`.ultraview/.gitignore`) |
+| `facts.json`, `view.json`, `index.html`, `hook.log`, `ask.log`, `conversations/*.draft.json` | the CLI (drafts: the agent) | no (`.ultraview/.gitignore`) |
 
 Nothing committed holds a machine-local path. Outside `.ultraview/`, only
 `hook install` writes, when you ask: `.claude/settings.local.json`.
@@ -159,7 +163,8 @@ Nothing committed holds a machine-local path. Outside `.ultraview/`, only
   `node` commands and JSON files.
 - **Serve with Ask**: `serve --ask auto|claude|codex|none` lets the page send
   a question to the Claude Code or Codex CLI, read-only, and saves the answer
-  as a lens. Only one ask at a time; nothing else is written. `--ask-model`
+  as a lens, or as the next turn of a conversation (`POST /api/chat`,
+  streamed). Only one ask at a time; nothing else is written. `--ask-model`
   picks a faster model for it; `explain <node-id>` (and `POST /api/explain`)
   answers "what is this?" instantly from the proven facts alone, cited.
 - **Record every turn**: `hook install` (Claude Code only, opt-in) records

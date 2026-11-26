@@ -516,3 +516,81 @@ export function readQuestion(question: string, terms = ""): QuestionReading {
     bridged,
   };
 }
+
+/** Function words of these languages (folded, lowercased); a word may count for several. */
+const LANG_MARKERS: [string, Set<string>][] = [
+  ["fr", FRENCH_MARKERS],
+  [
+    "es",
+    new Set(
+      "el los las del una unos unas como donde cuando porque pero muy esto esta este eso esa ese quien cual cuales hay tiene puedo quiero que se lo la y".split(
+        " ",
+      ),
+    ),
+  ],
+  [
+    "de",
+    new Set("der die das den dem des ein eine einen einem und ist sind wie wo wer was warum nicht ich mir mich wird werden eigentlich auch noch".split(" ")),
+  ],
+  [
+    "it",
+    new Set(
+      "il gli di per nel nella alla dei della delle degli che cosa come dove quando perche sono questo questa quello quella viene essere anche non ci si".split(
+        " ",
+      ),
+    ),
+  ],
+  ["pt", new Set("o os um uma umas do da dos das no na ao pelo pela ele ela onde quando porque nao isso essa esse quem qual sao tem voce entao".split(" "))],
+  ["nl", new Set("het een de en is zijn hoe waar wanneer waarom niet ik mij wordt worden ook nog dat deze die".split(" "))],
+];
+
+/** Letters one language writes (before folding): each one found adds to its count. */
+const LANG_LETTERS: [string, RegExp][] = [
+  ["es", /[¿¡ñ]/g],
+  ["de", /[äöüß]/gi],
+  ["fr", /[èêëœç]/gi],
+  ["pt", /[ãõ]/gi],
+];
+
+/** Script → language, by the first script holding most of the letters. */
+const SCRIPTS: [string, RegExp][] = [
+  ["ja", /[\p{Script=Hiragana}\p{Script=Katakana}]/u],
+  ["ko", /\p{Script=Hangul}/u],
+  ["zh", /\p{Script=Han}/u],
+  ["ru", /\p{Script=Cyrillic}/u],
+  ["ar", /\p{Script=Arabic}/u],
+  ["he", /\p{Script=Hebrew}/u],
+  ["el", /\p{Script=Greek}/u],
+  ["hi", /\p{Script=Devanagari}/u],
+  ["th", /\p{Script=Thai}/u],
+];
+
+/**
+ * A guess at the language of `question`, as a BCP-47 tag, for a conversation
+ * turn the agent did not tag. By script when most letters are not Latin (any
+ * kana makes it `ja`, before Han alone, `zh`); else each language counts its
+ * function words (LANG_MARKERS) and letters (LANG_LETTERS) and the highest
+ * count wins, unless it is under 2 and enough of the words are English
+ * stopwords (ENGLISH_SHARE): then `en`. `und` (undetermined) when nothing
+ * counts.
+ */
+export function guessLang(question: string): string {
+  if (mostlyNonLatin(question)) {
+    for (const [lang, re] of SCRIPTS) if (re.test(question)) return lang;
+    return "und";
+  }
+  const ws = words(question);
+  const counts = new Map<string, number>();
+  for (const [lang, markers] of LANG_MARKERS) counts.set(lang, ws.filter((w) => markers.has(w)).length);
+  for (const [lang, re] of LANG_LETTERS) counts.set(lang, (counts.get(lang) ?? 0) + (question.match(re)?.length ?? 0));
+  let best = "und";
+  let most = 0;
+  for (const [lang, n] of counts)
+    if (n > most) {
+      best = lang;
+      most = n;
+    }
+  const english = englishShare(question);
+  if (english >= ENGLISH_SHARE && most < 2) return "en";
+  return most ? best : english > 0 ? "en" : "und";
+}

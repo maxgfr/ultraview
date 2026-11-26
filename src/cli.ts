@@ -1,7 +1,7 @@
 // The ultraview CLI. The only module that prints or sets an exit status:
 // every command is a library call (src/build.ts, src/status.ts, src/check.ts,
 // src/dossier.ts, src/show.ts, src/save.ts, src/changes.ts, src/timeline.ts,
-// src/hook.ts, src/insights.ts, src/export.ts) whose result this file renders,
+// src/hook.ts, src/insights.ts, src/export.ts, src/chat.ts) whose result this file renders,
 // as plain text for an agent or as JSON with --json.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from "node:fs";
@@ -25,7 +25,8 @@ import { openFile, renderMap } from "./render.js";
 // --- serve / lens new / lens list (issue #10) ---
 import { ASK_MODES, type AskMode, askModelProblem } from "./ask.js";
 import { EXPLAIN_MODES, type ExplainMode, explainContext, explainNode, formatExplanation, LANG_RE } from "./explain.js";
-import { formatLensList, LENS_BUDGET, lensList, lensNew } from "./lens.js";
+import { formatLensList, LENS_BUDGET, lensList, lensNew, proposeLensId } from "./lens.js";
+import { chatList, chatNew, checkContext, formatChatList, formatConversation, loadConversation, promoteTurn, saveTurn, staleTurns } from "./chat.js";
 import { isLoopbackHost, SERVE_HOST, SERVE_PORT, startServe } from "./serve.js";
 // --- end serve / lens ---
 import { formatNodeCard, liveView, nodeCard, similarIds } from "./show.js";
@@ -63,7 +64,8 @@ Commands:
                      resolve, citations that resolve (ultraindex
                      checkCitations), one citation per sentence, coverage
                      (systems >= 90% of code files, capabilities >= 70% of
-                     non-test modules), stale lenses / flows (warnings).
+                     non-test modules), stale lenses / flows / conversation
+                     turns (warnings).
                      Exit 1 on failure.
   dossier <node-id>  Evidence pack to write about one node: real source,
                      facts with file:line, neighbours. Cut to --budget tokens.
@@ -82,10 +84,27 @@ Commands:
                      nodes (ultraindex find + names matching the question),
                      their strongest edges, source excerpts cut to --budget
                      tokens, then the steps to write and save it.
+  lens new "<question>" --thread <id>
+                     The same pack for a conversation's next turn: the
+                     thread's digest (earlier questions, one-line answers,
+                     node ids in play), candidates ranked with the earlier
+                     turns' nodes and their neighbours, a turn template
+                     (lang, mode, 3 follow-ups) and its draft path.
   lens list          Saved lenses: id, question, node count, stale flag.
   lens save <file>   Validate a lens (one saved question and its cited
                      answer), stamp the hashes of the files it cites, write
                      .ultraview/lenses/<id>.json.
+  lens save <file> --thread <id>
+                     Validate one turn the same way (plus node ids, every
+                     sentence cited, lang, mode, 3 follow-ups) and append it
+                     to .ultraview/conversations/<id>.json.
+  chat new           Start a conversation (--title): an empty thread in
+                     .ultraview/conversations/<id>.json; prints its id.
+  chat list          Conversations: id, title, turns, last update, stale turns.
+  chat show <id>     One conversation, turn by turn (stale turns flagged).
+  chat promote <id> <turn>
+                     Save turn <turn> (from 1) of a conversation as a lens
+                     (--lens-id <slug>, default: a slug of its question).
   flow save <file>   Same for a flow: .ultraview/flows/<id>.json.
   render             Re-assemble .ultraview/view.json from the current model,
                      flows, lenses, timeline and changes (no re-indexing),
@@ -133,7 +152,9 @@ Commands:
                      change), /api/node, /api/search, /api/callgraph,
                      POST /api/explain (the explain answer), and the
                      optional Ask bridge (POST /api/ask: a read-only run of
-                     the claude or codex CLI whose answer is saved as a lens).
+                     the claude or codex CLI whose answer is saved as a lens;
+                     POST /api/chat: the same for one conversation turn, as
+                     an event stream), GET /api/chat, GET /api/chats.
                      Binds ${SERVE_HOST}:${SERVE_PORT}; Ctrl-C stops it.
 
 Options:
@@ -142,7 +163,7 @@ Options:
                  no network). Grammars are otherwise pulled once per machine
                  into the shared codeindex cache; CODEINDEX_NO_GRAMMARS_PULL=1
                  forbids the download.
-  --strict       check: stale lenses / flows fail instead of warning
+  --strict       check: stale lenses / flows / turns fail instead of warning
   --budget <n>   dossier / lens new: token budget (default ${DOSSIER_BUDGET} / ${LENS_BUDGET},
                  ~4 characters a token)
   --id <slug>    lens new: the lens id (default: a slug of the question,
@@ -150,8 +171,14 @@ Options:
   --terms "<w>"  lens new: English code keywords for the question, merged
                  into its reading; required when the question is not in
                  English (its own words then weigh less)
-  --force        lens save / flow save: replace a different question / title
-                 saved under the same id
+  --thread <id>  lens new / lens save: the conversation the question follows
+                 up in (new: its digest and ranking; save: append the turn)
+  --context <j>  lens new: what the question is about in the map, as JSON:
+                 '{"node":"<id>"}', '{"edge":"<from> -> <to>"}',
+                 '{"insight":"<id>"}' or '{"step":"<flow-id>:<n>"}'
+  --lens-id <s>  chat promote: the lens id (default: a slug of the question)
+  --force        lens save / flow save / chat promote: replace a different
+                 question / title saved under the same id
   --open         render / serve: open the page with the OS opener afterwards
   --port <n>     serve: port (default ${SERVE_PORT}; 0 picks a free one)
   --host <addr>  serve: address to bind (default ${SERVE_HOST}). A non-loopback
@@ -172,7 +199,8 @@ Options:
   --record       diff: write the change set and append a timeline entry
   --source <s>   diff --record / timeline add: agent, pr or manual (default:
                  manual for diff, agent for timeline add)
-  --title <t>    diff --record / timeline add: entry title (diff: from counts)
+  --title <t>    diff --record / timeline add: entry title (diff: from
+                 counts); chat new: the conversation's title
   --summary <s>  diff --record / timeline add: cited summary (diff: an auto
                  summary from counts, flagged auto)
   --request <r>  diff --record / timeline add: what was asked
@@ -222,6 +250,7 @@ export const COMMANDS = [
   "export",
   "serve",
   "explain",
+  "chat",
 ];
 export const VALUE_FLAGS = [
   "repo",
@@ -249,6 +278,9 @@ export const VALUE_FLAGS = [
   "ask-model",
   "mode",
   "lang",
+  "thread",
+  "context",
+  "lens-id",
 ];
 export const BOOL_FLAGS = [
   "json",
@@ -286,6 +318,7 @@ const ARITY: Record<string, { min: number; max: number; usage: string }> = {
   export: { min: 0, max: 0, usage: "export --mermaid|--svg|--md [--level cap|sys|mod] [--lens <id>] [--flow <id>] [--out <file>]" },
   serve: { min: 0, max: 0, usage: "serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--ask-model <m>] [--open]" },
   explain: { min: 1, max: 1, usage: "explain <node-id> [--mode business|dev] [--lang <xx>]" },
+  chat: { min: 1, max: 3, usage: "chat new [--title <t>] | chat list | chat show <id> | chat promote <id> <turn> [--lens-id <slug>]" },
 };
 
 export interface Io {
@@ -695,7 +728,24 @@ async function cmdLens(p: Parsed, io: Io): Promise<number> {
     }
     const budget = positiveInt(p, io, "budget");
     if (budget === null) return EXIT_USAGE;
-    const pack = lensNew(repo, arg, { budget, id: p.values.id, terms: p.values.terms });
+    let context: ReturnType<typeof checkContext> | undefined;
+    if (p.values.context !== undefined) {
+      let raw: unknown;
+      try {
+        raw = JSON.parse(p.values.context);
+      } catch {
+        return usage(io, `--context must be JSON, e.g. '{"node":"entity:Order"}' (got ${p.values.context})`);
+      }
+      context = checkContext(raw);
+      if ("error" in context) return usage(io, `--context: ${context.error}`);
+    }
+    const pack = lensNew(repo, arg, {
+      budget,
+      id: p.values.id,
+      terms: p.values.terms,
+      ...(p.values.thread !== undefined ? { thread: p.values.thread } : {}),
+      ...(context ? { context: context as Exclude<typeof context, { error: string }> } : {}),
+    });
     io.out(p.bools.has("json") ? json(pack) : pack.text);
     return EXIT_OK;
   }
@@ -713,10 +763,71 @@ async function cmdLens(p: Parsed, io: Io): Promise<number> {
       io.err("ultraview: missing argument (usage: ultraview lens save <file>)\n");
       return EXIT_USAGE;
     }
+    if (p.values.thread !== undefined) return cmdSaveTurn(p, io, arg, p.values.thread);
     return cmdSave(p, io, "lens");
   }
   io.err(`ultraview: unknown lens action: ${action} (lens new "<question>", lens list, lens save <file>)\n`);
   return EXIT_USAGE;
+}
+
+async function cmdSaveTurn(p: Parsed, io: Io, file: string, thread: string): Promise<number> {
+  let text: string;
+  try {
+    text = readFileSync(resolve(file), "utf8");
+  } catch (e) {
+    io.err(`ultraview: cannot read ${file}: ${(e as Error).message}\n`);
+    return EXIT_FAILURE;
+  }
+  const r = saveTurn(p.values.repo ?? ".", text, { thread });
+  if (p.bools.has("json")) io.out(json(r));
+  else if (r.ok)
+    io.out(
+      `saved      turn ${r.index + 1} of ${r.file}; sources: ${Object.keys(r.turn!.sources).length} cited file(s) hashed\nopen       #chat=${r.thread} (live when \`ultraview serve\` runs)\nnext step: run \`ultraview check\`\n`,
+    );
+  else io.err(`ultraview: turn not saved (${r.file}):\n${problemLines(r.errors)}\n`);
+  return r.ok ? EXIT_OK : EXIT_FAILURE;
+}
+
+async function cmdChat(p: Parsed, io: Io): Promise<number> {
+  const [action, id, turn] = p.positional as [string, string | undefined, string | undefined];
+  const repo = p.values.repo ?? ".";
+  const asJson = p.bools.has("json");
+  const extra = (n: number) => p.positional.length > n;
+  if (action === "new") {
+    if (extra(1)) return usage(io, `unexpected argument: ${p.positional[1]} (usage: ultraview chat new [--title <t>])`);
+    const c = chatNew(repo, { title: p.values.title });
+    io.out(
+      asJson
+        ? json(c)
+        : `created    .ultraview/conversations/${c.id}.json ("${c.title}")\nthread     ${c.id}\nnext step: \`ultraview lens new "<question>" --thread ${c.id}\`\n`,
+    );
+    return EXIT_OK;
+  }
+  if (action === "list") {
+    if (extra(1)) return usage(io, `unexpected argument: ${p.positional[1]} (usage: ultraview chat list)`);
+    const r = chatList(repo);
+    io.out(asJson ? json(r) : formatChatList(r));
+    return EXIT_OK;
+  }
+  if (action === "show") {
+    if (id === undefined || extra(2)) return usage(io, "usage: ultraview chat show <id>");
+    const c = loadConversation(repo, id);
+    const stale = staleTurns(repo, c);
+    io.out(asJson ? json({ ...c, stale }) : formatConversation(c, stale));
+    return EXIT_OK;
+  }
+  if (action === "promote") {
+    if (id === undefined || turn === undefined) return usage(io, "usage: ultraview chat promote <id> <turn> [--lens-id <slug>]");
+    const n = Number(turn);
+    if (!Number.isInteger(n) || n < 1) return usage(io, `<turn> must be a turn number from 1 (got ${turn})`);
+    const r = promoteTurn(repo, id, n, { lensId: p.values["lens-id"], force: p.bools.has("force"), proposeId: (q) => proposeLensId(repo, q).id });
+    if (asJson) io.out(json(r));
+    else if (r.ok)
+      io.out(`saved      ${r.file}${r.replaced ? " (replaced)" : ""} from turn ${n} of ${id}\nopen       #lens=${r.id}\nnext step: run \`ultraview check\`\n`);
+    else io.err(`ultraview: lens not saved${r.file ? ` (${r.file})` : ""}:\n${problemLines(r.errors)}\n`);
+    return r.ok ? EXIT_OK : EXIT_FAILURE;
+  }
+  return usage(io, `unknown chat action: ${action} (chat new, chat list, chat show <id>, chat promote <id> <turn>)`);
 }
 
 async function cmdServe(p: Parsed, io: Io): Promise<number> {
@@ -766,7 +877,7 @@ async function cmdServe(p: Parsed, io: Io): Promise<number> {
   else {
     io.out(`serving    ${handle.url}  (live: every change under .ultraview/ shows up without a reload)\n`);
     io.out(
-      `ask        ${handle.ask ? `${handle.ask.name} (${handle.ask.path})${handle.askModel ? `, model ${handle.askModel}` : ""}, read-only; answers saved as lenses` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}\n`,
+      `ask        ${handle.ask ? `${handle.ask.name} (${handle.ask.path})${handle.askModel ? `, model ${handle.askModel}` : ""}, read-only; answers saved as lenses and conversation turns` : ask === "none" ? "off (--ask none)" : "off: neither claude nor codex found on PATH"}\n`,
     );
     if (opened === false) io.out("open       no opener found: open the address in a browser\n");
     io.out("stop       Ctrl-C\n");
@@ -839,6 +950,8 @@ export async function main(argv: readonly string[], io: Io = processIo): Promise
         return await cmdExport(p, io);
       case "serve":
         return await cmdServe(p, io);
+      case "chat":
+        return await cmdChat(p, io);
       default:
         return await cmdStatus(p, io);
     }

@@ -1,0 +1,55 @@
+{
+  "id": "place-then-data-then-cancel",
+  "fixture": "shop-express-prisma",
+  "turns": [
+    {
+      "intent": "ask how placing an order works",
+      "expect": [
+        "route:POST /api/orders",
+        "sym:src/services/orders.ts#placeOrder"
+      ]
+    },
+    {
+      "intent": "follow-up: what data does that write (refer to it with a pronoun, do not name orders)",
+      "expect": [
+        "entity:Order",
+        "entity:OrderItem"
+      ]
+    },
+    {
+      "intent": "follow-up: and how is that undone (ellipsis, do not name the order or cancellation explicitly beyond a verb like undo/reverse)",
+      "expect": [
+        "route:DELETE /api/orders/:id",
+        "sym:src/services/orders.ts#cancelOrder"
+      ]
+    }
+  ],
+  "questions": {
+    "en": [
+      "hey, how does placing an order actually work?",
+      "and what data does it write?",
+      "and how do I undo that?"
+    ],
+    "fr": [
+      "Hey, comment on fait pour passer une commande ?",
+      "Et du coup ça écrit quoi comme données ?",
+      "Ok, et ça se défait comment ?"
+    ],
+    "es": [
+      "Oye, ¿cómo va eso de hacer un pedido? Es que nunca lo he usado",
+      "¿Y qué datos te guarda eso exactamente?",
+      "¿y eso cómo se deshace si me equivoco?"
+    ],
+    "de": [
+      "hey, wie funktioniert das hier mit dem bestellen? also wie gebe ich 'ne bestellung auf?",
+      "okay und was schreibt das ganze denn alles weg? also welche daten?",
+      "und wie mach ich das wieder rückgängig?"
+    ],
+    "ja": [
+      "注文ってどうやるのが正解？流れを教えて",
+      "そのとき、中ではどんなデータが書き込まれてるわけ？",
+      "じゃあ間違えちゃった場合なんだけど…あれって元に戻せたりする？"
+    ]
+  },
+  "generator": "glm-5.3-flash"
+}

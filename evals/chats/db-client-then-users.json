@@ -1,0 +1,43 @@
+{
+  "id": "db-client-then-users",
+  "fixture": "shop-express-prisma",
+  "turns": [
+    {
+      "intent": "ask where the database connection/client is set up",
+      "expect": [
+        "sym:src/db.ts#prisma"
+      ]
+    },
+    {
+      "intent": "follow-up: which parts of the code use it? (pronoun)",
+      "expect": [
+        "sym:src/services/orders.ts#placeOrder",
+        "sym:src/services/orders.ts#cancelOrder",
+        "sym:src/services/orders.ts#listOrders"
+      ]
+    }
+  ],
+  "questions": {
+    "en": [
+      "hey, quick one — where in this backend is the db connection actually set up?",
+      "got it, and which parts of the code use it?"
+    ],
+    "fr": [
+      "c'est où qu'on setup la connexion à la base de données dans ce backend de shop ? j'trouve pas où le client db est créé",
+      "ok, et qui l'utilise dans le code du coup ?"
+    ],
+    "es": [
+      "Ey, ¿dónde se configura la conexión a la base de datos? O sea, dónde se crea el cliente.",
+      "Vale, ¿y qué partes del código lo usan?"
+    ],
+    "de": [
+      "Wo wird eigentlich die Datenbankverbindung aufgebaut? Also wo genau steht der DB-Client?",
+      "Und welche Teile vom Code nutzen die dann alles?"
+    ],
+    "ja": [
+      "このネットショップのバックエンドなんだけど、DBのクライアントってどこで初期化されてるの？",
+      "それ、コードのどの部分で使われてる？"
+    ]
+  },
+  "generator": "glm-5.3-flash"
+}

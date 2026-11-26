@@ -6,7 +6,10 @@
 //             sentences without a citation (timeline `auto` summaries
 //             aside); coverage below the thresholds;
 //             a stale index or missing facts (re-run `build` first)
-//   warnings  stale lenses / flows (errors with `strict`), stale ultraindex
+//   conversations: every turn of `.ultraview/conversations/<id>.json` passes a
+//             lens's gates (src/gates.ts) and the file its schema; stale
+//             turns (a cited file changed) are warnings like stale lenses
+//   warnings  stale lenses / flows / turns (errors with `strict`), stale ultraindex
 //             prose, globs that match no file, systems / capabilities without
 //             a summary
 //
@@ -17,8 +20,9 @@ import { resolve } from "node:path";
 import { checkCitations, fileLineTable, indexExists, runCheck } from "./engine.js";
 import { assembleWithNotes } from "./model/assemble.js";
 import { FLOWS_DIR, LENSES_DIR, loadViewInputs, MODEL_FILE, TIMELINE_FILE } from "./model/load.js";
-import { uncitedSentences } from "./model/prose.js";
 import type { ViewCoverage, ViewStale } from "./model/types.js";
+import { conversationFile, loadConversations, staleTurns } from "./chat.js";
+import { answerProblems, proseProblems, unknownNode } from "./gates.js";
 import { viewPaths } from "./paths.js";
 
 /** Share of code files the systems must hold. Fixed on purpose: a map is only as good as its coverage. */
@@ -99,14 +103,10 @@ export function checkMap(repoArg: string, opts: CheckMapOptions = {}): CheckRepo
   const lineTable = fileLineTable(graph);
 
   const resolveId = (file: string, path: string, id: string | undefined) => {
-    if (id !== undefined && !ids.has(id))
-      errors.push({ file, path, message: `unknown node "${id}" (run \`ultraview show <id>\` on a known one, or see the build summary)` });
+    if (id !== undefined && !ids.has(id)) errors.push({ file, path, message: unknownNode(id) });
   };
-  /** Cited prose: every citation resolves, every sentence cites. */
   const prose = (file: string, path: string, text: string | undefined) => {
-    if (text === undefined) return;
-    for (const u of checkCitations(text, lineTable).unresolved) errors.push({ file, path, message: `dead citation [${u.citation.raw}]: ${u.reason}` });
-    for (const s of uncitedSentences(text)) errors.push({ file, path, message: `uncited sentence: "${s.length > 120 ? `${s.slice(0, 117)}...` : s}"` });
+    for (const p of proseProblems(path, text, lineTable)) errors.push({ file, ...p });
   };
 
   if (model) {
@@ -166,14 +166,17 @@ export function checkMap(repoArg: string, opts: CheckMapOptions = {}): CheckRepo
   }
   for (const l of lenses) {
     const file = `${LENSES_DIR}/${l.id}.json`;
-    l.nodes.forEach((n, i) => resolveId(file, `nodes[${i}]`, n));
-    (l.edges ?? []).forEach((e, i) => {
-      resolveId(file, `edges[${i}].from`, e.from);
-      resolveId(file, `edges[${i}].to`, e.to);
-    });
-    resolveId(file, "focus", l.focus);
-    prose(file, "answer", l.answer);
+    for (const p of answerProblems(l, ids, lineTable)) errors.push({ file, ...p });
     if (!l.sources) warnings.push({ file, path: "sources", message: "not stamped: save it with `ultraview lens save`" });
+  }
+  const chats = loadConversations(repo);
+  errors.push(...chats.problems);
+  for (const c of chats.conversations) {
+    const file = conversationFile(c.id);
+    c.turns.forEach((t, i) => {
+      for (const p of answerProblems(t.answer, ids, lineTable, `turns[${i}].answer.`)) errors.push({ file, ...p });
+      if (t.context?.node !== undefined) resolveId(file, `turns[${i}].context.node`, t.context.node);
+    });
   }
   // An `auto` summary is generated from a change set's counts, not written: it has nothing to cite.
   timeline.forEach((t, i) => {
@@ -193,6 +196,13 @@ export function checkMap(repoArg: string, opts: CheckMapOptions = {}): CheckRepo
       path: "",
       message: "stale: a cited file changed since it was saved; re-check, then `ultraview flow save`",
     });
+  for (const c of chats.conversations)
+    for (const i of staleTurns(repo, c))
+      staleSink.push({
+        file: conversationFile(c.id),
+        path: `turns[${i}]`,
+        message: `stale: a cited file changed since turn ${i + 1} was saved; ask it again in the thread (\`ultraview lens new --thread ${c.id}\`)`,
+      });
   for (const id of view.stale.prose)
     warnings.push({ file: ".ultraindex", path: id, message: "ultraindex prose is stale (the module's code changed since it was written)" });
 

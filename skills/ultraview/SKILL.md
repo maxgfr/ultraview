@@ -47,7 +47,7 @@ result.
   with a `cite`. A detected import, call or data use is derived; copying it
   adds nothing and goes stale.
 - **I3 History is append-only.** Never delete or rewrite a lens, a flow, a
-  timeline line or a recorded change set. Re-ask a stale lens under its own
+  conversation turn, a timeline line or a recorded change set. Re-ask a stale lens under its own
   id; a mistaken timeline entry gets a correcting entry.
 - **I4 Nothing outside `.ultraview/`.** The one exception is `hook install`,
   run only when the user asks: it writes `.claude/settings.local.json`
@@ -79,6 +79,7 @@ Then by what the user wants:
 |---|---|---|
 | "map my app", "show me how it fits together" | the first-map loop | [capabilities](references/capabilities.md), [schema](references/schema.md) |
 | a question about the app ("how do refunds work?") | Questions, below | [lenses](references/lenses.md) |
+| a follow-up on the last answer ("and who calls it?") | Follow-ups, below | [lenses](references/lenses.md) |
 | "what did you change?", "summarise this PR" | Changes, below | [change-review](references/change-review.md) |
 | "explain it to the business", "a brief for the README" | `app.audience: everyone`, then `export --md` (or `--mermaid` / `--svg`) | [writing](references/writing.md) |
 | "keep it open while we work" | `serve --open` | [viewer](references/viewer.md) |
@@ -136,6 +137,28 @@ A question answered once is saved as a lens: a view anyone can reopen at
 Asking the same question again keeps its id and replaces the answer (a
 re-ask). A different question under a taken id needs another `--id`.
 
+## Follow-ups → a conversation
+
+When the user follows up on an answer in the terminal ("and who calls it?",
+"et ça se défait comment ?"), keep the thread instead of starting a fresh
+lens, so "it" and "that" resolve to what you just talked about:
+
+1. Once per thread: `ultraview chat new --title "<the first question>" --json`
+   (its `id` is the thread). Answer the first question as a turn too.
+2. Each turn: `ultraview lens new "<question>" --thread <id>` (plus
+   `--terms` when it is not in English, naming what its pronouns refer to).
+   The pack opens with the conversation so far and ranks the earlier turns'
+   nodes and their neighbours first.
+3. Fill the turn template: a cited `answer` in the question's language,
+   `nodes`, `focus`, `lang`, `mode` (`business`: plain words, no code names
+   unless asked; `dev`: symbols, calls, files) and exactly 3 `followUps` in
+   the question's language. Write it to the printed draft path.
+4. `ultraview lens save <draft> --thread <id>` (same gates as a lens, plus the
+   turn's own), then `ultraview check`.
+5. Answer in the chat, and point at `#chat=<id>`: when `serve` runs, the
+   browser shows the new turn live. `chat promote <id> <turn>` keeps one turn
+   as a standalone lens.
+
 ## Changes → diff, timeline, PR
 
 After you change code for the user, put the change on the map:
@@ -186,6 +209,8 @@ Details: [writing](references/writing.md).
 - `lens new "<question>" [--terms "<English keywords>"] [--id <slug>] [--budget <n>]` — the evidence pack for a question; `--terms` whenever it is not in English.
 - `lens save <file> [--force]` / `flow save <file> [--force]` — validate, stamp `sources`, store.
 - `lens list` — saved questions, with their stale flag.
+- `chat new [--title <t>]` / `chat list` / `chat show <id>` — conversations; `lens new "<q>" --thread <id> [--context '<json>']` and `lens save <draft> --thread <id>` add a turn.
+- `chat promote <id> <turn> [--lens-id <slug>] [--force]` — one turn as a lens.
 - `render [--out <file>] [--open]` — the offline page, `.ultraview/index.html`, from the current agent files; notes a stale index.
 - `serve [--port <n>] [--host <addr>] [--ask auto|claude|codex|none] [--ask-model <m>] [--open]` — the live map on 127.0.0.1:4178; `--ask-model` picks the model the Ask bridge runs.
 - `diff [--base <ref> | --staged | --worktree] [--depth <n>] [--record] [--markdown] [--quiet]` — the change on the map.
@@ -214,7 +239,7 @@ refused write, 2 usage error or unknown node id.
 
 - [schema](references/schema.md): model.json, flows, lenses, timeline: exact shapes and node ids
 - [capabilities](references/capabilities.md): choosing systems and capabilities, coverage, foundations, actors
-- [lenses](references/lenses.md): evidence pack → answer, stale and re-ask, the Ask bridge
+- [lenses](references/lenses.md): evidence pack → answer, stale and re-ask, conversations, the Ask bridge
 - [flows](references/flows.md): writing a flow and a tour
 - [change-review](references/change-review.md): diff, timeline, the hook, PR markdown
 - [writing](references/writing.md): plain language, citation style, audience

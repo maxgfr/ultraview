@@ -1,9 +1,9 @@
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { agentEnv, agentInvocation, askPrompt, extractLensJson, findOnPath, resolveAskAgent } from "../src/ask.js";
+import { agentEnv, agentInvocation, askPrompt, chatPrompt, extractLensJson, findOnPath, resolveAskAgent } from "../src/ask.js";
 import { allowedHostHeader, isLoopbackHost, type ServeHandle, startServe } from "../src/serve.js";
 import { builtShop, readModelFile, writeView } from "./helpers.js";
 
@@ -101,6 +101,7 @@ async function serveShop(opts: Partial<Parameters<typeof startServe>[0]> = {}, s
 
 /** A fake agent CLI named `claude`: checks it was started read-only, then replies with a lens. */
 function fakeAgent(): string {
+  // (the prompts it reads are kept next to it, prompt-<time>.txt, for the tests to read)
   const dir = mkdtempSync(join(tmpdir(), "ultraview-fake-agent-"));
   cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
   const lens = readModelFile("shop.lens.json");
@@ -115,8 +116,14 @@ let prompt = "";
 process.stdin.on("data", (c) => (prompt += c));
 process.stdin.on("end", () => {
   console.error("fake agent read " + prompt.length + " chars");
+  require("node:fs").writeFileSync(${JSON.stringify(dir)} + "/prompt-" + Date.now() + ".txt", prompt);
   setTimeout(() => {
     const lens = prompt.includes("BROKEN") ? ${JSON.stringify(broken)} : ${JSON.stringify(lens)};
+    if (prompt.includes("one turn of a conversation")) {
+      const { schema, id, ...answer } = lens;
+      process.stdout.write(JSON.stringify({ ...answer, question: "agent rewrote it", mode: "dev", lang: "en", followUps: ["Who calls it?", "What does it store?", "Can it fail?"] }));
+      return;
+    }
     process.stdout.write("Here is the lens:\\n\`\`\`json\\n" + JSON.stringify({ ...lens, id: "agent-picked-id", question: "agent rewrote it" }) + "\\n\`\`\`\\n");
   }, prompt.includes("SLOW") ? 20000 : 300);
 });
@@ -282,6 +289,141 @@ describe("serve", () => {
   });
 });
 
+/** The events of a finished event-stream body, in order. */
+const frames = (body: string) =>
+  body
+    .split("\n\n")
+    .map((f) => ({ event: /^event: (.*)$/m.exec(f)?.[1], data: /^data: (.*)$/m.exec(f)?.[1] }))
+    .filter((f): f is { event: string; data: string } => !!f.event && f.data !== undefined)
+    .map((f) => ({ event: f.event, data: JSON.parse(f.data) }));
+
+/** The prompts the fake agent read, oldest first. */
+const prompts = (fake: string) =>
+  readdirSync(fake)
+    .filter((n) => n.startsWith("prompt-"))
+    .sort()
+    .map((n) => readFileSync(join(fake, n), "utf8"));
+
+describe("conversations", () => {
+  it("answers a turn as an event stream, keeps the thread, and serves the conversations", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { repo, handle } = await serveShop({ ask: "auto", env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` } });
+    const sse = events(handle);
+    cleanups.push(() => sse.close());
+    await sse.opened;
+    const json = { "Content-Type": "application/json" };
+    const post = (body: unknown, headers: Record<string, string> = {}) =>
+      http(handle, "/api/chat", { method: "POST", headers: { ...json, ...headers }, body: JSON.stringify(body) });
+
+    // Refused before anything runs.
+    expect((await post({ question: "x" })).status).toBe(400); // no mode
+    expect((await post({ question: "x", mode: "boss" })).status).toBe(400);
+    expect((await post({ question: "", mode: "dev" })).status).toBe(400);
+    expect((await post({ question: "x".repeat(501), mode: "dev" })).status).toBe(400);
+    expect((await post({ question: "x", mode: "dev", thread: "../model" })).status).toBe(400);
+    expect((await post({ question: "x", mode: "dev", thread: "no-such-thread" })).status).toBe(404);
+    expect((await post({ question: "x", mode: "dev", context: { node: "entity:Ghost" } })).status).toBe(400);
+    expect((await post({ question: "x", mode: "dev", context: { color: "red" } })).status).toBe(400);
+    expect((await post({ question: "x", mode: "dev", extra: 1 })).status).toBe(400);
+    expect((await post({ question: "x", mode: "dev" }, { Origin: "http://evil.example" })).status).toBe(403);
+    expect((await http(handle, "/api/chat", { method: "POST", headers: { "Content-Type": "text/plain" }, body: "{}" })).status).toBe(415);
+    expect((await http(handle, "/api/chat", { method: "DELETE" })).status).toBe(405);
+    expect(prompts(fake)).toEqual([]);
+
+    // Turn 1: progress events, then the saved turn; the conversation is created and pushed live.
+    const live = sse.next("chat", 10_000);
+    const first = await post({ question: "How does cancelling an order work?", mode: "business", context: { node: "route:DELETE /api/orders/:id" } });
+    expect(first.status).toBe(200);
+    expect(first.headers["content-type"]).toBe("text/event-stream; charset=utf-8");
+    const ev = frames(first.body);
+    expect(ev.map((e) => e.event)).toEqual([...Array(ev.length - 1).fill("progress"), "turn"]);
+    expect(ev[0]!.data).toEqual({ text: "asking claude" });
+    expect(ev.map((e) => e.data.text)).toContain("checking the answer: schema, node ids, citations");
+    const turn = ev.at(-1)!.data;
+    expect(turn).toMatchObject({ thread: "how-does-cancelling-an-order-work", index: 0 });
+    // The question, mode and context are the request's, not the agent's.
+    expect(turn.turn).toMatchObject({
+      question: "How does cancelling an order work?",
+      mode: "business",
+      lang: "en",
+      source: "agent",
+      context: { node: "route:DELETE /api/orders/:id" },
+      followUps: ["Who calls it?", "What does it store?", "Can it fail?"],
+      answer: { focus: "route:DELETE /api/orders/:id" },
+    });
+    expect(Object.keys(turn.turn.sources)).toEqual(["src/routes/orders.ts", "src/services/orders.ts"]);
+    expect(turn.turn.ms).toEqual(expect.any(Number));
+    expect(await live).toEqual({ id: "how-does-cancelling-an-order-work" });
+    const p1 = prompts(fake)[0]!;
+    expect(p1).toContain("You answer one turn of a conversation");
+    expect(p1).toContain(`lens new 'How does cancelling an order work?' --context '{"node":"route:DELETE /api/orders/:id"}'`);
+    expect(p1).toContain("The user asked from the map, about: node route:DELETE /api/orders/:id (DELETE /api/orders/:id).");
+    expect(p1).toContain("Mode business: the reader does not read code.");
+    expect(p1).toContain("Answer in the language of the question");
+    expect(p1).toContain("followUps: exactly 3 short questions");
+    expect(p1).not.toContain("Conversation so far");
+
+    // Turn 2 follows up in the thread: its prompt carries the digest.
+    const second = await post({ thread: "how-does-cancelling-an-order-work", question: "et qui l'appelle ?", mode: "dev" });
+    expect(frames(second.body).at(-1)).toMatchObject({ event: "turn", data: { index: 1, turn: { mode: "dev", question: "et qui l'appelle ?" } } });
+    const p2 = prompts(fake)[1]!;
+    expect(p2).toContain("## Conversation so far (thread how-does-cancelling-an-order-work: 1 turn(s); most recent last)");
+    expect(p2).toContain('1. [en, business] "How does cancelling an order work?"');
+    expect(p2).toContain("--thread how-does-cancelling-an-order-work");
+    expect(p2).toContain("Mode dev: the reader is a developer.");
+
+    const conv = await http(handle, "/api/chat?id=how-does-cancelling-an-order-work");
+    expect(conv.status).toBe(200);
+    expect(JSON.parse(conv.body)).toEqual(JSON.parse(readFileSync(join(repo, ".ultraview/conversations/how-does-cancelling-an-order-work.json"), "utf8")));
+    expect((await http(handle, "/api/chat?id=../model")).status).toBe(400);
+    expect((await http(handle, "/api/chat?id=nope")).status).toBe(404);
+    expect((await http(handle, "/api/chat")).status).toBe(400);
+    const list = JSON.parse((await http(handle, "/api/chats")).body);
+    expect(list).toEqual([{ id: "how-does-cancelling-an-order-work", title: "How does cancelling an order work?", turns: 2, updatedAt: expect.any(String) }]);
+
+    // An answer that fails the gates ends in an error event and saves nothing.
+    const bad = await post({ thread: "how-does-cancelling-an-order-work", question: "BROKEN answer please", mode: "dev" });
+    const last = frames(bad.body).at(-1)!;
+    expect(last.event).toBe("error");
+    expect(last.data.message).toMatch(/did not pass the turn's gates.*dead citation/);
+    expect(JSON.parse((await http(handle, "/api/chat?id=how-does-cancelling-an-order-work")).body).turns).toHaveLength(2);
+    // The views never changed for a conversation.
+    expect(sse.seen.filter((e) => e.event === "view")).toEqual([]);
+  });
+
+  it("pushes a conversation saved from the terminal as a chat event, not a view", async () => {
+    const { repo, handle } = await serveShop();
+    const sse = events(handle);
+    cleanups.push(() => sse.close());
+    await sse.opened;
+    const chat = sse.next("chat");
+    const turn = {
+      question: "Where is the client?",
+      lang: "en",
+      mode: "dev",
+      source: "agent",
+      answer: { answer: "The client is created once. [src/db.ts:3]", nodes: ["sym:src/db.ts#prisma"] },
+      followUps: ["a?", "b?", "c?"],
+      sources: {},
+      at: "2026-01-01T00:00:00.000Z",
+    };
+    writeView(repo, "conversations/from-terminal.json", { id: "from-terminal", title: "T", createdAt: "2026-01-01T00:00:00.000Z", turns: [turn] });
+    expect(await chat).toEqual({ id: "from-terminal" });
+    // A draft is not a conversation; no view is re-assembled for either.
+    writeView(repo, "conversations/from-terminal.draft.json", { question: "next?" });
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(sse.seen.filter((e) => e.event === "chat")).toHaveLength(1);
+    expect(sse.seen.filter((e) => e.event === "view")).toEqual([]);
+    expect(JSON.parse((await http(handle, "/api/chats")).body).map((c: any) => c.id)).toEqual(["from-terminal"]);
+    // Without an agent the chat endpoint does not take questions, but still serves what is saved.
+    expect(
+      (await http(handle, "/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"question":"x","mode":"dev"}' })).status,
+    ).toBe(404);
+    expect((await http(handle, "/api/chat?id=from-terminal")).status).toBe(200);
+  });
+});
+
 describe("ask timeout", () => {
   it("stops an agent that does not answer in time", async () => {
     if (process.platform === "win32") return;
@@ -307,6 +449,46 @@ describe("ask timeout", () => {
 });
 
 describe("ask bridge", () => {
+  it("builds a turn's prompt: the digest, the click, the register and the language rule", () => {
+    const thread = {
+      id: "orders",
+      title: "Orders",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      turns: [
+        {
+          question: "Where is the client?",
+          lang: "en",
+          mode: "business" as const,
+          source: "agent" as const,
+          answer: { answer: "Created once. [src/db.ts:3]", nodes: ["sym:src/db.ts#prisma"] },
+          followUps: ["a", "b", "c"],
+          sources: {},
+          at: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const p = chatPrompt(
+      {
+        question: "und wer nutzt ihn?",
+        mode: "business",
+        thread,
+        context: { value: { node: "sym:src/db.ts#prisma" }, lines: ["node sym:src/db.ts#prisma (prisma)"] },
+      },
+      "/x/ultraview.mjs",
+    );
+    expect(p).toContain(`node /x/ultraview.mjs lens new 'und wer nutzt ihn?' --thread orders --context '{"node":"sym:src/db.ts#prisma"}'`);
+    expect(p).toContain('1. [en, business] "Where is the client?"');
+    expect(p).toContain("In play (most recent first): sym:src/db.ts#prisma");
+    expect(p).toContain("do not name functions, files, symbols or routes unless the question asks for them");
+    expect(p).toContain('you MUST add --terms "<English code keywords>"');
+    expect(p).toContain('"followUps": ["...", "...", "..."]');
+    // A quote in the question or the context cannot break out of its shell argument, and nothing in them is expanded.
+    expect(chatPrompt({ question: "what's $(id)?", mode: "dev" }, "/x/u.mjs")).toContain(`lens new 'what'\\''s $(id)?'`);
+    expect(chatPrompt({ question: "q", mode: "dev", context: { value: { node: "sym:a.ts#it's" }, lines: [] } }, "/x/u.mjs")).toContain(
+      `--context '{"node":"sym:a.ts#it'\\''s"}'`,
+    );
+  });
+
   it("asks the agent for English --terms when the question is not in English", () => {
     const prompt = askPrompt("¿Cómo se cancela un pedido?", "como-se-cancela-un-pedido", "/x/ultraview.mjs");
     expect(prompt).toContain('node /x/ultraview.mjs lens new "¿Cómo se cancela un pedido?" --id como-se-cancela-un-pedido');

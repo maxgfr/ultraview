@@ -1,0 +1,53 @@
+{
+  "id": "list-then-one-then-health",
+  "fixture": "shop-express-prisma",
+  "turns": [
+    {
+      "intent": "ask how to get the list of all orders",
+      "expect": [
+        "route:GET /api/orders",
+        "sym:src/services/orders.ts#listOrders"
+      ]
+    },
+    {
+      "intent": "follow-up: and just one of them, by its id (ellipsis)",
+      "expect": [
+        "route:GET /api/orders/:id"
+      ]
+    },
+    {
+      "intent": "topic switch: what does the health check return",
+      "expect": [
+        "route:GET /health"
+      ]
+    }
+  ],
+  "questions": {
+    "en": [
+      "hey, quick one — how do I get the list of all the orders? is there an endpoint for that?",
+      "cool, and to grab just one of them... say I already have its id?",
+      "btw, what does the health check actually return?"
+    ],
+    "fr": [
+      "salut, je fais quoi pour récupérer la liste de toutes les commandes ?",
+      "et pour en choper qu'une seule, par son id ?",
+      "au fait, à part ça, le health check il renvoie quoi ?"
+    ],
+    "es": [
+      "¿Cómo puedo sacar la lista de todos los pedidos?",
+      "¿Y si quiero solo uno, por su id?",
+      "Ah, y otra cosa: ¿qué devuelve el health check?"
+    ],
+    "de": [
+      "hey, wie krieg ich die liste von allen bestellungen?",
+      "und nur eine einzelne davon, per id?",
+      "was liefert eigentlich der health check zurück?"
+    ],
+    "ja": [
+      "全部の注文の一覧って、どうやったら取れる？",
+      "1件だけなら？ …id指定で。",
+      "あ、そういえばヘルスチェックって何を返してくるの？"
+    ]
+  },
+  "generator": "glm-5.3-flash"
+}

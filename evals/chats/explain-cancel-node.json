@@ -1,0 +1,55 @@
+{
+  "id": "explain-cancel-node",
+  "fixture": "shop-express-prisma",
+  "context": {
+    "node": "sym:src/services/orders.ts#cancelOrder"
+  },
+  "turns": [
+    {
+      "intent": "the user clicked 'ask about this' on a function node: ask to explain this (do not name it)",
+      "expect": [
+        "sym:src/services/orders.ts#cancelOrder"
+      ]
+    },
+    {
+      "intent": "follow-up: who calls it? (pronoun)",
+      "expect": [
+        "route:DELETE /api/orders/:id"
+      ]
+    },
+    {
+      "intent": "follow-up: which stored data does it change? (pronoun)",
+      "expect": [
+        "entity:Order"
+      ]
+    }
+  ],
+  "questions": {
+    "en": [
+      "can you explain what this does?",
+      "ok, and who calls it?",
+      "got it — and which stored data does it actually change?"
+    ],
+    "fr": [
+      "tu peux m'expliquer celle-là stp ? j'ai cliqué sur « ask about this » sur une fonction, mais je sais pas trop ce qu'elle fait",
+      "ok, et du coup qui l'appelle ?",
+      "et elle modifie quelles données en base ?"
+    ],
+    "es": [
+      "Oye, ¿me explicas qué hace esto?",
+      "¿Quién la llama?",
+      "¿Y qué datos cambia esta?"
+    ],
+    "de": [
+      "Kannst du mir die kurz erklären? Also was macht die genau?",
+      "Und wer ruft sie eigentlich auf?",
+      "Ändert die irgendwas an den gespeicherten Daten? Also welche genau?"
+    ],
+    "ja": [
+      "これ、何をしてる関数か説明してもらえますか？",
+      "それ、どこから呼ばれてるんですか？",
+      "じゃあこいつ、保存データだとどれを書き換えるやつ？"
+    ]
+  },
+  "generator": "glm-5.3-flash"
+}

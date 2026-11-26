@@ -1,7 +1,8 @@
 # Evals
 
 `pnpm run eval` (`node evals/run.mjs [--case <id>] [--verbose]`) runs every
-case under `cases/` through the committed bundle, `scripts/ultraview.mjs`,
+case under `cases/` and every chat scenario under `chats/` through the
+committed bundle, `scripts/ultraview.mjs`,
 against a temp copy of a fixture repo from `tests/fixtures/` (built with
 `--no-ast`, no network). It writes nothing in the repository and exits 1 when
 an assertion fails. CI runs it in the `build-test` job.
@@ -39,6 +40,35 @@ an assertion fails. CI runs it in the `build-test` job.
   `check`, or `expect` for what the gates cannot see) with every
   `bad.reasons` string in the messages.
 
+## A chat scenario
+
+`chats/<id>.json`, a multi-turn conversation over a fixture (built with no
+model):
+
+```jsonc
+{
+  "id": "place-then-data-then-cancel",
+  "fixture": "shop-express-prisma",
+  "context": { "node": "…" },                // optional: what turn 1 was asked about in the map
+  "turns": [ { "intent": "…", "expect": ["route:POST /api/orders", "…"] }, … ],
+  "questions": { "en": ["turn 1", "turn 2", …], "fr": […], "es": […], "de": […], "ja": […] },
+  "generator": "glm-5.3-flash"
+}
+```
+
+- **Thread ranking**: for each language, turn by turn, `lens new --thread`
+  runs over a conversation that holds the previous turns, simulated
+  deterministically (no agent): each previous answer is about exactly that
+  turn's `expect` nodes, turn 1 carries the scenario's `context`, which is
+  also passed to turn 1 as `--context`. The same question also runs through
+  `lens new` alone (no thread, no context): the baseline. A turn is a hit
+  when every `expect` id is in the top 10 candidates. No `--terms`: the
+  scenarios carry none, so this measures what the thread adds on its own.
+- Gates, over the follow-up turns (turn 2 on): with the thread, at least 80%
+  over all languages and 75% in each; the thread beats `lens new` alone by
+  at least 50 points; turn 1 of a scenario with a context ranks its nodes in
+  at least 90%.
+
 ## Cases
 
 | case | fixture | checks | bad answer's defect |
@@ -52,6 +82,14 @@ an assertion fails. CI runs it in the `build-test` job.
 | shop-model | shop | good, bad | a narrowed system glob (coverage), an uncited summary, an unknown member, an uncited edge (`check`) |
 | shop-flow | shop | good, bad | an unknown step node and an uncited note (`check`) |
 | next-* (6) | next-drizzle, no model | ranking only, held out | – |
+
+| chat scenario | turns | what the follow-ups test |
+|---|---|---|
+| db-client-then-users | 2 | a pronoun ("which parts of the code use it?") after the database client |
+| explain-cancel-node | 3 | turn 1 asked from a function's card ("explain this"), then "who calls it?", "which stored data does it change?" |
+| explain-product-entity | 2 | turn 1 asked from a data model's card, then "how does it tie into orders?" |
+| list-then-one-then-health | 3 | an ellipsis ("just one of them, by its id"), then a topic switch (the health check) |
+| place-then-data-then-cancel | 3 | "what data does it write?", then "how do I undo that?" (no word for cancel) |
 
 ## Results
 
@@ -98,6 +136,42 @@ misses are listed by `--verbose`: questions about behaviour the fixture does
 not have (rate limits, signatures, idempotency, session storage) and words the
 code does not use ("basket" for cart).
 
+## Chat results
+
+`lens new --thread` against `lens new` alone, key nodes in the top 10, no
+`--terms`, 5 scenarios × 5 languages (13 turns each: 5 first turns, 8
+follow-ups):
+
+| language | turn 1, thread + context | turn 1, alone | follow-ups, thread | follow-ups, alone |
+|---|---:|---:|---:|---:|
+| en | 4/5 | 2/5 | 7/8 | 3/8 |
+| fr | 4/5 | 2/5 | 7/8 | 2/8 |
+| es | 3/5 | 1/5 | 7/8 | 2/8 |
+| de | 3/5 | 1/5 | 7/8 | 2/8 |
+| ja | 2/5 | 0/5 | 6/8 | 0/8 |
+| all | 16/25 (64%) | 6/25 (24%) | 34/40 (85%) | 9/40 (23%) |
+
+Turn 1 with a context (the two "ask about this" scenarios): 10/10 with
+`--context`, 0/10 without. Without the digest the follow-ups mostly fail: they
+are pronouns and ellipses with no word to match ("ok, and who calls it?",
+"それ、どこから呼ばれてるんですか？"). The misses with the thread: "how do I undo
+that?" in all five languages (no word of the question or edge of the thread
+leads from placing an order to cancelling it: the agent's `--terms` carry
+it), and the Japanese topic switch to the health check (katakana, no terms).
+The first turns that miss without a context are the plain `lens new` misses
+of a question in another language without `--terms`, and one English
+question that names the database client in words the code does not use.
+
+History: the first ranking (seeds = the previous turns' nodes; relations:
+itself, an edge, a mention in either definition, same file, a file-level
+edge) measured 34/40 follow-ups. It missed `entity:OrderItem` for "what data
+does it write?" after placing an order (written through `order.items`), so
+an entity is also reached through a relation field of a mentioned one; that
+caught it in all five languages and lost "how do I undo that?" in all five
+(the entities around the order now outrank cancelOrder), the same 34/40. Then a seed itself (1.5) outranks its neighbours (1), and a
+turn's seeds share its weight by the square root of their count, so a
+clicked node outranks a long previous answer: no change to the counts.
+
 ## Provenance
 
 No eval data was produced by a proprietary model.
@@ -117,6 +191,10 @@ No eval data was produced by a proprietary model.
   edited.
 - **Good model and flow** (`shop-model`, `shop-flow`): the repository's test
   files, `tests/fixtures-models/shop.model.json` and `shop.flow.json`.
+- **Chat scenarios** (`chats/*.json`): the questions, in five languages,
+  generated by GLM 5.3 flash (open weights, MIT licence; each file's
+  `generator`) for the `intent` of each turn; copied verbatim, not edited.
+  No `--terms` were generated for them: the chat eval runs without terms.
 - **Bad answers**: each is its good answer with the defect of its case
   introduced by a small hand edit (a path, a line number, an id, a dropped
   citation or member), spelled out in `case.json` `bad.defect`.
