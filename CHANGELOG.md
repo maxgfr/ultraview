@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.5](https://github.com/maxgfr/ultraview/compare/v1.13.4...v1.13.5) (2026-11-26)
+
+
+### Bug Fixes
+
+* **viewer:** link every citation and name the follow-up chips ([275dc0c](https://github.com/maxgfr/ultraview/commit/275dc0c28bed5a2552f0729d341db5bccc22adda)), closes [#26](https://github.com/maxgfr/ultraview/issues/26)
+
 ## [1.13.4](https://github.com/maxgfr/ultraview/compare/v1.13.3...v1.13.4) (2026-11-26)
 
 

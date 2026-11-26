@@ -4,4 +4,4 @@
 // Not named `VERSION`: the vendored ultraindex engine exports that name (its
 // own version), and `webindex skill check` refuses a module that declares a
 // name the engine already exports.
-export const ULTRAVIEW_VERSION = "1.13.4";
+export const ULTRAVIEW_VERSION = "1.13.5";
