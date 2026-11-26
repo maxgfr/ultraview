@@ -4,10 +4,13 @@
 // no external file, works offline. Where a Blob worker cannot start (some
 // browsers on file://) the same script runs on the main thread through its
 // built-in fake worker. Layouts are cached per scene key and data version.
+// The Data view packs its connected components (lib/pack.ts) to the
+// viewport's aspect ratio of the first request; later visits reuse that layout.
 
 import { inflateSync, strFromU8 } from "fflate";
 import { type ElkNode, fromElk, gridLayout, type Layout, toElkGraph } from "../lib/elk.js";
 import type { Scene } from "../lib/levels.js";
+import { packLayout } from "../lib/pack.js";
 
 interface Port {
   postMessage(msg: unknown): void;
@@ -132,11 +135,16 @@ export function cachedLayout(version: number, scene: Scene): Layout | undefined 
   return cache.get(`${version}\n${scene.key}`);
 }
 
+/** Scenes whose connected components are packed in shelves instead of ELK's single column. */
+const PACKED = new Set(["erd"]);
+
 /**
  * Lay a scene out (cached). Resolves with a grid layout when ELK fails;
- * rejects only when every caller released it before it finished.
+ * rejects only when every caller released it before it finished. `aspect` is
+ * the width / height the layout should come close to (the viewport's), for
+ * scenes whose components are packed.
  */
-export function layoutScene(version: number, scene: Scene): Promise<Layout> {
+export function layoutScene(version: number, scene: Scene, aspect = 1.6): Promise<Layout> {
   const key = `${version}\n${scene.key}`;
   const hit = cache.get(key);
   if (hit) return Promise.resolve(hit);
@@ -148,7 +156,10 @@ export function layoutScene(version: number, scene: Scene): Promise<Layout> {
   const started = scene.nodes.length ? run(toElkGraph(scene, "RIGHT", scene.key === "erd" ? 120 : 64)) : undefined;
   const raw = started ? started.promise : Promise.resolve({ id: "__root", width: 0, height: 0 } as ElkNode);
   const promise = raw.then(
-    (res) => fromElk(scene.key, res),
+    (res) => {
+      const laid = fromElk(scene.key, res);
+      return PACKED.has(scene.key) ? packLayout(laid, scene, aspect) : laid;
+    },
     (e) => {
       if (e === CANCELLED) throw e;
       return gridLayout(scene);

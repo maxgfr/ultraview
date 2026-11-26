@@ -43,6 +43,9 @@ const MIN_K = 0.12;
 const MAX_K = 2.5;
 /** Fit to screen zooms a small graph in, up to this. */
 const FIT_MAX_K = 1.5;
+/** Room fit-to-screen leaves around the graph (the toolbar sits on top). */
+const FIT_MARGIN_X = 48;
+const FIT_MARGIN_Y = 96;
 const cameras = new Map<string, Cam>();
 let graphSeq = 0;
 
@@ -110,7 +113,7 @@ export function Graph(p: GraphProps): JSX.Element {
     const hit = cachedLayout(version, scene);
     setLayout(hit);
     if (hit) return;
-    layoutScene(version, scene).then(
+    layoutScene(version, scene, fitAspect()).then(
       (l) => {
         perfStep("layout");
         if (alive) setLayout(l);
@@ -131,6 +134,11 @@ export function Graph(p: GraphProps): JSX.Element {
   };
 
   const viewport = () => ({ w: wrap.current?.clientWidth || 800, h: wrap.current?.clientHeight || 600 });
+  /** Width / height of the area fit-to-screen fills (the margins fitCam leaves). */
+  const fitAspect = () => {
+    const { w, h } = viewport();
+    return Math.max(1, w - FIT_MARGIN_X) / Math.max(1, h - FIT_MARGIN_Y);
+  };
 
   const moveTo = (target: Cam, animate = true) => {
     cancelAnimationFrame(anim.current);
@@ -156,7 +164,7 @@ export function Graph(p: GraphProps): JSX.Element {
     const { w, h } = viewport();
     const lw = Math.max(1, layout.width);
     const lh = Math.max(1, layout.height);
-    const k = Math.max(MIN_K, Math.min(FIT_MAX_K, (w - 48) / lw, (h - 96) / lh));
+    const k = Math.max(MIN_K, Math.min(FIT_MAX_K, (w - FIT_MARGIN_X) / lw, (h - FIT_MARGIN_Y) / lh));
     return { k, x: (w - lw * k) / 2, y: Math.max(56, (h - lh * k) / 2) };
   };
   const fitView = (animate = true) => {
