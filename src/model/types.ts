@@ -33,6 +33,20 @@ export type NodeKind = (typeof NODE_KINDS)[number];
 export const EDGE_KINDS = ["import", "call", "http", "rpc", "data", "event", "queue", "extends", "config", "contains"] as const;
 export type ViewEdgeKind = (typeof EDGE_KINDS)[number];
 
+/** What each edge kind means, in one line (the prompts and `lens new` list them). */
+export const EDGE_KIND_MEANINGS: Record<ViewEdgeKind, string> = {
+  import: "a file or module imports another",
+  call: "code calls a function, a method or an SDK",
+  http: "code calls an HTTP route or an external host",
+  rpc: "code calls a tRPC procedure or a server action",
+  data: "code reads or writes an entity, or an entity relates to another",
+  event: "code emits or listens to an event",
+  queue: "code enqueues or schedules a background job",
+  extends: "a class or type extends or implements another",
+  config: "code reads configuration (environment variables)",
+  contains: "a node is part of another (from the whole to the part)",
+};
+
 export const TIMELINE_SOURCES = ["agent", "pr", "manual"] as const;
 export type TimelineSource = (typeof TIMELINE_SOURCES)[number];
 

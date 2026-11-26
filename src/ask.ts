@@ -17,9 +17,11 @@
 //   - It writes nothing: its final message is the lens JSON. ultraview takes it
 //     (Claude: stdout; Codex: `--output-last-message` into a private temp dir),
 //     forces the proposed id and the asked question, and runs `saveLens`, which
-//     repairs node ids written without their prefix (src/gates.ts), validates
-//     the schema, checks every citation and stamps `sources`. Both prompts say
-//     how a node id is written, with real ids from the question's pack.
+//     repairs node ids written without their prefix and cleans up edges (extra
+//     keys and unrepairable edges dropped, `calls` → `call`: src/gates.ts),
+//     validates the schema, checks every citation and stamps `sources`. Both
+//     prompts say how a node id is written, with real ids from the question's
+//     pack, and the edge shape with the edge kinds around its candidates.
 //   - A reply that fails the gates gets one correction round: the same command
 //     line, the gate messages and the reply on stdin, within what is left of
 //     the timeout; a second refusal fails with its messages.
@@ -33,11 +35,11 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CHAT_QUESTION_MAX, type ContextView, chatDigest, resolveContext, saveTurn, type TurnResult } from "./chat.js";
-import { type IdRepair, repairLines } from "./gates.js";
+import { edgeRule, type Repair, repairHeading, repairLines } from "./gates.js";
 import { type LensNewOptions, lensNew, proposeLensId } from "./lens.js";
 import { kindOf } from "./model/ids.js";
 import { CITATION_RULE } from "./model/prose.js";
-import { type ChatContext, type ChatMode, type ChatTurn, type Conversation, NODE_KINDS } from "./model/types.js";
+import { type ChatContext, type ChatMode, type ChatTurn, type Conversation, NODE_KINDS, type ViewEdge } from "./model/types.js";
 import type { Problem } from "./model/validate.js";
 import { VIEW_DIR } from "./paths.js";
 import { saveLens } from "./save.js";
@@ -141,12 +143,20 @@ export function nodeIdExamples(ids: Iterable<string>, max = ID_EXAMPLES): string
 /** Resolves on a later turn of the event loop, so a caller's pending writes go out first. */
 const nextTurn = () => new Promise<void>((done) => setImmediate(done));
 
-/** The candidates' ids of the pack `lens new` gives for `question` (what the agent will read), for the prompt's examples; none when it cannot be built. */
-function packCandidates(repo: string, question: string, opts: LensNewOptions = {}): string[] {
+/** An edge as a prompt shows it. */
+type PromptEdge = Pick<ViewEdge, "from" | "to" | "kind">;
+
+/**
+ * What the prompt shows of the pack `lens new` gives for `question` (what the
+ * agent will read): its candidates' ids, for the node id examples, and the
+ * edges around them, for the edge kinds; nothing when it cannot be built.
+ */
+function packFacts(repo: string, question: string, opts: LensNewOptions = {}): { candidates: string[]; edges: PromptEdge[] } {
   try {
-    return lensNew(repo, question, { ...opts, budget: 1 }).candidates.map((c) => c.id);
+    const pack = lensNew(repo, question, { ...opts, budget: 1 });
+    return { candidates: pack.candidates.map((c) => c.id), edges: pack.neighbourhood };
   } catch {
-    return [];
+    return { candidates: [], edges: [] };
   }
 }
 
@@ -163,8 +173,15 @@ function nodeIdRule(examples: readonly string[]): string[] {
 /** The citation rule (src/model/prose.ts), indented under a prompt's `answer` bullet. */
 const citationRuleLines = (): string[] => CITATION_RULE.map((l) => `     ${l}`);
 
-/** The prompt handed to the agent on stdin; `examples`: node ids of this question's pack (nodeIdExamples). */
-export function askPrompt(question: string, id: string, script: string, examples: readonly string[] = []): string {
+/** The edge rule (src/gates.ts `edgeRule`), as a prompt's `edges` bullet. */
+const edgeRuleLines = (edges: readonly PromptEdge[]): string[] => edgeRule(edges).map((l, i) => `${i ? "     " : "   - "}${l}`);
+
+/**
+ * The prompt handed to the agent on stdin; `examples`: node ids of this
+ * question's pack (nodeIdExamples); `edges`: the view edges around its
+ * candidates, for the edge kinds the prompt lists first.
+ */
+export function askPrompt(question: string, id: string, script: string, examples: readonly string[] = [], edges: readonly PromptEdge[] = []): string {
   const uv = scriptCommand(script);
   return [
     "You answer one question about the repository in the current directory for ultraview, a cited map of the app.",
@@ -186,6 +203,7 @@ export function askPrompt(question: string, id: string, script: string, examples
     ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(examples),
+    ...edgeRuleLines(edges),
     "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     "",
   ].join("\n");
@@ -203,6 +221,8 @@ export interface ChatPromptInput {
   context?: { value: ChatContext; lines: string[] };
   /** Node ids of this question's pack, shown as examples (nodeIdExamples). */
   examples?: readonly string[];
+  /** The view edges around the pack's candidates, for the edge kinds the prompt lists first. */
+  edges?: readonly PromptEdge[];
 }
 
 /**
@@ -257,6 +277,7 @@ export function chatPrompt(input: ChatPromptInput, script: string): string {
     ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(input.examples ?? []),
+    ...edgeRuleLines(input.edges ?? []),
     "   - followUps: exactly 3 short questions the user could ask next about this app, in the question's language.",
     "   - Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     "",
@@ -422,8 +443,8 @@ export interface AskOutcome {
   sources?: Record<string, string>;
   error?: string;
   problems?: Problem[];
-  /** Node ids ultraview rewrote before the gates. */
-  repairs?: IdRepair[];
+  /** Node ids and edges ultraview repaired or dropped before the gates. */
+  repairs?: Repair[];
 }
 
 /** The validated question, or the reason it is refused. */
@@ -479,8 +500,8 @@ interface RunOutcome {
   file?: string;
   error?: string;
   problems?: Problem[];
-  /** Node ids ultraview rewrote before the gates (src/gates.ts `repairAnswerIds`). */
-  repairs?: IdRepair[];
+  /** Node ids and edges ultraview repaired or dropped before the gates (src/gates.ts `repairAnswer`). */
+  repairs?: Repair[];
 }
 
 /** The least time left that is worth a correction round, in milliseconds. */
@@ -599,7 +620,7 @@ function runOnce<O extends RunOutcome>(
       // The kill timer of a timed-out agent outlives the round: it still stops a child that ignores SIGTERM.
       if (killTimer) killTimer.unref();
       req.onChild?.(undefined);
-      if (outcome.repairs?.length) log.write(`--- repaired ${outcome.repairs.length} node id(s):\n${repairLines(outcome.repairs).join("\n")}\n`);
+      if (outcome.repairs?.length) log.write(`--- ${repairHeading(outcome.repairs)}:\n${repairLines(outcome.repairs).join("\n")}\n`);
       done({ outcome, ...(reply ? { reply } : {}) });
     };
 
@@ -669,10 +690,11 @@ export async function askAgent(req: AskRequest, id: string = askLensId(req.repo,
   const { question } = req;
   const base = { id, question };
   await nextTurn(); // the pack below is built after the caller has answered its request
+  const pack = packFacts(repo, question);
   return runAgent<AskOutcome>(
     req,
     `ask ${id}`,
-    askPrompt(question, id, ultraviewScript(), nodeIdExamples(packCandidates(repo, question))),
+    askPrompt(question, id, ultraviewScript(), nodeIdExamples(pack.candidates), pack.edges),
     (error, problems) => ({ ...base, ok: false, error, ...(problems ? { problems } : {}) }),
     (lens) => {
       // The id and the question are ultraview's, never the agent's: no overwrite of another saved question.
@@ -715,12 +737,12 @@ export async function chatAgent(req: ChatRequest): Promise<ChatOutcome> {
   }
   const started = Date.now();
   await nextTurn(); // the pack below is built after the caller has sent its first progress event
-  const candidates = packCandidates(repo, req.question, {
+  const { candidates, edges } = packFacts(repo, req.question, {
     ...(req.thread ? { thread: req.thread.id } : {}),
     ...(context ? { context: context.value } : {}),
   });
   const examples = nodeIdExamples([...candidates, ...(candidates.length ? [] : req.view.byId.keys())]);
-  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context, examples }, ultraviewScript());
+  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context, examples, edges }, ultraviewScript());
   return runAgent<ChatOutcome>(
     req,
     `chat ${thread} turn ${(req.thread?.turns.length ?? 0) + 1}`,

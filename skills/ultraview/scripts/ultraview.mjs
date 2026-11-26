@@ -38556,6 +38556,18 @@ var SYSTEM_KINDS = ["ui", "service", "worker", "library", "data", "external", "i
 var AUDIENCES = ["everyone", "developers"];
 var NODE_KINDS = ["cap", "sys", "mod", "file", "sym", "route", "screen", "entity", "job", "ext", "infra"];
 var EDGE_KINDS3 = ["import", "call", "http", "rpc", "data", "event", "queue", "extends", "config", "contains"];
+var EDGE_KIND_MEANINGS = {
+  import: "a file or module imports another",
+  call: "code calls a function, a method or an SDK",
+  http: "code calls an HTTP route or an external host",
+  rpc: "code calls a tRPC procedure or a server action",
+  data: "code reads or writes an entity, or an entity relates to another",
+  event: "code emits or listens to an event",
+  queue: "code enqueues or schedules a background job",
+  extends: "a class or type extends or implements another",
+  config: "code reads configuration (environment variables)",
+  contains: "a node is part of another (from the whole to the part)"
+};
 var TIMELINE_SOURCES = ["agent", "pr", "manual"];
 var CHANGE_KINDS = ["new", "changed", "removed"];
 var CHAT_MODES = ["business", "dev"];
@@ -40606,36 +40618,169 @@ function repairNodeId(value, ids) {
   if (path && ids.has(`file:${path}`)) fits.add(`file:${path}`);
   return fits.size === 1 ? [...fits][0] : void 0;
 }
-function repairAnswerIds(value, ids) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return { value, repairs: [] };
+var EDGE_KIND_SYNONYMS = {
+  imports: "import",
+  imported: "import",
+  calls: "call",
+  called: "call",
+  invoke: "call",
+  invokes: "call",
+  invocation: "call",
+  request: "http",
+  requests: "http",
+  fetch: "http",
+  fetches: "http",
+  rest: "http",
+  "http-call": "http",
+  "http-request": "http",
+  trpc: "rpc",
+  procedure: "rpc",
+  "server-action": "rpc",
+  read: "data",
+  reads: "data",
+  write: "data",
+  writes: "data",
+  "reads-from": "data",
+  "writes-to": "data",
+  "read-write": "data",
+  "reads-writes": "data",
+  store: "data",
+  stores: "data",
+  persists: "data",
+  db: "data",
+  database: "data",
+  emit: "event",
+  emits: "event",
+  publish: "event",
+  publishes: "event",
+  subscribe: "event",
+  subscribes: "event",
+  listens: "event",
+  "listens-to": "event",
+  events: "event",
+  enqueue: "queue",
+  enqueues: "queue",
+  job: "queue",
+  jobs: "queue",
+  queues: "queue",
+  extend: "extends",
+  inherits: "extends",
+  implements: "extends",
+  subclass: "extends",
+  configures: "config",
+  configuration: "config",
+  env: "config",
+  contain: "contains",
+  include: "contains",
+  includes: "contains"
+};
+function repairEdgeKind(value) {
+  const norm2 = value.trim().toLowerCase().replace(/[\s_]+/g, "-");
+  if (EDGE_KINDS3.includes(norm2)) return norm2;
+  return Object.hasOwn(EDGE_KIND_SYNONYMS, norm2) ? EDGE_KIND_SYNONYMS[norm2] : void 0;
+}
+var EDGE_KEYS = ["from", "to", "kind"];
+var isRecord = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+function repairAnswer(value, ids) {
+  if (!isRecord(value)) return { value, repairs: [] };
   const rec = value;
   const loose = (v) => typeof v === "string" && !isNodeId(v);
-  const edges = Array.isArray(rec.edges) ? rec.edges : [];
-  const isEdge = (e) => !!e && typeof e === "object" && !Array.isArray(e);
-  const any = Array.isArray(rec.nodes) && rec.nodes.some(loose) || edges.some((e) => isEdge(e) && (loose(e.from) || loose(e.to))) || loose(rec.focus);
+  const edges = Array.isArray(rec.edges) ? rec.edges : void 0;
+  const any = Array.isArray(rec.nodes) && rec.nodes.some(loose) || (edges?.length ?? 0) > 0 || loose(rec.focus);
   if (!any) return { value, repairs: [] };
-  const known = ids();
+  let known;
+  const view = () => {
+    known ??= ids();
+    return known;
+  };
   const repairs = [];
-  const fix = (path, v) => {
+  const fix = (path, v, into) => {
     if (!loose(v)) return v;
-    const to = repairNodeId(v, known);
+    const to = repairNodeId(v, view());
     if (to === void 0) return v;
-    repairs.push({ path, from: v, to });
+    into.push({ path, from: v, to });
     return to;
   };
   const out2 = { ...rec };
-  if (Array.isArray(rec.nodes)) out2.nodes = rec.nodes.map((n, i2) => fix(`nodes[${i2}]`, n));
-  if (Array.isArray(rec.edges))
-    out2.edges = rec.edges.map((e, i2) => {
-      if (!isEdge(e)) return e;
-      const edge = { ...e };
-      for (const end of ["from", "to"]) if (end in e) edge[end] = fix(`edges[${i2}].${end}`, e[end]);
-      return edge;
+  if (Array.isArray(rec.nodes)) out2.nodes = rec.nodes.map((n, i2) => fix(`nodes[${i2}]`, n, repairs));
+  if (edges) {
+    const kept = [];
+    edges.forEach((e, i2) => {
+      const at = `edges[${i2}]`;
+      const r = repairEdge(e, at, view, fix);
+      if (r.edge === void 0) repairs.push({ path: at, from: e, dropped: r.reasons.join("; ") });
+      else {
+        repairs.push(...r.repairs);
+        kept.push(r.edge);
+      }
     });
-  if ("focus" in rec) out2.focus = fix("focus", rec.focus);
+    out2.edges = kept;
+  }
+  if ("focus" in rec) out2.focus = fix("focus", rec.focus, repairs);
   return repairs.length ? { value: out2, repairs } : { value, repairs: [] };
 }
-var repairLines = (repairs, indent = "  ") => repairs.map((r) => `${indent}${r.path}: ${JSON.stringify(r.from)} -> ${JSON.stringify(r.to)}`);
+function repairEdge(e, at, view, fix) {
+  if (!isRecord(e))
+    return { repairs: [], reasons: [`an edge is an object {"from", "to", "kind"} (got ${e === null ? "null" : Array.isArray(e) ? "an array" : typeof e})`] };
+  const repairs = [];
+  const reasons = [];
+  const edge = {};
+  for (const [key, v] of Object.entries(e)) {
+    if (!EDGE_KEYS.includes(key))
+      repairs.push({ path: `${at}.${key}`, from: v, dropped: `not an edge key (an edge holds ${EDGE_KEYS.join(", ")})` });
+  }
+  for (const end of ["from", "to"]) {
+    if (!(end in e)) {
+      reasons.push(`no "${end}"`);
+      continue;
+    }
+    const v = fix(`${at}.${end}`, e[end], repairs);
+    edge[end] = v;
+    if (typeof v !== "string" || !isNodeId(v)) reasons.push(`"${end}" ${JSON.stringify(v)} is not a node id`);
+    else if (view().size && !view().has(v)) reasons.push(`"${end}" ${JSON.stringify(v)} names no node of the map`);
+  }
+  if ("kind" in e) {
+    const kind = typeof e.kind === "string" ? repairEdgeKind(e.kind) : void 0;
+    if (kind === void 0) reasons.push(`kind ${JSON.stringify(e.kind)} is not an edge kind (${EDGE_KINDS3.join(", ")})`);
+    else {
+      if (kind !== e.kind) repairs.push({ path: `${at}.kind`, from: e.kind, to: kind });
+      edge.kind = kind;
+    }
+  }
+  return reasons.length ? { repairs: [], reasons } : { edge, repairs, reasons };
+}
+function repairKind(r) {
+  if (/^edges\[\d+\]$/.test(r.path)) return "edge";
+  if (r.dropped !== void 0) return "edge key";
+  return /^edges\[\d+\]\.kind$/.test(r.path) ? "edge kind" : "node id";
+}
+function repairHeading(repairs, pad = false) {
+  const count2 = (k) => repairs.filter((r) => repairKind(r) === k).length;
+  const part = (k) => count2(k) ? [`${count2(k)} ${k}(s)`] : [];
+  const fixed = [...part("node id"), ...part("edge kind")];
+  const dropped = [...part("edge key"), ...part("edge")];
+  const verb = (v) => pad ? v.padEnd(11) : `${v} `;
+  return [
+    ...fixed.length ? [`${verb("repaired")}${fixed.join(", ")}`] : [],
+    ...dropped.length ? [`${fixed.length ? "dropped " : verb("dropped")}${dropped.join(", ")}`] : []
+  ].join("; ");
+}
+var repairLines = (repairs, indent = "  ") => repairs.map(
+  (r) => r.dropped !== void 0 ? `${indent}${r.path}: dropped ${JSON.stringify(r.from) ?? "undefined"} (${r.dropped})` : `${indent}${r.path}: ${JSON.stringify(r.from)} -> ${JSON.stringify(r.to)}`
+);
+function edgeRule(around = []) {
+  const here = EDGE_KINDS3.filter((k) => around.some((e) => e.kind === k));
+  const others = EDGE_KINDS3.filter((k) => !here.includes(k));
+  const mean = (ks) => ks.map((k) => `${k} (${EDGE_KIND_MEANINGS[k]})`).join("; ");
+  const coarse = (id) => id.startsWith("cap:") || id.startsWith("sys:");
+  const example = around.find((e) => !coarse(e.from) && !coarse(e.to)) ?? around[0];
+  return [
+    'Each edge is exactly {"from": "<node id>", "to": "<node id>", "kind": "<edge kind>"}: kind optional, no other key (no label); edges may be [].',
+    here.length ? `Edge kinds around these candidates: ${mean(here)}.${others.length ? ` The other edge kinds: ${others.join(", ")}.` : ""}` : `Edge kinds: ${mean(EDGE_KINDS3)}.`,
+    ...example ? [`e.g. {"from": ${JSON.stringify(example.from)}, "to": ${JSON.stringify(example.to)}, "kind": ${JSON.stringify(example.kind)}}`] : [],
+    "Any other key is dropped; an edge with another kind, or an end that is not a node of the map, is dropped."
+  ];
+}
 
 // src/lens-terms.ts
 var SYNONYM_WEIGHT = 0.6;
@@ -41294,7 +41439,7 @@ function prepare(kind, repo, input, ids = liveIds(repo)) {
     value = parsed2.value;
   }
   let repairs = [];
-  if (kind.repair) ({ value, repairs } = repairAnswerIds(value, ids));
+  if (kind.repair) ({ value, repairs } = repairAnswer(value, ids));
   const schemaErrors = kind.validate(value);
   if (schemaErrors.length) return { sources: {}, repairs, errors: schemaErrors };
   const item = value;
@@ -42997,6 +43142,7 @@ function instructions(pack) {
     "2. The citation rule for `answer` (`ultraview check` fails a dead citation and an uncited sentence):",
     ...CITATION_RULE.map((l) => `   ${l}`),
     "3. `nodes`: the node ids the answer is about (pick from the candidates, or any id `ultraview show` knows); `edges` (optional): the links between them that matter; `focus`: the one node to centre the map on.",
+    ...edgeRule(pack.neighbourhood).map((l) => `   ${l}`),
     `4. Write the JSON above, filled in, to ${pack.file}${pack.reask ? " (it already holds this question: the new answer replaces the old one)" : ""}. Leave \`sources\` out: \`lens save\` stamps it.`,
     `5. Run \`ultraview lens save ${pack.file}\`${pack.conflict ? " --force (the id holds a different question)" : ""}, then \`ultraview check\`, and fix what they report.`,
     `6. Point the user at \`#lens=${pack.id}\` in the map (live when \`ultraview serve\` runs).`
@@ -43011,6 +43157,7 @@ function turnInstructions(pack) {
     ...CITATION_RULE.map((l) => `   ${l}`),
     "3. Answer in the language of the question (`lang`: its BCP-47 tag, e.g. en, fr, ja; citations stay as they are). `mode` business: plain words for someone who does not read code, no function, file or symbol names unless the question asks for them; `mode` dev: the technical detail (symbols, calls, files, routes).",
     "4. `nodes`: the node ids the answer is about; `edges` (optional): the links that matter; `focus`: the one node to centre the map on.",
+    ...edgeRule(pack.neighbourhood).map((l) => `   ${l}`),
     "5. `followUps`: exactly 3 short questions the user could ask next about this app, in the question's language.",
     `6. Write the JSON above, filled in, to ${pack.file}, run \`ultraview lens save ${pack.file} --thread ${pack.thread}\` (it appends the turn), then \`ultraview check\`, and fix what they report.`,
     `7. Point the user at \`#chat=${pack.thread}\` in the map (live when \`ultraview serve\` runs).`
@@ -43104,7 +43251,7 @@ function lensNew(repoArg, question, opts = {}) {
     "\n"
   ) : "";
   const tmpl = ["## Template", "```json", stableJson(template).trimEnd(), "```"].join("\n");
-  const close = conv ? turnInstructions({ thread: conv.id, file }) : instructions({ id, file, reask, conflict });
+  const close = conv ? turnInstructions({ thread: conv.id, file, neighbourhood }) : instructions({ id, file, reask, conflict, neighbourhood });
   const fixed = [head, digest, cand.join("\n"), neigh, tmpl, close].filter(Boolean);
   const max = budget * CHARS_PER_TOKEN5;
   let room = max - fixed.reduce((n, s) => n + s.length + 2, 0) - "## Source\n".length;
@@ -43241,11 +43388,12 @@ function nodeIdExamples(ids, max = ID_EXAMPLES) {
   return out2;
 }
 var nextTurn = () => new Promise((done) => setImmediate(done));
-function packCandidates(repo, question, opts = {}) {
+function packFacts(repo, question, opts = {}) {
   try {
-    return lensNew(repo, question, { ...opts, budget: 1 }).candidates.map((c2) => c2.id);
+    const pack = lensNew(repo, question, { ...opts, budget: 1 });
+    return { candidates: pack.candidates.map((c2) => c2.id), edges: pack.neighbourhood };
   } catch {
-    return [];
+    return { candidates: [], edges: [] };
   }
 }
 function nodeIdRule(examples) {
@@ -43255,7 +43403,8 @@ function nodeIdRule(examples) {
   ];
 }
 var citationRuleLines = () => CITATION_RULE.map((l) => `     ${l}`);
-function askPrompt(question, id, script, examples = []) {
+var edgeRuleLines = (edges) => edgeRule(edges).map((l, i2) => `${i2 ? "     " : "   - "}${l}`);
+function askPrompt(question, id, script, examples = [], edges = []) {
   const uv = scriptCommand(script);
   return [
     "You answer one question about the repository in the current directory for ultraview, a cited map of the app.",
@@ -43277,6 +43426,7 @@ function askPrompt(question, id, script, examples = []) {
     ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(examples),
+    ...edgeRuleLines(edges),
     "   - Leave out sources. Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     ""
   ].join("\n");
@@ -43322,6 +43472,7 @@ function chatPrompt(input, script) {
     ...citationRuleLines(),
     "   - nodes: the node ids the answer is about (from the candidates, or ids ultraview show knows); edges: optional links between them; focus: one of the nodes.",
     ...nodeIdRule(input.examples ?? []),
+    ...edgeRuleLines(input.edges ?? []),
     "   - followUps: exactly 3 short questions the user could ask next about this app, in the question's language.",
     "   - Do not write the JSON to a file and do not run lens save: ultraview validates and saves your reply.",
     ""
@@ -43551,7 +43702,7 @@ function runOnce(req, inv, log, input, ms, totalMs, fail, accept) {
       if (timer) clearTimeout(timer);
       if (killTimer) killTimer.unref();
       req.onChild?.(void 0);
-      if (outcome2.repairs?.length) log.write(`--- repaired ${outcome2.repairs.length} node id(s):
+      if (outcome2.repairs?.length) log.write(`--- ${repairHeading(outcome2.repairs)}:
 ${repairLines(outcome2.repairs).join("\n")}
 `);
       done({ outcome: outcome2, ...reply ? { reply } : {} });
@@ -43622,10 +43773,11 @@ async function askAgent(req, id = askLensId(req.repo, req.question)) {
   const { question } = req;
   const base = { id, question };
   await nextTurn();
+  const pack = packFacts(repo, question);
   return runAgent(
     req,
     `ask ${id}`,
-    askPrompt(question, id, ultraviewScript(), nodeIdExamples(packCandidates(repo, question))),
+    askPrompt(question, id, ultraviewScript(), nodeIdExamples(pack.candidates), pack.edges),
     (error, problems) => ({ ...base, ok: false, error, ...problems ? { problems } : {} }),
     (lens) => {
       const { sources: _ignored, ...rest } = lens;
@@ -43648,12 +43800,12 @@ async function chatAgent(req) {
   }
   const started = Date.now();
   await nextTurn();
-  const candidates = packCandidates(repo, req.question, {
+  const { candidates, edges } = packFacts(repo, req.question, {
     ...req.thread ? { thread: req.thread.id } : {},
     ...context ? { context: context.value } : {}
   });
   const examples = nodeIdExamples([...candidates, ...candidates.length ? [] : req.view.byId.keys()]);
-  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context, examples }, ultraviewScript());
+  const prompt = chatPrompt({ question: req.question, mode: req.mode, thread: req.thread, context, examples, edges }, ultraviewScript());
   return runAgent(
     req,
     `chat ${thread} turn ${(req.thread?.turns.length ?? 0) + 1}`,
@@ -46145,7 +46297,7 @@ function usage(io, message) {
   return EXIT_USAGE;
 }
 var problemLines = (errors) => errors.map((e) => `  ${e.path || "(root)"}: ${e.message}`).join("\n");
-var repairedText = (repairs) => repairs.length ? `repaired   ${repairs.length} node id(s):
+var repairedText = (repairs) => repairs.length ? `${repairHeading(repairs, true)}:
 ${repairLines(repairs).join("\n")}
 ` : "";
 function sourceOf(p) {

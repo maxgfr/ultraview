@@ -59,7 +59,7 @@ A capability member `mod:<slug>` claims every slice of the module;
   order); `src/db.ts` above beats `src/**`.
 - `capabilities[].members`: node ids; `paths`: globs whose files are members
   too. One file may serve several capabilities.
-- `edges[].kind`: `import call http data event queue extends config contains`;
+- `edges[].kind`: `import call http rpc data event queue extends config contains`;
   `cite` is required (`path:line`).
 - `app.audience`: `everyone` (default) or `developers`.
 - Ids are slugs (`a-z0-9-`), unique per list.
@@ -83,6 +83,9 @@ A capability member `mod:<slug>` claims every slice of the module;
   "edges": [ { "from": "route:DELETE /api/orders/:id", "to": "entity:Order", "kind": "data" } ],
   "focus": "route:DELETE /api/orders/:id" }
 ```
+
+A lens's (and a turn's) `edges[]` hold `from`, `to` and an optional `kind`
+(the kinds above), nothing else: no `label`, no `cite`.
 
 `sources` (path → sha256 of each cited file) is stamped by `lens save` /
 `flow save`; never write it. A cited file whose hash changes makes the lens

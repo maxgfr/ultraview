@@ -7,15 +7,17 @@
 // Saving a DIFFERENT question (lens) or title (flow) under an existing id is
 // refused unless `force` — an id is a deep link (`#lens=<id>`) someone may hold.
 //
-// Before a lens's gates, the node ids it names are repaired (src/gates.ts
-// `repairAnswerIds`: `src-diff` → `mod:src-diff` when exactly one node id
-// fits); every repair is reported in the result's `repairs`. A lens and a
-// conversation turn (`prepareLens`) share this one place.
+// Before a lens's gates, the node ids it names are repaired and its edges
+// cleaned up (src/gates.ts `repairAnswer`: `src-diff` → `mod:src-diff` when
+// exactly one node id fits; an edge's extra keys dropped, `calls` → `call`,
+// an edge that still is not one dropped); every repair and drop is reported
+// in the result's `repairs`. A lens and a conversation turn (`prepareLens`)
+// share this one place.
 
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { checkCitations, fileLineTable, loadGraph, parseCitations } from "./engine.js";
-import { type IdRepair, repairAnswerIds } from "./gates.js";
+import { type Repair, repairAnswer } from "./gates.js";
 import { stableJson } from "./json.js";
 import { FLOWS_DIR, fileSha256, LENSES_DIR } from "./model/load.js";
 import type { Flow, Lens, SourceHashes } from "./model/types.js";
@@ -36,8 +38,8 @@ export interface SaveResult {
   sources: SourceHashes;
   /** Whether an existing file was replaced. */
   replaced: boolean;
-  /** Node ids rewritten before the gates (repairAnswerIds), saved or not. */
-  repairs: IdRepair[];
+  /** Node ids and edges repaired or dropped before the gates (repairAnswer), saved or not. */
+  repairs: Repair[];
   errors: Problem[];
 }
 
@@ -52,7 +54,7 @@ interface Kind<T> {
   /** What makes two saves "the same view" (lens question, flow title). */
   identity: (item: T) => string;
   noun: string;
-  /** Repair the node ids it names before the gates (a lens). */
+  /** Repair the node ids and edges it names before the gates (a lens). */
   repair: boolean;
 }
 
@@ -78,8 +80,8 @@ const FLOW: Kind<Flow> = {
 export interface Prepared<T> {
   item?: T;
   sources: SourceHashes;
-  /** Node ids rewritten before the gates. */
-  repairs: IdRepair[];
+  /** Node ids and edges repaired or dropped before the gates. */
+  repairs: Repair[];
   errors: Problem[];
 }
 
@@ -98,8 +100,8 @@ function liveIds(repo: string): NodeIds {
 }
 
 /**
- * The gates before a write: the node ids repaired (a lens: `ids`, the view's
- * node ids, read only when a repair needs them), the schema, then every
+ * The gates before a write: the node ids and edges repaired (a lens: `ids`,
+ * the view's node ids, read only when a repair needs them), the schema, then every
  * citation of every prose string — each cited file must exist inside the repo
  * and, with an index, every citation must resolve. Returns the `sources` to
  * stamp (the sha256 of each cited file). Writes nothing.
@@ -111,8 +113,8 @@ function prepare<T>(kind: Pick<Kind<T>, "validate" | "prose" | "repair">, repo: 
     if (parsed.problems.length) return { sources: {}, repairs: [], errors: parsed.problems };
     value = parsed.value;
   }
-  let repairs: IdRepair[] = [];
-  if (kind.repair) ({ value, repairs } = repairAnswerIds(value, ids));
+  let repairs: Repair[] = [];
+  if (kind.repair) ({ value, repairs } = repairAnswer(value, ids));
   const schemaErrors = kind.validate(value);
   if (schemaErrors.length) return { sources: {}, repairs, errors: schemaErrors };
   const item = value as T;
@@ -143,7 +145,7 @@ function prepare<T>(kind: Pick<Kind<T>, "validate" | "prose" | "repair">, repo: 
 /**
  * `lens save`'s gates without the write (schema, citations, `sources`), for
  * answers stored elsewhere: a conversation turn (src/chat.ts) is a lens
- * answer and passes exactly these, its node ids repaired against `ids`
+ * answer and passes exactly these, its node ids and edges repaired against `ids`
  * (default: the live view's).
  */
 export function prepareLens(repoArg: string, input: unknown, ids?: NodeIds): Prepared<Lens> {

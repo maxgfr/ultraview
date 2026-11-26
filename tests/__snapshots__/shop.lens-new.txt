@@ -435,6 +435,10 @@ Exported: enum OrderStatus @ 13, enum-member PENDING @ 14, enum-member PAID @ 15
    Incorrect: **In short:** a nightly job deletes expired carts, except those with a pending payment. It runs at 02:00 [src/jobs/schedule.ts:4]. In summary, carts never pile up.
               (refused: the opening summary "**In short:** a nightly job deletes expired carts, except those with a pending payment." and the closing "In summary, carts never pile up." cite nothing)
 3. `nodes`: the node ids the answer is about (pick from the candidates, or any id `ultraview show` knows); `edges` (optional): the links between them that matter; `focus`: the one node to centre the map on.
+   Each edge is exactly {"from": "<node id>", "to": "<node id>", "kind": "<edge kind>"}: kind optional, no other key (no label); edges may be [].
+   Edge kinds around these candidates: import (a file or module imports another); call (code calls a function, a method or an SDK); data (code reads or writes an entity, or an entity relates to another). The other edge kinds: http, rpc, event, queue, extends, config, contains.
+   e.g. {"from": "file:src/services/orders.ts", "to": "entity:Order", "kind": "data"}
+   Any other key is dropped; an edge with another kind, or an end that is not a node of the map, is dropped.
 4. Write the JSON above, filled in, to .ultraview/lenses/how-does-cancelling-an-order-work.json. Leave `sources` out: `lens save` stamps it.
 5. Run `ultraview lens save .ultraview/lenses/how-does-cancelling-an-order-work.json`, then `ultraview check`, and fix what they report.
 6. Point the user at `#lens=how-does-cancelling-an-order-work` in the map (live when `ultraview serve` runs).

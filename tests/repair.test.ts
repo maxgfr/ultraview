@@ -1,12 +1,14 @@
-// The node-id repair made before a lens's or a turn's gates (src/gates.ts
-// `repairAnswerIds`), through `lens save`, `lens save --thread` and saveTurn.
+// The repair made before a lens's or a turn's gates (src/gates.ts
+// `repairAnswer`: node ids, then edges), through `lens save`, `lens save
+// --thread` and saveTurn.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { chatNew, loadConversation, saveTurn } from "../src/chat.js";
 import { main } from "../src/cli.js";
-import { repairAnswerIds, repairNodeId } from "../src/gates.js";
+import { EDGE_KIND_SYNONYMS, edgeRule, repairAnswer, repairEdgeKind, repairHeading, repairLines, repairNodeId } from "../src/gates.js";
+import { EDGE_KINDS } from "../src/model/types.js";
 import { saveLens } from "../src/save.js";
 import { builtShop, captureIo, readModelFile } from "./helpers.js";
 
@@ -64,7 +66,7 @@ describe("repairNodeId", () => {
   });
 });
 
-describe("repairAnswerIds", () => {
+describe("repairAnswer", () => {
   it("repairs nodes, edge ends and focus, reports each, and never mutates the input", () => {
     const input = {
       answer: "x",
@@ -76,14 +78,11 @@ describe("repairAnswerIds", () => {
       focus: "targets-cli-src-diff-dila",
     };
     const copy = structuredClone(input);
-    const { value, repairs } = repairAnswerIds(input, () => IDS);
+    const { value, repairs } = repairAnswer(input, () => IDS);
     expect(value).toEqual({
       answer: "x",
       nodes: ["mod:targets-cli-src-diff", "entity:Order", "file:src/db.ts", "orders"],
-      edges: [
-        { from: "mod:targets-cli-src-diff", to: "entity:Order", kind: "data" },
-        { from: "route:GET /health", to: "nope" },
-      ],
+      edges: [{ from: "mod:targets-cli-src-diff", to: "entity:Order", kind: "data" }],
       focus: "mod:targets-cli-src-diff-dila",
     });
     expect(repairs).toEqual([
@@ -91,34 +90,212 @@ describe("repairAnswerIds", () => {
       { path: "nodes[2]", from: "./src/db.ts", to: "file:src/db.ts" },
       { path: "edges[0].from", from: "targets-cli-src-diff", to: "mod:targets-cli-src-diff" },
       { path: "edges[0].to", from: "Order", to: "entity:Order" },
+      // An edge end no repair resolves: the edge goes, the answer stays.
+      { path: "edges[1]", from: { from: "route:GET /health", to: "nope" }, dropped: '"to" "nope" is not a node id' },
       { path: "focus", from: "targets-cli-src-diff-dila", to: "mod:targets-cli-src-diff-dila" },
     ]);
     expect(input).toEqual(copy);
   });
 
-  it("does not read the view when every id is well-formed, and keeps the input as it is", () => {
+  it("does not read the view when every id is well-formed and there is no edge, and keeps the input as it is", () => {
     let reads = 0;
     const ids = () => {
       reads++;
       return IDS;
     };
     // entity:Orders names no node, but is a well-formed id: the gates say so, no repair is tried.
-    const input = { nodes: ["entity:Order", "entity:Orders"], edges: [{ from: "entity:Order", to: "cap:orders" }], focus: "entity:Order" };
-    const r = repairAnswerIds(input, ids);
+    const input = { nodes: ["entity:Order", "entity:Orders"], edges: [], focus: "entity:Order" };
+    const r = repairAnswer(input, ids);
     expect(r).toEqual({ value: input, repairs: [] });
     expect(r.value).toBe(input);
     expect(reads).toBe(0);
-    // Not an answer: left to the schema.
-    for (const v of [undefined, null, "nodes", [1], { nodes: "x", edges: [null, "y", { to: 3 }], focus: 4 }])
-      expect(repairAnswerIds(v, ids)).toEqual({ value: v, repairs: [] });
+    // Valid edges: the view is read once to check their ends, and nothing changes.
+    const valid = {
+      ...input,
+      edges: [
+        { from: "entity:Order", to: "cap:orders" },
+        { from: "file:src/db.ts", to: "entity:Order", kind: "data" },
+      ],
+    };
+    const v = repairAnswer(valid, ids);
+    expect(v).toEqual({ value: valid, repairs: [] });
+    expect(v.value).toBe(valid);
+    expect(reads).toBe(1);
+    // Not an answer: left to the schema, which still refuses its required fields.
+    for (const x of [undefined, null, "nodes", [1], { nodes: "x", edges: "y", focus: 4 }]) expect(repairAnswer(x, ids)).toEqual({ value: x, repairs: [] });
     // Nothing repairable: the very input comes back.
     const unknown = { nodes: ["orders", "nope"] };
-    expect(repairAnswerIds(unknown, ids).value).toBe(unknown);
-    // An edge without an end keeps its shape for the schema to report.
-    expect(repairAnswerIds({ nodes: ["Order"], edges: [{ from: "Order" }] }, ids).value).toEqual({
+    expect(repairAnswer(unknown, ids).value).toBe(unknown);
+  });
+});
+
+describe("repairEdgeKind", () => {
+  it("keeps an edge kind, in any case, and rewrites a synonym of exactly one", () => {
+    for (const k of EDGE_KINDS) {
+      expect(repairEdgeKind(k)).toBe(k);
+      expect(repairEdgeKind(k.toUpperCase())).toBe(k);
+    }
+    expect(repairEdgeKind("calls")).toBe("call");
+    expect(repairEdgeKind("Invokes")).toBe("call");
+    expect(repairEdgeKind("imports")).toBe("import");
+    expect(repairEdgeKind("reads")).toBe("data");
+    expect(repairEdgeKind(" Reads From ")).toBe("data");
+    expect(repairEdgeKind("writes_to")).toBe("data");
+    expect(repairEdgeKind("stores")).toBe("data");
+    expect(repairEdgeKind("fetch")).toBe("http");
+    expect(repairEdgeKind("request")).toBe("http");
+    expect(repairEdgeKind("tRPC")).toBe("rpc");
+    expect(repairEdgeKind("emits")).toBe("event");
+    expect(repairEdgeKind("subscribes")).toBe("event");
+    expect(repairEdgeKind("enqueue")).toBe("queue");
+    expect(repairEdgeKind("inherits")).toBe("extends");
+    expect(repairEdgeKind("implements")).toBe("extends");
+    expect(repairEdgeKind("configures")).toBe("config");
+    expect(repairEdgeKind("includes")).toBe("contains");
+  });
+
+  it("guesses nothing for a word that could mean several kinds, or none", () => {
+    for (const w of [
+      "uses",
+      "depends-on",
+      "api",
+      "triggers",
+      "sends",
+      "dispatches",
+      "query",
+      "requires",
+      "has",
+      "schedules",
+      "related",
+      "flows",
+      "",
+      "toString",
+      "__proto__",
+    ])
+      expect(repairEdgeKind(w)).toBeUndefined();
+  });
+
+  it("maps every synonym onto an edge kind, never onto another synonym", () => {
+    for (const [word, kind] of Object.entries(EDGE_KIND_SYNONYMS)) {
+      expect(EDGE_KINDS).toContain(kind);
+      expect(word).toBe(word.toLowerCase());
+      expect(EDGE_KINDS as readonly string[]).not.toContain(word);
+    }
+  });
+});
+
+describe("repairAnswer on edges", () => {
+  // The refused reply that opened issue #29: a `label` on each edge, kinds `calls` and `reads`.
+  const observed = () => ({
+    answer: "x",
+    nodes: ["entity:Order"],
+    edges: [
+      { from: "file:src/db.ts", to: "sym:src/db.ts#prisma", kind: "calls", label: "creates the client" },
+      { from: "sym:src/db.ts#prisma", to: "entity:Order", kind: "reads", label: "reads orders" },
+    ],
+  });
+
+  it("drops an edge's extra keys and rewrites its kind, reporting each, without mutating the input", () => {
+    const input = observed();
+    const copy = structuredClone(input);
+    const { value, repairs } = repairAnswer(input, () => IDS);
+    expect(value).toEqual({
+      answer: "x",
       nodes: ["entity:Order"],
-      edges: [{ from: "entity:Order" }],
+      edges: [
+        { from: "file:src/db.ts", to: "sym:src/db.ts#prisma", kind: "call" },
+        { from: "sym:src/db.ts#prisma", to: "entity:Order", kind: "data" },
+      ],
     });
+    expect(repairs).toEqual([
+      { path: "edges[0].label", from: "creates the client", dropped: "not an edge key (an edge holds from, to, kind)" },
+      { path: "edges[0].kind", from: "calls", to: "call" },
+      { path: "edges[1].label", from: "reads orders", dropped: "not an edge key (an edge holds from, to, kind)" },
+      { path: "edges[1].kind", from: "reads", to: "data" },
+    ]);
+    expect(input).toEqual(copy);
+    expect(repairHeading(repairs)).toBe("repaired 2 edge kind(s); dropped 2 edge key(s)");
+    expect(repairLines(repairs)).toEqual([
+      '  edges[0].label: dropped "creates the client" (not an edge key (an edge holds from, to, kind))',
+      '  edges[0].kind: "calls" -> "call"',
+      '  edges[1].label: dropped "reads orders" (not an edge key (an edge holds from, to, kind))',
+      '  edges[1].kind: "reads" -> "data"',
+    ]);
+  });
+
+  it("drops an edge whose kind cannot be repaired, or whose end is missing, malformed or unknown, and keeps the rest", () => {
+    const keep = { from: "entity:Order", to: "cap:orders" };
+    const input = {
+      answer: "x",
+      nodes: ["entity:Order"],
+      edges: [
+        { from: "file:src/db.ts", to: "entity:Order", kind: "uses" },
+        keep,
+        { from: "entity:Order" },
+        { from: "entity:Order", to: "entity:Nope" },
+        { from: "Order", to: "orders", kind: 3 },
+        "entity:Order -> cap:orders",
+        null,
+      ],
+    };
+    const { value, repairs } = repairAnswer(input, () => IDS);
+    expect(value).toEqual({ answer: "x", nodes: ["entity:Order"], edges: [keep] });
+    expect(repairs).toEqual([
+      { path: "edges[0]", from: input.edges[0], dropped: expect.stringContaining('kind "uses" is not an edge kind (import, call, http, rpc,') },
+      { path: "edges[2]", from: input.edges[2], dropped: 'no "to"' },
+      { path: "edges[3]", from: input.edges[3], dropped: '"to" "entity:Nope" names no node of the map' },
+      // Its `from` repairs (Order → entity:Order) but `orders` is ambiguous and 3 no kind: dropped once, as written.
+      { path: "edges[4]", from: input.edges[4], dropped: expect.stringMatching(/^"to" "orders" is not a node id; kind 3 is not an edge kind/) },
+      { path: "edges[5]", from: "entity:Order -> cap:orders", dropped: 'an edge is an object {"from", "to", "kind"} (got string)' },
+      { path: "edges[6]", from: null, dropped: 'an edge is an object {"from", "to", "kind"} (got null)' },
+    ]);
+    expect(repairHeading(repairs, true)).toBe("dropped    6 edge(s)");
+    expect(repairLines(repairs)[1]).toBe('  edges[2]: dropped {"from":"entity:Order"} (no "to")');
+  });
+
+  it("checks an edge's ends for form only when there is no map", () => {
+    const input = {
+      nodes: ["entity:Order"],
+      edges: [
+        { from: "entity:Order", to: "entity:Nope" },
+        { from: "entity:Order", to: "Nope" },
+      ],
+    };
+    const { value, repairs } = repairAnswer(input, () => new Set());
+    expect(value).toEqual({ nodes: ["entity:Order"], edges: [{ from: "entity:Order", to: "entity:Nope" }] });
+    expect(repairs).toEqual([{ path: "edges[1]", from: { from: "entity:Order", to: "Nope" }, dropped: '"to" "Nope" is not a node id' }]);
+  });
+
+  it("names the repairs by what they touched", () => {
+    expect(repairHeading([{ path: "nodes[0]", from: "a", to: "mod:a" }], true)).toBe("repaired   1 node id(s)");
+    expect(
+      repairHeading([
+        { path: "nodes[0]", from: "a", to: "mod:a" },
+        { path: "edges[0].kind", from: "calls", to: "call" },
+        { path: "edges[1]", from: {}, dropped: "x" },
+      ]),
+    ).toBe("repaired 1 node id(s), 1 edge kind(s); dropped 1 edge(s)");
+  });
+});
+
+describe("edgeRule", () => {
+  it("states the edge shape, the kinds around the candidates with their meaning, the others by name, and one real example", () => {
+    const lines = edgeRule([
+      { from: "cap:a", to: "cap:b", kind: "call" },
+      { from: "file:src/db.ts", to: "entity:Order", kind: "data" },
+    ]);
+    expect(lines[0]).toBe(
+      'Each edge is exactly {"from": "<node id>", "to": "<node id>", "kind": "<edge kind>"}: kind optional, no other key (no label); edges may be [].',
+    );
+    expect(lines[1]).toBe(
+      "Edge kinds around these candidates: call (code calls a function, a method or an SDK); data (code reads or writes an entity, or an entity relates to another). The other edge kinds: import, http, rpc, event, queue, extends, config, contains.",
+    );
+    expect(lines[2]).toBe('e.g. {"from": "file:src/db.ts", "to": "entity:Order", "kind": "data"}');
+    expect(lines[3]).toContain("an edge with another kind, or an end that is not a node of the map, is dropped");
+    // No edges around the pack: every kind with its meaning, no example.
+    const all = edgeRule();
+    expect(all).toHaveLength(3);
+    for (const k of EDGE_KINDS) expect(all[1]).toContain(`${k} (`);
   });
 });
 
@@ -188,6 +365,65 @@ describe("lens save repairs node ids", () => {
     expect(refused.code).toBe(1);
     expect(refused.out).toContain('repaired   2 node id(s):\n  nodes[0]: "src-services" -> "mod:src-services"');
     expect(refused.err).toContain('"nope" is not a node id');
+  });
+});
+
+describe("lens save repairs or drops bad edges", () => {
+  /** The shop lens with edges the way issue #29 saw them. */
+  const labelled = () => ({
+    ...readModelFile("shop.lens.json"),
+    edges: [
+      { from: "route:DELETE /api/orders/:id", to: "sym:src/services/orders.ts#cancelOrder", kind: "Calls", label: "hands the id over" },
+      { from: "sym:src/services/orders.ts#cancelOrder", to: "entity:Order", kind: "reads" },
+      { from: "sym:src/services/orders.ts#cancelOrder", to: "entity:Nope", kind: "data" },
+    ],
+  });
+  const kept = [
+    { from: "route:DELETE /api/orders/:id", to: "sym:src/services/orders.ts#cancelOrder", kind: "call" },
+    { from: "sym:src/services/orders.ts#cancelOrder", to: "entity:Order", kind: "data" },
+  ];
+
+  it("saves the lens with its edges repaired, the rest dropped, and says so in text and in --json", async () => {
+    const repo = await builtShop(cleanups);
+    // Under .ultraview/, so the index stays fresh for `check` below.
+    const file = join(repo, ".ultraview/answer.json");
+    writeFileSync(file, JSON.stringify(labelled()));
+    const text = await run(["lens", "save", file, "--repo", repo]);
+    expect(text.code).toBe(0);
+    expect(text.out).toContain(
+      'repaired   2 edge kind(s); dropped 1 edge key(s), 1 edge(s):\n  edges[0].label: dropped "hands the id over" (not an edge key (an edge holds from, to, kind))\n  edges[0].kind: "Calls" -> "call"\n  edges[1].kind: "reads" -> "data"\n  edges[2]: dropped {"from":"sym:src/services/orders.ts#cancelOrder","to":"entity:Nope","kind":"data"} ("to" "entity:Nope" names no node of the map)\nsaved      .ultraview/lenses/how-cancel-works.json',
+    );
+    expect(JSON.parse(readFileSync(join(repo, ".ultraview/lenses/how-cancel-works.json"), "utf8")).edges).toEqual(kept);
+    const asJson = JSON.parse((await run(["lens", "save", file, "--repo", repo, "--json"])).out);
+    expect(asJson).toMatchObject({ ok: true });
+    expect(asJson.repairs).toEqual([
+      { path: "edges[0].label", from: "hands the id over", dropped: "not an edge key (an edge holds from, to, kind)" },
+      { path: "edges[0].kind", from: "Calls", to: "call" },
+      { path: "edges[1].kind", from: "reads", to: "data" },
+      { path: "edges[2]", from: labelled().edges[2], dropped: '"to" "entity:Nope" names no node of the map' },
+    ]);
+    // What was saved passes `check` too.
+    expect((await run(["check", "--repo", repo])).code).toBe(0);
+  });
+
+  it("still refuses an answer whose required fields are invalid, saying what was dropped", async () => {
+    const repo = await builtShop(cleanups);
+    const r = saveLens(repo, { ...labelled(), answer: "" });
+    expect(r.ok).toBe(false);
+    expect(r.errors).toEqual([{ path: "answer", message: "must not be empty" }]);
+    expect(r.repairs).toHaveLength(4);
+    expect(saveLens(repo, { ...labelled(), nodes: "entity:Order" })).toMatchObject({ ok: false, errors: [{ path: "nodes" }] });
+  });
+
+  it("appends a turn with its edges repaired", async () => {
+    const repo = await builtShop(cleanups);
+    chatNew(repo, { id: "orders" });
+    const { schema: _s, id: _i, ...lens } = labelled();
+    const turn = { ...lens, lang: "en", mode: "dev", followUps: ["Who calls it?", "What does it store?", "Can it fail?"] };
+    const r = saveTurn(repo, JSON.stringify(turn), { thread: "orders" });
+    expect(r.ok).toBe(true);
+    expect(r.repairs.map((x) => x.path)).toEqual(["edges[0].label", "edges[0].kind", "edges[1].kind", "edges[2]"]);
+    expect(loadConversation(repo, "orders").turns[0]!.answer.edges).toEqual(kept);
   });
 });
 

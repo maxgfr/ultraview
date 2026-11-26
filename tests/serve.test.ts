@@ -114,7 +114,8 @@ async function serveShop(opts: Partial<Parameters<typeof startServe>[0]> = {}, s
 /**
  * A fake agent CLI named `claude`: checks it was started read-only, then replies with a lens. The question picks the reply:
  * BROKEN fails the gates every round, FIXABLE only the first (the correction round's reply passes), SLOWFIX fails the first
- * and is slow to correct it, SLOW is slow, BARE writes its node ids without their kind prefix.
+ * and is slow to correct it, SLOW is slow, BARE writes its node ids without their kind prefix, LABELS writes its edges
+ * the way issue #29 saw them (a `label`, kinds `calls` / `reads`, and one edge no repair saves).
  */
 function fakeAgent(): string {
   // (the prompts it reads are kept next to it, prompt-<time>.txt, for the tests to read)
@@ -127,6 +128,14 @@ function fakeAgent(): string {
     nodes: ["DELETE /api/orders/:id", "src/services/orders.ts#cancelOrder", "Order", "src-services"],
     edges: [{ from: "DELETE /api/orders/:id", to: "Order", kind: "data" }],
     focus: "DELETE /api/orders/:id",
+  };
+  const labelled = {
+    ...lens,
+    edges: [
+      { from: "route:DELETE /api/orders/:id", to: "sym:src/services/orders.ts#cancelOrder", kind: "calls", label: "hands the id over" },
+      { from: "sym:src/services/orders.ts#cancelOrder", to: "entity:Order", kind: "reads" },
+      { from: "sym:src/services/orders.ts#cancelOrder", to: "entity:Order", kind: "uses" },
+    ],
   };
   const script = `#!/usr/bin/env node
 const args = process.argv.slice(2);
@@ -143,7 +152,7 @@ process.stdin.on("end", () => {
   const failing = prompt.includes("BROKEN") || (!fix && (prompt.includes("FIXABLE") || prompt.includes("SLOWFIX")));
   const slow = prompt.includes("SLOWFIX") ? fix : prompt.includes("SLOW");
   setTimeout(() => {
-    const lens = failing ? ${JSON.stringify(broken)} : prompt.includes("BARE") ? ${JSON.stringify(bare)} : ${JSON.stringify(lens)};
+    const lens = failing ? ${JSON.stringify(broken)} : prompt.includes("BARE") ? ${JSON.stringify(bare)} : prompt.includes("LABELS") ? ${JSON.stringify(labelled)} : ${JSON.stringify(lens)};
     if (prompt.includes("one turn of a conversation")) {
       const { schema, id, ...answer } = lens;
       process.stdout.write(JSON.stringify({ ...answer, question: "agent rewrote it", mode: "dev", lang: "en", followUps: ["Who calls it?", "What does it store?", "Can it fail?"] }));
@@ -615,6 +624,18 @@ describe("node ids and the correction round", () => {
       expect(p).toContain("ultraindex module slugs and file paths are not node ids: write mod:<slug> for a module and file:<path> for a file.");
     }
     expect(askPrompt("q", "q", "/x/u.mjs")).toContain("written exactly as the candidates list it.");
+    // The edge rule, under the node id rule: the kinds around the pack first, with their meaning; every kind without a pack.
+    const edges = [{ from: "file:src/services/orders.ts", to: "entity:Order", kind: "data" as const }];
+    for (const p of [askPrompt("q", "q", "/x/u.mjs", examples, edges), chatPrompt({ question: "q", mode: "dev", examples, edges }, "/x/u.mjs")]) {
+      expect(p).toContain(
+        '   - Each edge is exactly {"from": "<node id>", "to": "<node id>", "kind": "<edge kind>"}: kind optional, no other key (no label); edges may be [].\n' +
+          "     Edge kinds around these candidates: data (code reads or writes an entity, or an entity relates to another). The other edge kinds: import, call, http, rpc, event, queue, extends, config, contains.\n" +
+          '     e.g. {"from": "file:src/services/orders.ts", "to": "entity:Order", "kind": "data"}\n' +
+          "     Any other key is dropped; an edge with another kind, or an end that is not a node of the map, is dropped.\n",
+      );
+      expect(p.indexOf("Each edge is exactly")).toBeGreaterThan(p.indexOf("A node id is <kind>:<name>"));
+    }
+    expect(askPrompt("q", "q", "/x/u.mjs")).toContain("     Edge kinds: import (a file or module imports another); call (");
     const again = correctionPrompt("PROMPT", { nodes: ["src-x"] }, [{ path: "nodes[0]", message: "bad" }]);
     expect(again.startsWith("PROMPT\n\n## Correction round\n")).toBe(true);
     expect(again).toContain('- nodes[0]: bad\n\nYour reply was:\n```json\n{\n  "nodes": [\n    "src-x"\n  ]\n}\n```');
@@ -649,6 +670,65 @@ describe("node ids and the correction round", () => {
     expect(examples.length).toBeGreaterThanOrEqual(2);
     expect(examples[0]).toMatch(/^mod:/);
     expect(prompt).toContain(`(e.g. ${examples.map((e) => JSON.stringify(e)).join(", ")})`);
+  });
+
+  it("repairs or drops bad edges before the gates instead of refusing, logs each, and states the edge kinds in the prompt", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { repo, handle } = await serveShop({ ask: "claude", env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` } });
+    const sse = events(handle);
+    cleanups.push(() => sse.close());
+    await sse.opened;
+    const question = "LABELS: how does cancelling an order work?";
+    const done = sse.next("ask-done", 10_000);
+    expect((await ask(handle, question)).status).toBe(202);
+    const { file } = await done;
+    const saved = JSON.parse(readFileSync(join(repo, file), "utf8"));
+    expect(saved.edges).toEqual([
+      { from: "route:DELETE /api/orders/:id", to: "sym:src/services/orders.ts#cancelOrder", kind: "call" },
+      { from: "sym:src/services/orders.ts#cancelOrder", to: "entity:Order", kind: "data" },
+    ]);
+    const log = readFileSync(join(repo, ".ultraview/ask.log"), "utf8");
+    expect(log).toContain("--- repaired 2 edge kind(s); dropped 1 edge key(s), 1 edge(s):\n");
+    expect(log).toContain('  edges[0].label: dropped "hands the id over" (not an edge key (an edge holds from, to, kind))\n');
+    expect(log).toContain('  edges[0].kind: "calls" -> "call"\n');
+    expect(log).toContain(
+      '  edges[2]: dropped {"from":"sym:src/services/orders.ts#cancelOrder","to":"entity:Order","kind":"uses"} (kind "uses" is not an edge kind',
+    );
+    expect(log).not.toContain("correction round");
+    // One round; the prompt states the edge shape and the kinds around this pack's candidates, with their meaning.
+    const [prompt, ...more] = prompts(fake);
+    expect(more).toEqual([]);
+    const kinds = [...new Set(lensNew(repo, question).neighbourhood.map((e) => e.kind))];
+    expect(kinds.length).toBeGreaterThan(0);
+    expect(prompt).toContain(
+      '   - Each edge is exactly {"from": "<node id>", "to": "<node id>", "kind": "<edge kind>"}: kind optional, no other key (no label); edges may be [].',
+    );
+    expect(prompt).toContain("     Edge kinds around these candidates: ");
+    for (const k of kinds) expect(prompt).toContain(`${k} (`);
+    expect(prompt).toMatch(/\n {5}e\.g\. \{"from": "[^"]+", "to": "[^"]+", "kind": "[a-z]+"\}\n/);
+  });
+
+  it("repairs a turn's edges the same way, and gives them as `repairs`", async () => {
+    if (process.platform === "win32") return;
+    const fake = fakeAgent();
+    const { repo, handle } = await serveShop({ ask: "claude", env: { ...process.env, PATH: `${fake}${delimiter}${process.env.PATH ?? ""}` } });
+    const r = await http(handle, "/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: "LABELS: how does cancelling an order work?", mode: "dev" }),
+    });
+    const turn = frames(r.body).at(-1)!;
+    expect(turn.event).toBe("turn");
+    expect(turn.data.turn.answer.edges).toEqual([
+      { from: "route:DELETE /api/orders/:id", to: "sym:src/services/orders.ts#cancelOrder", kind: "call" },
+      { from: "sym:src/services/orders.ts#cancelOrder", to: "entity:Order", kind: "data" },
+    ]);
+    expect(readFileSync(join(repo, ".ultraview/ask.log"), "utf8")).toContain("--- repaired 2 edge kind(s); dropped 1 edge key(s), 1 edge(s):\n");
+    const [prompt] = prompts(fake);
+    expect(prompt).toContain("You answer one turn of a conversation");
+    expect(prompt).toContain('   - Each edge is exactly {"from": "<node id>", "to": "<node id>", "kind": "<edge kind>"}');
+    expect(prompt).toContain("Any other key is dropped; an edge with another kind, or an end that is not a node of the map, is dropped.");
   });
 
   it("asks once more with the gate messages and the reply, with the same command line, and saves the correction", async () => {

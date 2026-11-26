@@ -21,7 +21,7 @@
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { answerProblems, type IdRepair } from "./gates.js";
+import { answerProblems, type Repair } from "./gates.js";
 import { stableJson, writeFileAtomic } from "./json.js";
 import { guessLang, questionId } from "./lens-terms.js";
 import { kindOf, SLUG_RE } from "./model/ids.js";
@@ -383,8 +383,8 @@ export interface TurnResult {
   /** The conversation was created by this turn. */
   created: boolean;
   turn?: ChatTurn;
-  /** Node ids rewritten before the gates (src/gates.ts `repairAnswerIds`), saved or not. */
-  repairs: IdRepair[];
+  /** Node ids and edges repaired or dropped before the gates (src/gates.ts `repairAnswer`), saved or not. */
+  repairs: Repair[];
   errors: Problem[];
 }
 
@@ -395,8 +395,9 @@ export interface TurnResult {
  * cited: `answerProblems`); then the follow-ups (exactly 3 from an agent, at
  * most 3 from the facts, each one line), the language tag, the mode, the
  * context, the thread's length. Nothing is written when any fails. The node
- * ids are repaired first, against the map (`prepareLens`), and every repair is
- * reported in `repairs`.
+ * ids and edges are repaired first, against the map (`prepareLens`: an edge
+ * that cannot be repaired is dropped), and every repair and drop is reported
+ * in `repairs`.
  */
 export function saveTurn(repoArg: string, input: unknown, opts: SaveTurnOptions = {}): TurnResult {
   const repo = resolve(repoArg);
@@ -427,7 +428,7 @@ export function saveTurn(repoArg: string, input: unknown, opts: SaveTurnOptions 
   }
   const file = conversationFile(thread);
   const index = conv?.turns.length ?? 0;
-  let repairs: IdRepair[] = [];
+  let repairs: Repair[] = [];
   const fail = (more: Problem[] = []): TurnResult => ({ ok: false, thread, file, index, created: false, repairs, errors: [...errors, ...more] });
   if (!rec)
     return fail([{ path: "", message: typeof input === "string" ? (parseJson(input).problems[0]?.message ?? "not a JSON object") : "must be an object" }]);

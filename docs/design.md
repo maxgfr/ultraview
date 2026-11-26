@@ -704,13 +704,28 @@ in-process for its candidates: a module's first, then one of each other
 kind), and that ultraindex module slugs and file paths are not node ids
 (`mod:<slug>`, `file:<path>`). Before the gates, `lens save`, `lens save
 --thread` and both bridges repair, in one place (`src/gates.ts`
-`repairAnswerIds`, through `src/save.ts` `prepare`), each node id, edge end
+`repairAnswer`, through `src/save.ts` `prepare`), each node id, edge end
 and focus that is not a well-formed id: it becomes the one node id of the
 view equal to `<kind>:<value>` for some kind, or `file:<value>` for a
-repo-relative path (a leading `./` dropped). Ambiguous or unknown values are
-left as they are and fail the gates; nothing else is guessed. Every repair is
-reported: `repaired` lines and the `repairs` field of `--json`, and
-`--- repaired` lines in `ask.log`.
+repo-relative path (a leading `./` dropped). Ambiguous or unknown values in
+`nodes` and `focus` are left as they are and fail the gates; nothing else is
+guessed.
+
+**Edges.** An answer's edges are optional decoration (its cited prose and
+nodes are the answer), so a bad edge never refuses it. The prompts and `lens
+new` state the edge shape (`{"from", "to", "kind"}`, kind optional, no other
+key), list the edge kinds around the pack's candidates with their meaning
+(then the others by name) and give one real edge as the example. In the same
+repair, an edge's other keys (`label`, `cite`…) are dropped; a kind written
+in another case or as a synonym of exactly one kind is rewritten (`calls` →
+`call`, `reads` → `data`: a small explicit table, `EDGE_KIND_SYNONYMS`;
+words that could mean several kinds, `uses`, `api`, `triggers`, are not in
+it); and an edge whose kind still is not one, or whose end is missing, is not
+a node id or names no node of the map, is dropped. The schema still refuses
+an answer whose required fields are invalid. Every repair and drop is
+reported: `repaired` / `dropped` lines and the `repairs` field of `--json`
+(`{path, from, to}`, or `{path, from, dropped}` with the reason), and the
+same lines after `---` in `ask.log`.
 
 **Correction round.** When the reply still fails the gates, the bridge runs
 the agent once more, with the same command line (same read-only flags, same

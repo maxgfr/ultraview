@@ -32,7 +32,10 @@ Then:
    `edges`: only the links the answer relies on. Write ids as the candidates
    list them (`mod:<slug>`, `file:<path>`, `route:GET /x`): an ultraindex
    module slug or a bare path is not a node id. `lens save` repairs one that
-   only lacks its prefix, when a single node fits, and says so.
+   only lacks its prefix, when a single node fits, and says so. An edge is
+   exactly `{"from", "to", "kind"}` (kind optional, one of the edge kinds `lens
+   new` lists); `lens save` drops any other key, rewrites a plain synonym
+   (`calls` → `call`) and drops an edge it cannot repair, and says so.
 4. `lens save <file>`, `check`, then answer the user and give `#lens=<id>`.
 
 A lens answers one question. A second question is a second lens.

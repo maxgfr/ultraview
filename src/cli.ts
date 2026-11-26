@@ -22,7 +22,7 @@ import type { Problem } from "./model/validate.js";
 import { viewPaths } from "./paths.js";
 import { freshView } from "./refresh.js";
 import { type SaveResult, saveFlow, saveLens } from "./save.js";
-import { type IdRepair, repairLines } from "./gates.js";
+import { type Repair, repairHeading, repairLines } from "./gates.js";
 import { openFile, renderMap } from "./render.js";
 // --- serve / lens new / lens list (issue #10) ---
 import { ASK_MODES, type AskMode, askModelProblem } from "./ask.js";
@@ -538,8 +538,8 @@ function usage(io: Io, message: string): number {
 }
 
 const problemLines = (errors: readonly Problem[]) => errors.map((e) => `  ${e.path || "(root)"}: ${e.message}`).join("\n");
-/** What `lens save` repaired before its gates, one line each ("" when nothing was). */
-const repairedText = (repairs: readonly IdRepair[]) => (repairs.length ? `repaired   ${repairs.length} node id(s):\n${repairLines(repairs).join("\n")}\n` : "");
+/** What `lens save` repaired or dropped before its gates, one line each ("" when nothing was). */
+const repairedText = (repairs: readonly Repair[]) => (repairs.length ? `${repairHeading(repairs, true)}:\n${repairLines(repairs).join("\n")}\n` : "");
 
 /** `--source`, checked; undefined when absent. */
 function sourceOf(p: Parsed): TimelineSource | undefined | { error: string } {
