@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.2.0](https://github.com/maxgfr/ultraview/compare/v1.1.0...v1.2.0) (2026-11-26)
+
+
+### Features
+
+* **extract:** Python, SQL, jobs, externals and infra ([989f9f9](https://github.com/maxgfr/ultraview/commit/989f9f9afa04483cb363afe311c39d2c3b102c7f)), closes [#2](https://github.com/maxgfr/ultraview/issues/2)
+
 # [1.1.0](https://github.com/maxgfr/ultraview/compare/v1.0.0...v1.1.0) (2026-11-26)
 
 
