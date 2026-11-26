@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.7.0](https://github.com/maxgfr/ultraview/compare/v1.6.0...v1.7.0) (2026-11-26)
+
+
+### Features
+
+* **viewer:** readable maps on large repos ([999f5de](https://github.com/maxgfr/ultraview/commit/999f5de584c5a55e75a9ccb52ad50f891a0d9d24)), closes [#9](https://github.com/maxgfr/ultraview/issues/9)
+
 # [1.6.0](https://github.com/maxgfr/ultraview/compare/v1.5.0...v1.6.0) (2026-11-26)
 
 
