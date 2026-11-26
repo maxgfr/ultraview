@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.1](https://github.com/maxgfr/ultraview/compare/v1.13.0...v1.13.1) (2026-11-26)
+
+
+### Bug Fixes
+
+* **lens:** readable, unique ids for questions in any script ([66abd5f](https://github.com/maxgfr/ultraview/commit/66abd5fd1d5a6a01f9547058ba500cc1b7551d52)), closes [#24](https://github.com/maxgfr/ultraview/issues/24)
+
 # [1.13.0](https://github.com/maxgfr/ultraview/compare/v1.12.0...v1.13.0) (2026-11-26)
 
 
