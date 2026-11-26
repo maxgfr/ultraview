@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "id": "place-order",
+  "question": "How does placing an order work, from checkout to confirmation?",
+  "answer": "The Express app mounts `ordersRouter` under `/api`, so a checkout is a `POST` to `/api/orders` [src/server.ts:7]. That route hands the request body to `placeOrder` and answers with HTTP 201 and the created order as JSON. `placeOrder` first loads the products named in the payload and throws an `unknown product` error if their count does not match the number of requested items [src/services/orders.ts:14-15]. It then creates the `Order` with the `userId` and the requested items nested via `items: { create: input.items }`, and the created order is returned to the caller [src/services/orders.ts:16-21].",
+  "nodes": [
+    "file:src/server.ts",
+    "sym:src/routes/orders.ts#ordersRouter",
+    "route:POST /api/orders",
+    "sym:src/services/orders.ts#placeOrder",
+    "file:src/routes/orders.ts",
+    "file:src/services/orders.ts",
+    "entity:Order",
+    "entity:OrderItem",
+    "sym:src/db.ts#prisma"
+  ],
+  "edges": [
+    {
+      "from": "file:src/server.ts",
+      "to": "sym:src/routes/orders.ts#ordersRouter"
+    },
+    {
+      "from": "route:POST /api/orders",
+      "to": "sym:src/services/orders.ts#placeOrder"
+    },
+    {
+      "from": "sym:src/services/orders.ts#placeOrder",
+      "to": "entity:Order"
+    }
+  ],
+  "focus": "sym:src/services/orders.ts#placeOrder"
+}

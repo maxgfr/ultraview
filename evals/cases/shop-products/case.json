@@ -1,0 +1,40 @@
+{
+  "description": "Shop (Express + Prisma): how products are linked to orders. Ranking over 5 English and 5 French paraphrases; a cited lens answer; a bad answer where the lens leaves out the join entity the answer is about (entity:OrderItem).",
+  "kind": "lens",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "questions": {
+    "en": [
+      "How are products linked to orders?",
+      "What's the relationship between the product catalog and the orders people place?",
+      "When someone orders something, how do the products tie into that order?",
+      "Do orders reference products directly, and how is that connection stored?",
+      "How does the shop connect what's for sale with what's been bought?"
+    ],
+    "fr": [
+      "Comment les produits sont-ils reliés aux commandes ?",
+      "Quel lien y a-t-il entre le catalogue produits et les commandes passées ?",
+      "Quand quelqu'un commande, comment les produits sont-ils rattachés à la commande ?",
+      "Les commandes font-elles référence aux produits, et comment ce lien est-il stocké ?",
+      "Comment la boutique relie-t-elle ce qui est en vente à ce qui a été acheté ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "entity:Product",
+      "entity:OrderItem"
+    ],
+    "top": 10,
+    "minRecall": 0.8,
+    "cites": [
+      "prisma/schema.prisma"
+    ]
+  },
+  "bad": {
+    "fails": "expect",
+    "reasons": [
+      "node recall: missing entity:OrderItem"
+    ],
+    "defect": "the lens leaves out the join entity the answer is about (entity:OrderItem)"
+  }
+}

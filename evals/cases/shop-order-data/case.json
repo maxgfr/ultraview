@@ -1,0 +1,40 @@
+{
+  "description": "Shop (Express + Prisma): what an order and its items hold. Ranking over 5 English and 5 French paraphrases; a cited lens answer; a bad answer where a node id that does not exist (entity:Orders for entity:Order).",
+  "kind": "lens",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "questions": {
+    "en": [
+      "What details are kept for each order and the items in it?",
+      "Which fields does an order record contain?",
+      "If I look at an order in the database, what information do I find about it and its line items?",
+      "What does the system remember about a purchase — customer info, items, amounts?",
+      "How is an order's data structured, including its products?"
+    ],
+    "fr": [
+      "Quelles informations sont conservées pour chaque commande et ses articles ?",
+      "Quels champs composent une fiche commande ?",
+      "Si j'inspecte une commande en base, qu'est-ce que j'y trouve sur elle et ses lignes ?",
+      "Que retient le système d'un achat : client, articles, montants ?",
+      "Comment sont structurées les données d'une commande et de ses produits ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "entity:Order",
+      "entity:OrderItem"
+    ],
+    "top": 10,
+    "minRecall": 0.8,
+    "cites": [
+      "prisma/schema.prisma"
+    ]
+  },
+  "bad": {
+    "fails": "check",
+    "reasons": [
+      "unknown node \"entity:Orders\""
+    ],
+    "defect": "a node id that does not exist (entity:Orders for entity:Order)"
+  }
+}

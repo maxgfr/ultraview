@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "id": "products",
+  "question": "How are products linked to orders?",
+  "answer": "Products are linked to orders through the `OrderItem` model, whose rows each store a `productId` referencing the product's `id`, an `orderId` referencing the order's `id`, and a `quantity` [prisma/schema.prisma:47-54]. `Product` exposes the link from its side as an `items` relation to `OrderItem` [prisma/schema.prisma:27-33]. `Order` carries the matching `items` relation to its `OrderItem` rows [prisma/schema.prisma:36-45]. On a checkout, `placeOrder` looks up the requested products and creates the order with the items nested via `items: { create: input.items }` [src/services/orders.ts:14-21].",
+  "nodes": [
+    "entity:Product",
+    "entity:Order",
+    "file:prisma/schema.prisma",
+    "sym:src/services/orders.ts#placeOrder"
+  ],
+  "edges": [],
+  "focus": "entity:Product"
+}

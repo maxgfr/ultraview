@@ -5,6 +5,13 @@
 > it), ultraview shows it — to the business and to developers — and lets you
 > ask, save the answer as a view, and follow every change your agent makes.
 
+Related: the agent's side is [skills/ultraview/SKILL.md](../skills/ultraview/SKILL.md)
+and its [references](../skills/ultraview/references/); extractor coverage and
+gaps are in [src/extract/README.md](../src/extract/README.md), real-repo
+measurements in [tests/corpus.md](../tests/corpus.md), the offline evals in
+[evals/README.md](../evals/README.md); the product overview and the comparison
+with other tools in the [README](../README.md).
+
 ## 0. Ground rules
 
 - Deterministic work belongs to code, never to the model: graph, symbols,
@@ -402,7 +409,7 @@ absent outside git.
 | `check` | schema, ids resolve, citations resolve (ultraindex `checkCitations`), coverage thresholds (systems ≥ 90% code files, capabilities ≥ 70% non-test modules), stale lenses/flows, exit 1 on failure |
 | `render [--out]` | view.json → self-contained `.ultraview/index.html` |
 | `serve [--port 4178] [--host 127.0.0.1] [--ask auto|claude|codex|none] [--open]` | local server (node:http, no dependency), live data over SSE on any `.ultraview/` change, `/api/*` for on-demand node / search / callgraph, optional Ask bridge (read-only `claude -p` / `codex exec`, answer saved as a lens) — contract in §8.1 |
-| `lens new "<question>" [--budget n] [--id slug]` | evidence pack: proposed id (slug of the question, de-duplicated; a saved question keeps its id) + target path + JSON template, ranked candidates (ultraindex `runFind` over modules mapped to view ids, slices included; routes/screens/entities/jobs/symbols/capabilities named like the question), their strongest edges, source excerpts (`gatherEvidence`) within the budget (default 6000 tokens ≈ 24k chars), closing steps (`lens save`, `check`); `--json` for the structured pack. Read-only, deterministic |
+| `lens new "<question>" [--budget n] [--id slug]` | evidence pack: proposed id (slug of the question, de-duplicated; a saved question keeps its id) + target path + JSON template, ranked candidates (first the routes/screens/entities/jobs/symbols/capabilities named like the question, scored by term rarity, name before definition / fields / summary, plus the kind, HTTP method and cardinality the wording points at and the score of a matching capability; a French question read through a lexicon of everyday app words (`src/lens-terms.ts`); then ultraindex `runFind` over modules mapped to view ids, slices included), their strongest edges, source excerpts (`gatherEvidence`) within the budget (default 6000 tokens ≈ 24k chars), closing steps (`lens save`, `check`); `--json` for the structured pack. Read-only, deterministic |
 | `lens save <file>` / `flow save <file>` | validate, stamp `sources`, write under `.ultraview/` |
 | `lens list` | id, question, node count, stale flag (the assembler's, as `check` reports it), stamped or not, file write date |
 | `diff [--base ref \| --staged \| --worktree] [--depth n] [--record] [--markdown]` | the engine delta (codeindex `readDeltaDiff` + `deltaOfDiff` with the scan, so removed files' importers are traced; ultraindex `withEntries`) → a ChangeSet (§6): changed + impacted nodes at every level, risk per module, broken imports; rebuilds the map first when it is stale; `--record` writes changes/<id>.json and appends one timeline entry (`--source`, `--title`, `--request`, `--summary`; without `--summary` an `auto` one), skipping an empty diff or one equal to the last record (fingerprint); `--markdown` prints a PR summary: headline counts, what it touches in plain words, risk table, broken imports, a Mermaid map of the impacted modules (systems past 40) |
@@ -616,6 +623,15 @@ to `.ultraview/ask.log`.
    only stale capabilities.
 6. Big repo (> ~40 modules or > 150 capabilities' worth of evidence) → fan out
    one subagent per capability/system with `dossier` (see references/orchestrate.md).
+
+The skill spells this loop out with its invariants, routing table and
+fan-out contract; the shapes, writing rules and viewer are in its
+references (`schema.md`, `capabilities.md`, `lenses.md`, `flows.md`,
+`change-review.md`, `writing.md`, `orchestrate.md`, `viewer.md`,
+`engine-evidence.md`). `render` draws view.json as the last `build` left it,
+so the loop builds again after saving before it renders; `serve` re-assembles
+on its own. `evals/` measures step 3 (the ranking of `lens new`) and the gates
+of steps 2–3 on fixture repos.
 
 Invariants: never read facts.json/view.json/graph.json whole; never write a
 sentence without a citation; never hand-copy a detected edge; never delete a

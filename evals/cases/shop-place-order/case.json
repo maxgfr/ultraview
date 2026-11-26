@@ -1,0 +1,41 @@
+{
+  "description": "Shop (Express + Prisma): placing an order. Ranking over 5 English and 5 French paraphrases; a cited lens answer; a bad answer where the citation of the second sentence is dropped.",
+  "kind": "lens",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "questions": {
+    "en": [
+      "How does placing an order work, from checkout to confirmation?",
+      "If a customer hits buy, what happens between the request and the order being saved?",
+      "Walk me through the whole flow of creating a new order in the shop.",
+      "What does the backend do when an order comes in?",
+      "Can you describe the end-to-end process for submitting an order?"
+    ],
+    "fr": [
+      "Comment se passe la création d'une commande, du panier à la confirmation ?",
+      "Qu'est-ce qui se passe côté serveur quand un client valide son panier ?",
+      "Décris-moi le parcours complet d'une commande, de la demande à l'enregistrement.",
+      "Comment une commande est-elle passée dans la boutique, étape par étape ?",
+      "Si un acheteur clique sur « payer », comment la commande aboutit-elle ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:POST /api/orders",
+      "sym:src/services/orders.ts#placeOrder"
+    ],
+    "top": 10,
+    "minRecall": 0.8,
+    "cites": [
+      "src/routes/orders.ts",
+      "src/services/orders.ts"
+    ]
+  },
+  "bad": {
+    "fails": "check",
+    "reasons": [
+      "uncited sentence"
+    ],
+    "defect": "the citation of the second sentence is dropped"
+  }
+}

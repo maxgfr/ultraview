@@ -21,6 +21,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "eval": "node evals/run.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p viewer",
     "lint": "biome ci .",
     "lint:fix": "biome check --write .",

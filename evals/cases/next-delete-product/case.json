@@ -1,0 +1,29 @@
+{
+  "description": "Held out (Next.js app router + Drizzle, no model): deleting a product. Ranking only: generated after the ranking was tuned on the shop cases (evals/README.md says what changed after).",
+  "kind": "lens",
+  "fixture": "next-drizzle",
+  "heldOut": true,
+  "questions": {
+    "en": [
+      "What's the endpoint for taking a product off the catalogue?",
+      "If an admin deletes a product, what happens to past orders that contained it?",
+      "Does removing a product through the API do a hard delete or a soft delete?",
+      "Can a store item be removed permanently, and is that reversible if it was a mistake?",
+      "Which status code should the API return once the product has been deleted?"
+    ],
+    "fr": [
+      "Quelle est la route pour retirer un produit du catalogue ?",
+      "Si un admin supprime un produit, que deviennent les anciennes commandes qui le contenaient ?",
+      "La suppression d'un produit via l'API est-elle définitive ou juste masquée (soft delete) ?",
+      "Peut-on supprimer définitivement un article de la boutique, et est-ce réversible en cas d'erreur ?",
+      "Quel code de statut l'API doit-elle renvoyer une fois le produit supprimé ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:DELETE /api/products/:id"
+    ],
+    "top": 10,
+    "minRecall": 0.6
+  }
+}

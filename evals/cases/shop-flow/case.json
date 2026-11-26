@@ -1,0 +1,23 @@
+{
+  "description": "Shop (Express + Prisma): the place-order flow. The good flow is the repository's test flow; the bad one names a symbol that does not exist and drops a step's citation.",
+  "kind": "flow",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "expect": {
+    "nodes": [
+      "route:POST /api/orders",
+      "sym:src/services/orders.ts#placeOrder"
+    ],
+    "cites": [
+      "src/services/orders.ts"
+    ]
+  },
+  "bad": {
+    "fails": "check",
+    "reasons": [
+      "unknown node \"sym:src/services/orders.ts#createOrder\"",
+      "uncited sentence"
+    ],
+    "defect": "steps[1].node renamed to createOrder; steps[2].note without its citation"
+  }
+}

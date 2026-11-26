@@ -1,0 +1,29 @@
+{
+  "description": "Held out (Next.js app router + Drizzle, no model): one product by id. Ranking only: generated after the ranking was tuned on the shop cases (evals/README.md says what changed after).",
+  "kind": "lens",
+  "fixture": "next-drizzle",
+  "heldOut": true,
+  "questions": {
+    "en": [
+      "How can I fetch a single product when I know its ID?",
+      "What does the API send back when a product is queried by its identifier?",
+      "Which fields come back in the product detail response — price, stock, images?",
+      "What happens if I request a product identifier that doesn't exist?",
+      "Is there a route like GET /products/{id} to get one item's full details?"
+    ],
+    "fr": [
+      "Comment récupérer un seul produit quand on connaît son identifiant ?",
+      "Que renvoie l'API quand on interroge un produit par son ID ?",
+      "Quels champs sont renvoyés dans le détail d'un produit — prix, stock, images ?",
+      "Que se passe-t-il si je demande un identifiant de produit qui n'existe pas ?",
+      "Existe-t-il une route du type GET /products/{id} pour obtenir la fiche complète d'un article ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:GET /api/products/:id"
+    ],
+    "top": 10,
+    "minRecall": 0.6
+  }
+}

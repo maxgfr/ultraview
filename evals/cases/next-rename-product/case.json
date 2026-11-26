@@ -1,0 +1,29 @@
+{
+  "description": "Held out (Next.js app router + Drizzle, no model): renaming a product. Ranking only: generated after the ranking was tuned on the shop cases (evals/README.md says what changed after).",
+  "kind": "lens",
+  "fixture": "next-drizzle",
+  "heldOut": true,
+  "questions": {
+    "en": [
+      "How do I update a product's title through the API?",
+      "Which endpoint should an admin call to edit the name of an existing product?",
+      "Can I rename an item in the catalogue without recreating it?",
+      "What happens to the product page URL once a product gets a new name?",
+      "Is there any validation on the new name, like a maximum length or forbidden characters?"
+    ],
+    "fr": [
+      "Comment modifier le nom d'un produit via l'API ?",
+      "Quelle route un admin doit-il appeler pour renommer un produit existant ?",
+      "Est-ce qu'on peut changer l'intitulé d'un article du catalogue sans le recréer ?",
+      "Qu'est-ce qui se passe pour l'URL de la fiche produit quand on renomme le produit ?",
+      "Y a-t-il une validation sur le nouveau nom, par exemple une longueur maximale ou des caractères interdits ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:PATCH /api/products/:id"
+    ],
+    "top": 10,
+    "minRecall": 0.6
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "app": {
+    "name": "Shop",
+    "summary": "A small online store where customers browse products and place orders. [README.md:3]",
+    "audience": "everyone"
+  },
+  "systems": [
+    {
+      "id": "api",
+      "label": "Main server",
+      "kind": "service",
+      "summary": "The web server that answers the shop's requests, with the order routes under /api. [src/server.ts:7]",
+      "paths": [
+        "src/routes/**"
+      ]
+    },
+    {
+      "id": "database",
+      "label": "Database",
+      "kind": "data",
+      "summary": "The shop's data model and the client the server reaches it with. [prisma/schema.prisma:36] [src/db.ts:3]",
+      "paths": [
+        "prisma/**",
+        "src/db.ts"
+      ]
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "ordering",
+      "label": "Placing an order",
+      "summary": "A customer orders a list of products, and an order naming an unknown product is refused. [src/services/orders.ts:12-15] The order is stored with one line per product. [src/services/orders.ts:16-21]",
+      "actors": [
+        "customer"
+      ],
+      "members": [
+        "route:POST /api/orders",
+        "sym:src/services/orders.ts#placeOrder",
+        "entity:Order",
+        "entity:OrderItem",
+        "entity:Product",
+        "route:POST /api/checkout"
+      ]
+    },
+    {
+      "id": "order-tracking",
+      "label": "Following orders",
+      "summary": "Customers list their orders with their items, open one, or cancel it. [src/services/orders.ts:8-10] [src/routes/orders.ts:14-21]",
+      "actors": [
+        "customer"
+      ],
+      "members": [
+        "route:GET /api/orders",
+        "route:GET /api/orders/:id",
+        "route:DELETE /api/orders/:id",
+        "sym:src/services/orders.ts#listOrders",
+        "sym:src/services/orders.ts#cancelOrder"
+      ]
+    },
+    {
+      "id": "health",
+      "label": "Health check",
+      "summary": "Monitoring asks the server whether it is up and gets ok back.",
+      "actors": [
+        "operator"
+      ],
+      "members": [
+        "route:GET /health"
+      ],
+      "tags": [
+        "ops"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "sys:database",
+      "to": "sys:api",
+      "kind": "config",
+      "label": "connection string from DATABASE_URL"
+    }
+  ],
+  "tour": [
+    {
+      "node": "cap:ordering",
+      "note": "Start here: placing an order is what the shop is for. [src/services/orders.ts:12]"
+    },
+    {
+      "node": "sys:database",
+      "note": "Then the data model: users, products, orders and their items. [prisma/schema.prisma:19-54]"
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Order item",
+      "meaning": "One product line of an order, with its quantity. [prisma/schema.prisma:47-54]"
+    }
+  ]
+}

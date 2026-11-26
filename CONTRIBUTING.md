@@ -7,36 +7,104 @@ A thin, deterministic CLI over the vendored ultraindex library
 which carries the pinned codeindex engine as its `codeindex` namespace.
 `src/build.ts` refreshes the index and runs the extractors in `src/extract/`
 (pure functions: path + text + repo context in, facts out) into
-`.ultraview/facts.json`; `src/status.ts` routes the agent. tsup bundles
-everything into one dependency-free `scripts/ultraview.mjs`, copied into the
-skill. The viewer lives in `viewer/` (TypeScript + Preact; pure logic in
-`viewer/lib/`, unit-tested in node; components in `viewer/ui/`; strings in
-`viewer/i18n/`): `scripts/build-viewer.mjs` bundles it with esbuild and
-inlines it, with the elkjs layout worker, into one offline
-`skills/ultraview/assets/viewer.html` that `ultraview render` fills with
-`.ultraview/view.json`. The full spec is [docs/design.md](docs/design.md).
+`.ultraview/facts.json`; `src/model/assemble.ts` merges the index, the facts
+and what the agent wrote into the view-model; `src/check.ts` gates it;
+`src/status.ts` routes the agent. tsup bundles everything into one
+dependency-free `scripts/ultraview.mjs`, copied into the skill. The viewer
+lives in `viewer/` (TypeScript + Preact; pure logic in `viewer/lib/`,
+unit-tested in node; components in `viewer/ui/`; strings in `viewer/i18n/`):
+`scripts/build-viewer.mjs` bundles it with esbuild and inlines it, with the
+elkjs layout worker, into one offline `skills/ultraview/assets/viewer.html`
+that `ultraview render` fills with `.ultraview/view.json`.
+
+- The spec: [docs/design.md](docs/design.md).
+- The agent's side: [skills/ultraview/SKILL.md](skills/ultraview/SKILL.md) and
+  its [references](skills/ultraview/references/).
+- Extractor coverage and gaps: [src/extract/README.md](src/extract/README.md);
+  real-repo measurements: [tests/corpus.md](tests/corpus.md).
 
 ## Prerequisites
 
 Node 20+ and pnpm for development; the bundle runs on Node 18+.
 
+## The dev loop
+
 ```bash
 pnpm install
-pnpm run typecheck && pnpm run lint && pnpm test && pnpm run check:build
+pnpm test:watch                      # while you work
+pnpm run build                       # bundle + skill copy + viewer
+node scripts/ultraview.mjs build --repo tests/fixtures/shop-express-prisma --no-ast   # by hand (outputs are gitignored)
 ```
+
+To see the viewer on real data, `node scripts/example.mjs --keep` builds the
+shop example in a temp dir and prints its path; `ultraview serve --repo
+<path> --open` serves it live.
+
+## The gates
+
+Every one runs in CI; run them before you push:
+
+```bash
+pnpm run typecheck
+pnpm run lint                        # biome; pnpm run lint:fix formats
+pnpm test                            # vitest: unit, fixtures, snapshots
+pnpm run eval                        # evals/: lens ranking recall, good / bad answers through the gates
+pnpm run build && pnpm run build     # twice: the bundle must be byte-identical
+pnpm run check:build                 # after committing: bundle = source, skill check, skill bundle, vendor --check
+```
+
+`check:build` runs `webindex skill check` (no module re-declares an engine
+export), `skill bundle` (the skill installs complete; every flag the docs name
+exists in `--help`, and `--help` names every command) and `skill vendor
+--check` (the engine pin). A new CLI flag needs its line in `--help` and, when
+the agent should use it, in `SKILL.md` or a reference.
+
+When a change moves an output on purpose, update the snapshot
+(`pnpm exec vitest run -u <file>`), read the diff, and rebuild
+`assets/example/` with `node scripts/example.mjs` if the viewer or the view
+changed.
+
+## Adding an extractor
+
+1. Pick the family in `src/extract/` (routes, calls, screens, entities, jobs,
+   externals, infra) or add a file. An extractor implements `Extractor` from
+   `types.ts`: `(rel, text, ctx) → facts`, no file system, no network, no
+   model, so it can move upstream to codeindex unchanged.
+2. Gate it on the file's shape and on the dependencies its workspace declares
+   (`ctx.depsFor(rel)`); search comment-masked text (`mask.ts`); cite every
+   fact with `file` + `line`, and `end` when you know the construct.
+3. Cross-file work (mount prefixes, relations, call → route matching) belongs
+   in a `Linker`, registered in `index.ts`.
+4. Tests first, in `tests/<family>.test.ts`: true positives AND false-positive
+   guards (comments, strings, test files, docs). A fixture repo under
+   `tests/fixtures/` when the stack needs several files; its `facts.json`
+   snapshot lives in `tests/__snapshots__/`.
+5. Add the row to `src/extract/README.md`, the stack to `docs/design.md` §5,
+   and remove it from the README's Limits. A run on a real repository goes in
+   `tests/corpus.md` (counts and a precision sample, repository names only).
+
+## Evals
+
+`evals/cases/<id>/` holds one case: `case.json`, and optionally
+`answer.good.json` / `answer.bad.json`. Format and provenance rules:
+[evals/README.md](evals/README.md). Eval data (questions, answers) is
+generated by an open-weights model or written by hand, never by a proprietary
+model; record where every file came from.
 
 ## Rules
 
-1. TDD: write the failing test first. Every extractor ships true-positive
-   tests AND false-positive guards (comments, strings, tests, docs).
-2. Extractors stay pure: no file system, network or model, so they can move
-   upstream to codeindex unchanged.
-3. Reuse an engine export before writing a helper (`webindex skill check`
+1. TDD: write the failing test first.
+2. Reuse an engine export before writing a helper (`webindex skill check`
    refuses a re-declared one).
-4. Generated files are byte-stable: sorted keys, sorted arrays, trailing newline.
-5. `pnpm run build` and commit the bundle with the source: CI fails when they differ.
-6. SKILL.md description stays under 1000 characters; every documented
-   `--flag` exists in `--help` (`webindex skill bundle`).
+3. Generated files are byte-stable: sorted keys, sorted arrays, trailing
+   newline, no timestamps except where named.
+4. `pnpm run build` and commit the bundle with the source: CI fails when they
+   differ.
+5. `SKILL.md` description stays under 1000 characters and ends with its "Use
+   only when…" clause; leave `metadata.version` alone (semantic-release
+   stamps it).
+6. English in the repo; viewer strings go through `viewer/i18n/` (`en.json`
+   source, `fr.json`).
 
 ## Commits and releases
 

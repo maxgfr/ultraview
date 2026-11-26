@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "health",
+  "question": "What does the health check return exactly?",
+  "answer": "The health check is a plain `app.get(\"/health\")` handler on the Express app that responds with `res.send(\"ok\")`, so the exact response body is the string `ok` [src/routes/orders.ts:9-11]. The order endpoints live separately on `ordersRouter`, which the app mounts at `/api` [src/routes/orders.ts:7].",
+  "nodes": [
+    "route:GET /health",
+    "file:src/server.ts",
+    "sym:src/routes/orders.ts#ordersRouter"
+  ],
+  "edges": [
+    {
+      "from": "file:src/server.ts",
+      "to": "route:GET /health"
+    },
+    {
+      "from": "file:src/server.ts",
+      "to": "sym:src/routes/orders.ts#ordersRouter"
+    }
+  ],
+  "focus": "route:GET /health"
+}

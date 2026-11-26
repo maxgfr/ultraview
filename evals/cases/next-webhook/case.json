@@ -1,0 +1,29 @@
+{
+  "description": "Held out (Next.js app router + Drizzle, no model): the incoming webhook. Ranking only: generated after the ranking was tuned on the shop cases (evals/README.md says what changed after).",
+  "kind": "lens",
+  "fixture": "next-drizzle",
+  "heldOut": true,
+  "questions": {
+    "en": [
+      "How do we handle incoming notifications from an external provider?",
+      "Does the webhook endpoint acknowledge receipt, and with which status code?",
+      "How can I verify that a webhook call really comes from the third-party service — is there a signature check?",
+      "If processing a webhook payload fails, do we still answer 200?",
+      "Can the same delivery arrive twice, and are duplicates handled idempotently?"
+    ],
+    "fr": [
+      "Comment gérons-nous les notifications entrantes d'un prestataire externe ?",
+      "Le endpoint des webhooks accuse-t-il réception, et avec quel code de statut ?",
+      "Comment vérifier qu'un appel webhook provient bien du service tiers — y a-t-il une vérification de signature ?",
+      "Si le traitement du payload d'un webhook échoue, répond-on quand même un 200 ?",
+      "Une même livraison peut-elle arriver deux fois, et les doublons sont-ils traités de manière idempotente ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:POST /api/webhook"
+    ],
+    "top": 10,
+    "minRecall": 0.6
+  }
+}

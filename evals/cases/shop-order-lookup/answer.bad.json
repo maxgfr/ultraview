@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "id": "order-lookup",
+  "question": "How do I fetch a specific order by its ID?",
+  "answer": "`GET /api/orders/:id` never touches the database: its handler just echoes the path parameter back as `{ id: req.params.id }` [src/routes/orders.ts:14-18]. The only endpoint that actually reads orders is `GET /api/orders`, which converts the `userId` query parameter to a number and returns the result of `listOrders` [src/routes/order.ts:6-8]. `listOrders` runs `prisma.order.findMany` filtered by that `userId` with the order items included, so it returns every matching order rather than a single one [src/services/orders.ts:8-10].",
+  "nodes": [
+    "route:GET /api/orders/:id",
+    "route:GET /api/orders",
+    "sym:src/services/orders.ts#listOrders",
+    "file:src/routes/orders.ts",
+    "file:src/services/orders.ts",
+    "sym:src/db.ts#prisma",
+    "entity:Order",
+    "entity:OrderItem"
+  ],
+  "edges": [
+    {
+      "from": "route:GET /api/orders",
+      "to": "sym:src/services/orders.ts#listOrders"
+    },
+    {
+      "from": "sym:src/services/orders.ts#listOrders",
+      "to": "sym:src/db.ts#prisma"
+    },
+    {
+      "from": "sym:src/services/orders.ts#listOrders",
+      "to": "entity:Order"
+    }
+  ],
+  "focus": "route:GET /api/orders/:id"
+}

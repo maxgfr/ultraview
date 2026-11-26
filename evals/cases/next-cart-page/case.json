@@ -1,0 +1,29 @@
+{
+  "description": "Held out (Next.js app router + Drizzle, no model): the cart page. Ranking only: generated after the ranking was tuned on the shop cases (evals/README.md says what changed after).",
+  "kind": "lens",
+  "fixture": "next-drizzle",
+  "heldOut": true,
+  "questions": {
+    "en": [
+      "Where can customers see the items they've added to their basket?",
+      "Does the cart page show the total price including shipping?",
+      "Can shoppers change quantities or remove a line directly from the cart view?",
+      "What should the page display when the cart is empty?",
+      "Is the cart kept between sessions, or does it vanish if the user closes the tab?"
+    ],
+    "fr": [
+      "Où les clients peuvent-ils voir les articles ajoutés à leur panier ?",
+      "La page panier affiche-t-elle le total, frais de port compris ?",
+      "Peut-on modifier les quantités ou supprimer une ligne directement depuis la vue panier ?",
+      "Que doit afficher la page quand le panier est vide ?",
+      "Le panier est-il conservé d'une session à l'autre, ou perdu si l'utilisateur ferme l'onglet ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "screen:/cart"
+    ],
+    "top": 10,
+    "minRecall": 0.6
+  }
+}

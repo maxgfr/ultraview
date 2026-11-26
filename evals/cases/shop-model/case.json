@@ -1,0 +1,17 @@
+{
+  "description": "Shop (Express + Prisma): the model (systems, capabilities, edges). The good model is the repository's test model; the bad one shrinks the main server's glob, drops a summary's citation, names a route that does not exist and leaves a hand-written edge uncited.",
+  "kind": "model",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "expect": {},
+  "bad": {
+    "fails": "check",
+    "reasons": [
+      "systems hold",
+      "uncited sentence",
+      "unknown node \"route:POST /api/checkout\"",
+      "a hand-written edge needs a `cite`"
+    ],
+    "defect": "systems[0].paths narrowed to src/routes/**; capabilities[2].summary without its citation; capabilities[0].members gains route:POST /api/checkout; edges[0].cite removed"
+  }
+}

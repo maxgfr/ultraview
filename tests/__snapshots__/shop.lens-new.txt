@@ -5,24 +5,26 @@ file      .ultraview/lenses/how-does-cancelling-an-order-work.json
 terms     cancel, order
 
 ## Candidate nodes
+Named like the question (routes, screens, entities, jobs, symbols, capabilities):
+- sym:src/services/orders.ts#cancelOrder  (cancelOrder)  [src/services/orders.ts:24]  score 3.817: cancel, order
+- route:DELETE /api/orders/:id  (DELETE /api/orders/:id)  [src/routes/orders.ts:19]  score 3.549: cancel, order
+- cap:order-tracking  (Following orders)  score 1.866: cancel, order
+- route:GET /api/orders  (GET /api/orders)  [src/routes/orders.ts:6]  score 1.78: order
+- route:GET /api/orders/:id  (GET /api/orders/:id)  [src/routes/orders.ts:16]  score 1.78: order
+- sym:src/services/orders.ts#listOrders  (listOrders)  [src/services/orders.ts:8]  score 1.78: order
+- route:POST /api/orders  (POST /api/orders)  [src/routes/orders.ts:10]  score 1.271: order
+- entity:Order  (Order)  [prisma/schema.prisma:36]  score 1.271: order
+- entity:OrderItem  (OrderItem)  [prisma/schema.prisma:47]  score 1.271: order
+- sym:src/services/orders.ts#placeOrder  (placeOrder)  [src/services/orders.ts:12]  score 1.271: order
+- cap:ordering  (Placing an order)  score 0.847: order
+- entity:Product  (Product)  [prisma/schema.prisma:27]  score 0.847: order
+- sym:src/routes/orders.ts#ordersRouter  (ordersRouter)  [src/routes/orders.ts:4]  score 0.847: order
+- sym:src/services/orders.ts#NewOrder  (NewOrder)  [src/services/orders.ts:3]  score 0.847: order
+- entity:User  (User)  [prisma/schema.prisma:19]  score 0.424: order
 Modules (ultraindex find):
 - mod:root  (Root)  score 7.995: order
 - mod:src-routes  (Routes)  score 3.348: order
 - mod:src-services  (Services)  score 3.348: order
-Named like the question (routes, screens, entities, jobs, symbols, capabilities):
-- sym:src/services/orders.ts#cancelOrder  (cancelOrder)  [src/services/orders.ts:24]  2 term(s): cancel, order
-- cap:order-tracking  (Following orders)  1 term(s): order
-- cap:ordering  (Placing an order)  1 term(s): order
-- route:DELETE /api/orders/:id  (DELETE /api/orders/:id)  [src/routes/orders.ts:19]  1 term(s): order
-- route:GET /api/orders  (GET /api/orders)  [src/routes/orders.ts:6]  1 term(s): order
-- route:GET /api/orders/:id  (GET /api/orders/:id)  [src/routes/orders.ts:16]  1 term(s): order
-- route:POST /api/orders  (POST /api/orders)  [src/routes/orders.ts:10]  1 term(s): order
-- entity:Order  (Order)  [prisma/schema.prisma:36]  1 term(s): order
-- entity:OrderItem  (OrderItem)  [prisma/schema.prisma:47]  1 term(s): order
-- sym:src/routes/orders.ts#ordersRouter  (ordersRouter)  [src/routes/orders.ts:4]  1 term(s): order
-- sym:src/services/orders.ts#NewOrder  (NewOrder)  [src/services/orders.ts:3]  1 term(s): order
-- sym:src/services/orders.ts#listOrders  (listOrders)  [src/services/orders.ts:8]  1 term(s): order
-- sym:src/services/orders.ts#placeOrder  (placeOrder)  [src/services/orders.ts:12]  1 term(s): order
 Capabilities touched: cap:order-tracking (Following orders), cap:ordering (Placing an order)
 
 ## Neighbourhood (strongest edges)
@@ -48,10 +50,12 @@ Capabilities touched: cap:order-tracking (Following orders), cap:ordering (Placi
 - entity:OrderItem -> entity:Product  data w1
 - entity:Product -> entity:OrderItem  data w1
 - entity:User -> entity:Order  data w1
+- file:src/services/orders.ts -> entity:Product  data w1
 - mod:src -> mod:src-routes  import w1
 - mod:src-routes -> mod:src-services  import w1
 - mod:src-services -> entity:Product  data w1
 - mod:src-services -> mod:src@database  import w1
+- sys:api -> entity:Product  data w1
 
 ## Source
 
@@ -111,6 +115,21 @@ Capabilities touched: cap:order-tracking (Following orders), cap:ordering (Placi
 24  /*
 ```
 
+### sym:src/services/orders.ts#listOrders  [src/services/orders.ts:6-16]
+```
+ 6  }
+ 7  
+ 8  export async function listOrders(userId: number) {
+ 9    return prisma.order.findMany({ where: { userId }, include: { items: true } });
+10  }
+11  
+12  export async function placeOrder(input: NewOrder) {
+13    // prisma.user.delete({ where: { id: input.userId } }) — never, kept as a reminder
+14    const products = await prisma.product.findMany({ where: { id: { in: input.items.map((i) => i.productId) } } });
+15    if (products.length !== input.items.length) throw new Error("unknown product");
+16    return prisma.order.create({
+```
+
 ### route:POST /api/orders  [src/routes/orders.ts:8-18]
 ```
  8  });
@@ -156,6 +175,36 @@ Capabilities touched: cap:order-tracking (Following orders), cap:ordering (Placi
 55  
 ```
 
+### sym:src/services/orders.ts#placeOrder  [src/services/orders.ts:10-20]
+```
+10  }
+11  
+12  export async function placeOrder(input: NewOrder) {
+13    // prisma.user.delete({ where: { id: input.userId } }) — never, kept as a reminder
+14    const products = await prisma.product.findMany({ where: { id: { in: input.items.map((i) => i.productId) } } });
+15    if (products.length !== input.items.length) throw new Error("unknown product");
+16    return prisma.order.create({
+17      data: {
+18        userId: input.userId,
+19        items: { create: input.items },
+20      },
+```
+
+### entity:Product  [prisma/schema.prisma:25-35]
+```
+25  }
+26  
+27  model Product {
+28    id         Int         @id @default(autoincrement())
+29    sku        String      @unique
+30    title      String
+31    priceCents Int
+32    items      OrderItem[]
+33  }
+34  
+35  /// An order placed by a user.
+```
+
 ### sym:src/routes/orders.ts#ordersRouter  [src/routes/orders.ts:2-12]
 ```
  2  import { cancelOrder, listOrders, placeOrder } from "../services/orders.js";
@@ -186,34 +235,19 @@ Capabilities touched: cap:order-tracking (Following orders), cap:ordering (Placi
 11  
 ```
 
-### sym:src/services/orders.ts#listOrders  [src/services/orders.ts:6-16]
+### entity:User  [prisma/schema.prisma:17-27]
 ```
- 6  }
- 7  
- 8  export async function listOrders(userId: number) {
- 9    return prisma.order.findMany({ where: { userId }, include: { items: true } });
-10  }
-11  
-12  export async function placeOrder(input: NewOrder) {
-13    // prisma.user.delete({ where: { id: input.userId } }) — never, kept as a reminder
-14    const products = await prisma.product.findMany({ where: { id: { in: input.items.map((i) => i.productId) } } });
-15    if (products.length !== input.items.length) throw new Error("unknown product");
-16    return prisma.order.create({
-```
-
-### sym:src/services/orders.ts#placeOrder  [src/services/orders.ts:10-20]
-```
-10  }
-11  
-12  export async function placeOrder(input: NewOrder) {
-13    // prisma.user.delete({ where: { id: input.userId } }) — never, kept as a reminder
-14    const products = await prisma.product.findMany({ where: { id: { in: input.items.map((i) => i.productId) } } });
-15    if (products.length !== input.items.length) throw new Error("unknown product");
-16    return prisma.order.create({
-17      data: {
-18        userId: input.userId,
-19        items: { create: input.items },
-20      },
+17  }
+18  
+19  model User {
+20    id        Int      @id @default(autoincrement())
+21    email     String   @unique
+22    name      String?
+23    orders    Order[]
+24    createdAt DateTime @default(now())
+25  }
+26  
+27  model Product {
 ```
 
 ### src/services/orders.ts (28 lines)  [src/services/orders.ts:1-28]
@@ -362,7 +396,7 @@ Exported: const ordersRouter @ 4
     "route:DELETE /api/orders/:id",
     "route:GET /api/orders",
     "route:GET /api/orders/:id",
-    "route:POST /api/orders"
+    "sym:src/services/orders.ts#listOrders"
   ],
   "question": "How does cancelling an order work?",
   "schema": 1

@@ -1,0 +1,39 @@
+{
+  "description": "Shop (Express + Prisma): the health check. Ranking over 5 English and 5 French paraphrases; a cited lens answer; a bad answer where every citation moved to another file at the same lines (src/routes/orders.ts): they resolve, so `check` passes, but the answer no longer cites the code it describes.",
+  "kind": "lens",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "questions": {
+    "en": [
+      "What does the health check return exactly?",
+      "How can I tell if the service is up — what does the health endpoint say?",
+      "What information does the health endpoint give when I ping it?",
+      "If the API is queried for its status, what comes back?",
+      "Is the health check just an OK flag, or does it report more detail?"
+    ],
+    "fr": [
+      "Que renvoie exactement le endpoint de santé ?",
+      "Comment savoir si le service tourne — que dit le health check ?",
+      "Quelles infos donne la route de santé quand on l'interroge ?",
+      "Si je ping l'API pour vérifier son état, qu'est-ce qui revient ?",
+      "Le health check se limite-t-il à un statut ou donne-t-il plus de détails ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:GET /health"
+    ],
+    "top": 10,
+    "minRecall": 0.8,
+    "cites": [
+      "src/server.ts"
+    ]
+  },
+  "bad": {
+    "fails": "expect",
+    "reasons": [
+      "missing citation of src/server.ts"
+    ],
+    "defect": "every citation moved to another file at the same lines (src/routes/orders.ts): they resolve, so `check` passes, but the answer no longer cites the code it describes"
+  }
+}

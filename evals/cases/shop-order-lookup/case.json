@@ -1,0 +1,40 @@
+{
+  "description": "Shop (Express + Prisma): fetching one order or every order. Ranking over 5 English and 5 French paraphrases; a cited lens answer; a bad answer where a citation names a file that does not exist (src/routes/order.ts).",
+  "kind": "lens",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "questions": {
+    "en": [
+      "How do I fetch a specific order by its ID?",
+      "Is there a way to list all the orders that have been placed?",
+      "Where do I look to retrieve one order or see the full order list?",
+      "Can the API return a single order, and can it also give me every order?",
+      "What's the endpoint for viewing an order's details or browsing all orders?"
+    ],
+    "fr": [
+      "Comment récupérer une commande précise à partir de son identifiant ?",
+      "Peut-on obtenir la liste de toutes les commandes passées ?",
+      "Par où passer pour consulter une commande ou voir toutes les commandes ?",
+      "L'API permet-elle d'afficher une commande en particulier, et aussi de tout lister ?",
+      "Quelle route permet de voir le détail d'une commande ou d'en parcourir la liste ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:GET /api/orders/:id",
+      "route:GET /api/orders"
+    ],
+    "top": 10,
+    "minRecall": 0.8,
+    "cites": [
+      "src/routes/orders.ts"
+    ]
+  },
+  "bad": {
+    "fails": "save",
+    "reasons": [
+      "cites src/routes/order.ts, which is not a file in the repo"
+    ],
+    "defect": "a citation names a file that does not exist (src/routes/order.ts)"
+  }
+}

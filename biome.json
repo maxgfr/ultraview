@@ -7,6 +7,8 @@
       "viewer/**",
       "scripts/sync-version.mjs",
       "scripts/build-viewer.mjs",
+      "scripts/example.mjs",
+      "evals/run.mjs",
       "*.ts",
       "!tests/fixtures",
       "!tests/__snapshots__",

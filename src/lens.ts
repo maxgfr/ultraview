@@ -5,9 +5,10 @@
 //               a proposed id (slug of the question, de-duplicated against the
 //               saved lenses), the target path, the JSON template, ranked
 //               candidate nodes (ultraindex `runFind` over modules, mapped to
-//               view node ids, slices included; plus routes / screens /
-//               entities / jobs / symbols / capabilities whose name matches the
-//               question), their strongest edges, source excerpts (ultraindex
+//               view node ids, slices included; before them, the routes /
+//               screens / entities / jobs / symbols / capabilities named like
+//               the question, ranked by `nameMatches`; a French question is
+//               read through `lens-terms.ts`), their strongest edges, source excerpts (ultraindex
 //               `gatherEvidence`) cut to a budget, and the closing instructions.
 //   lens list   every saved lens: id, question, node count, stale flag (the
 //               assembler's own staleness: a cited file's hash changed), and
@@ -19,7 +20,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { codeindex, gatherEvidence, runFind } from "./engine.js";
+import { extentFinder } from "./extract/extent.js";
 import { stableJson } from "./json.js";
+import { type QuestionReading, readQuestion } from "./lens-terms.js";
 import { fileOfId, modId, SLUG_RE } from "./model/ids.js";
 import { LENSES_DIR } from "./model/load.js";
 import type { ViewEdge, ViewNode } from "./model/types.js";
@@ -60,7 +63,7 @@ export interface LensCandidate {
   at?: string;
   /** Why it is a candidate: `find` (ultraindex module ranking) or `name` (its name matches the question). */
   via: "find" | "name";
-  /** find: ultraindex's score; name: how many question terms it matches. */
+  /** find: ultraindex's score; name: the rank score (rarer terms weigh more, a term in the name more than one in the body, plus the kind / method / capability bonuses). */
   score: number;
   /** The question terms it matched. */
   matched: string[];
@@ -157,35 +160,135 @@ export function proposeLensId(repo: string, question: string): { id: string; rea
   }
 }
 
-/** Question terms, stemmed for a substring match (`cancelling` → `cancel`, `orders` → `order`). */
+/** Question terms, stemmed (`cancelling` → `cancel`, `orders` → `order`); a French question's words bridged to English (`commande` → `order`). */
 export function questionTerms(question: string): string[] {
-  const out = new Set<string>();
-  for (const raw of codeindex.keywords(question)) {
-    let t = raw.toLowerCase();
-    if (!/^[a-z0-9]+$/.test(t)) continue;
-    if (t.length > 5 && t.endsWith("ies")) t = `${t.slice(0, -3)}y`;
-    else if (t.length > 5 && t.endsWith("ing")) t = t.slice(0, -3);
-    else if (t.length > 4 && t.endsWith("ed")) t = t.slice(0, -2);
-    else if (t.length > 3 && t.endsWith("s") && !t.endsWith("ss")) t = t.slice(0, -1);
-    // `cancell` → `cancel`, `shipp` → `ship`
-    if (t.length > 4 && t[t.length - 1] === t[t.length - 2] && !/[aeiou]/.test(t[t.length - 1]!)) t = t.slice(0, -1);
-    if (t.length >= 3) out.add(t);
-  }
-  return [...out].sort();
+  return readQuestion(question).terms;
 }
 
 const NAME_KINDS: ReadonlySet<string> = new Set(["cap", "route", "screen", "entity", "job", "sym"]);
 const KIND_ORDER = ["cap", "route", "screen", "entity", "job", "sym", "mod"];
+/** A term found in a node's definition, fields or summary weighs this much of one found in its name. */
+const DETAIL_SHARE = 0.5;
+/** Bonus when the wording points at the node's kind (`fields` → an entity), its method (`fetch` → GET) or its cardinality (`by id` → `/:id`). */
+const KIND_BONUS = 0.75;
+const METHOD_BONUS = 0.75;
+const CARDINALITY_BONUS = 0.5;
+/** A member of a matching capability gets this share of the capability's score. */
+const CAP_SHARE = 0.5;
+/** Lines of a definition read for its words. */
+const BODY_LINES = 40;
 
-function nameMatches(view: LiveView["view"], terms: string[]): LensCandidate[] {
-  if (!terms.length) return [];
+const lowerTokens = (text: string): string[] => {
+  const out = new Set<string>();
+  for (const raw of text.split(/[^A-Za-z0-9_$]+/)) if (raw) for (const t of codeindex.subtokens(raw)) out.add(codeindex.foldText(t).toLowerCase());
+  return [...out];
+};
+
+interface Hay {
+  tokens: string[];
+  whole: string;
+}
+
+const hay = (text: string): Hay => ({ tokens: lowerTokens(text), whole: text.toLowerCase() });
+
+/** A stem matches a word it starts (`order` ⊂ `orders`), or, from 5 letters, any part of a run-together name (`item` ⊂ `orderitems`). */
+function has(h: Hay, term: string): boolean {
+  if (term === "id") return h.tokens.includes("id") || h.tokens.includes("ids");
+  return h.tokens.some((t) => t.startsWith(term)) || (term.length >= 5 && h.whole.includes(term));
+}
+
+/** The words of a node's definition (`at` to the end of its statement, block or function), fields and summary. */
+function detailText(repo: string, n: ViewNode, files: Map<string, string | undefined>): string {
+  const parts: string[] = [];
+  if (n.summary) parts.push(n.summary.replace(/\[[^\]]*\]/g, " "));
+  if (n.actors) parts.push(n.actors.join(" "));
+  for (const f of n.fields ?? []) parts.push(f.name, f.type, f.relation ?? "");
+  if (n.at && n.kind !== "cap") {
+    const i = n.at.lastIndexOf(":");
+    const rel = n.at.slice(0, i);
+    const line = Number(n.at.slice(i + 1));
+    if (!files.has(rel)) {
+      let text: string | undefined;
+      try {
+        text = codeindex.readText(join(repo, rel));
+      } catch {
+        text = undefined;
+      }
+      files.set(rel, text);
+    }
+    const text = files.get(rel);
+    if (text !== undefined && Number.isInteger(line) && line >= 1) {
+      const end = Math.min(extentFinder(rel, text)(line), line + BODY_LINES - 1);
+      parts.push(
+        text
+          .split(/\r?\n/)
+          .slice(line - 1, end)
+          .join("\n"),
+      );
+    }
+  }
+  return parts.join("\n");
+}
+
+/** A route path that names one item (`/orders/:id`, `/orders/{id}`, `/orders/[id]`). */
+const namesOne = (path: string) => /[:{[][^/]*[\]}]?$/.test(path.split("?")[0]!.replace(/\/+$/, ""));
+
+/**
+ * Nodes named like the question, ranked: each term weighs its rarity among
+ * the candidates (idf), a term in the name counts fully and one only in the
+ * definition, fields or summary counts DETAIL_SHARE; a node the wording points
+ * at (kind, method, cardinality) or a member of a matching capability earns a
+ * bonus on top.
+ */
+function nameMatches(repo: string, view: LiveView["view"], q: QuestionReading): LensCandidate[] {
+  if (!q.terms.length) return [];
+  const files = new Map<string, string | undefined>();
+  const pool = view.nodes
+    .filter((n) => NAME_KINDS.has(n.kind) && n.id !== "cap:_foundations")
+    .map((n) => ({ n, name: hay(`${n.label} ${n.id.slice(n.kind.length + 1)}`), detail: hay(detailText(repo, n, files)) }));
+  const df = new Map<string, number>();
+  for (const t of q.terms) df.set(t, pool.filter((p) => has(p.name, t) || has(p.detail, t)).length);
+  const idf = (t: string) => Math.log(1 + pool.length / (df.get(t) || 1));
+
+  const base = new Map<string, { score: number; matched: string[] }>();
+  for (const p of pool) {
+    let score = 0;
+    const matched: string[] = [];
+    for (const t of q.terms) {
+      const w = (q.weight.get(t) ?? 1) * idf(t);
+      if (has(p.name, t)) score += w;
+      else if (has(p.detail, t)) score += w * DETAIL_SHARE;
+      else continue;
+      matched.push(t);
+    }
+    if (matched.length) base.set(p.n.id, { score, matched });
+  }
+
   const out: LensCandidate[] = [];
-  for (const n of view.nodes) {
-    if (!NAME_KINDS.has(n.kind) || n.id === "cap:_foundations") continue;
-    const hay = `${n.label} ${n.id.slice(n.kind.length + 1)}`.toLowerCase();
-    const matched = terms.filter((t) => hay.includes(t));
-    if (!matched.length) continue;
-    out.push({ id: n.id, kind: n.kind, label: n.label, ...(n.at ? { at: n.at } : {}), via: "name", score: matched.length, matched });
+  for (const { n } of pool) {
+    const b = base.get(n.id);
+    if (!b) continue;
+    let score = b.score;
+    if (q.kinds.has(n.kind)) score += KIND_BONUS;
+    if (n.kind === "route") {
+      const sp = n.id.indexOf(" ");
+      const method = n.id.slice("route:".length, sp);
+      const path = n.id.slice(sp + 1);
+      if (q.methods.has(method)) score += METHOD_BONUS;
+      if (q.cardinality && (q.cardinality === "one") === namesOne(path)) score += CARDINALITY_BONUS;
+    }
+    let cap = 0;
+    for (const c of n.caps ?? []) cap = Math.max(cap, base.get(c)?.score ?? 0);
+    score += CAP_SHARE * cap;
+    out.push({
+      id: n.id,
+      kind: n.kind,
+      label: n.label,
+      ...(n.at ? { at: n.at } : {}),
+      via: "name",
+      score: Math.round(score * 1000) / 1000,
+      matched: b.matched,
+    });
   }
   return out.sort((a, b) => b.score - a.score || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || cmp(a.id, b.id)).slice(0, MATCHES);
 }
@@ -284,8 +387,7 @@ function collectEvidence(repo: string, candidates: LensCandidate[], findFiles: s
 }
 
 function fmtCandidate(c: LensCandidate): string {
-  const score = c.via === "find" ? `score ${c.score}` : `${c.score} term(s)`;
-  return `- ${c.id}  (${c.label})${c.at ? `  [${c.at}]` : ""}  ${score}: ${c.matched.join(", ") || "-"}`;
+  return `- ${c.id}  (${c.label})${c.at ? `  [${c.at}]` : ""}  score ${c.score}: ${c.matched.join(", ") || "-"}`;
 }
 
 /** The closing instructions: what to write, where, and the gates to run. */
@@ -322,10 +424,12 @@ export function lensNew(repoArg: string, question: string, opts: LensNewOptions 
   } else ({ id, reask } = proposeLensId(repo, q));
   const file = `${LENSES_DIR}/${id}.json`;
 
-  const terms = questionTerms(q);
+  const reading = readQuestion(q);
+  const terms = reading.terms;
   const found = findMatches(live, viewPaths(repo).index, q);
-  const named = nameMatches(live.view, terms);
-  const candidates = [...found.candidates, ...named.filter((n) => !found.candidates.some((f) => f.id === n.id))];
+  const named = nameMatches(repo, live.view, reading);
+  // Named nodes first, by rank: they are what an answer is about; the modules ultraindex finds frame them.
+  const candidates = [...named, ...found.candidates.filter((f) => !named.some((n) => n.id === f.id))];
   const capIds = new Set<string>();
   for (const c of candidates) {
     if (c.kind === "cap") capIds.add(c.id);
@@ -358,8 +462,8 @@ export function lensNew(repoArg: string, question: string, opts: LensNewOptions 
   const cand = ["## Candidate nodes"];
   const fromFind = candidates.filter((c) => c.via === "find");
   const fromName = candidates.filter((c) => c.via === "name");
-  if (fromFind.length) cand.push("Modules (ultraindex find):", ...fromFind.map(fmtCandidate));
   if (fromName.length) cand.push("Named like the question (routes, screens, entities, jobs, symbols, capabilities):", ...fromName.map(fmtCandidate));
+  if (fromFind.length) cand.push("Modules (ultraindex find):", ...fromFind.map(fmtCandidate));
   if (!candidates.length) cand.push("(nothing matched: try other words, or `ultraview show` / `dossier` on a node you know)");
   if (capabilities.length) cand.push(`Capabilities touched: ${capabilities.map((c) => `${c.id} (${c.label})`).join(", ")}`);
   const neigh = neighbourhood.length

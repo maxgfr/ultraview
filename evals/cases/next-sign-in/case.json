@@ -1,0 +1,29 @@
+{
+  "description": "Held out (Next.js app router + Drizzle, no model): signing in. Ranking only: generated after the ranking was tuned on the shop cases (evals/README.md says what changed after).",
+  "kind": "lens",
+  "fixture": "next-drizzle",
+  "heldOut": true,
+  "questions": {
+    "en": [
+      "How does the login endpoint work — what credentials does it expect?",
+      "What does the API return on a successful sign-in, a token?",
+      "What happens when someone types the wrong password?",
+      "After a user logs in, are sessions handled with cookies or JWTs?",
+      "Is there rate limiting or account lockout after repeated failed login attempts?"
+    ],
+    "fr": [
+      "Comment fonctionne la route de connexion — quels identifiants attend-elle ?",
+      "Que renvoie l'API quand la connexion réussit, un token ?",
+      "Que se passe-t-il si un utilisateur se trompe de mot de passe ?",
+      "Une fois l'utilisateur connecté, les sessions sont-elles gérées par cookies ou par JWT ?",
+      "Existe-t-il une limitation ou un blocage de compte après plusieurs échecs de connexion répétés ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:POST /api/auth/*nextauth"
+    ],
+    "top": 10,
+    "minRecall": 0.6
+  }
+}

@@ -25,6 +25,9 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run lint
       - run: pnpm test
+      # Offline evals through the committed bundle: lens ranking recall and
+      # good / bad answers against the gates (evals/README.md).
+      - run: pnpm run eval
 
   # The packaging gates. Each one has caught a real defect in a sibling skill:
   # a pin nine releases stale, a re-forked engine layer running beside the

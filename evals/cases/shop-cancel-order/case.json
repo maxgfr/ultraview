@@ -1,0 +1,40 @@
+{
+  "description": "Shop (Express + Prisma): cancelling an order. Ranking over 5 English and 5 French paraphrases; a cited lens answer; a bad answer where a citation runs past the end of the file (24-47 for 24-27).",
+  "kind": "lens",
+  "fixture": "shop-express-prisma",
+  "model": "shop.model.json",
+  "questions": {
+    "en": [
+      "What happens to an order when it gets cancelled?",
+      "If someone deletes an order, is it removed for good or just marked cancelled?",
+      "How does the system handle order cancellations?",
+      "A customer changed their mind — what does cancelling their order actually do?",
+      "Does cancelling an order wipe the record or just free up the items?"
+    ],
+    "fr": [
+      "Que devient une commande quand elle est annulée ?",
+      "Si on supprime une commande, elle disparaît vraiment ou elle est juste marquée annulée ?",
+      "Comment l'annulation d'une commande est-elle gérée par le backend ?",
+      "Un client veut se rétracter : qu'est-ce que ça change concrètement pour sa commande ?",
+      "Est-ce qu'annuler une commande efface les données ou libère juste les articles ?"
+    ]
+  },
+  "expect": {
+    "nodes": [
+      "route:DELETE /api/orders/:id",
+      "sym:src/services/orders.ts#cancelOrder"
+    ],
+    "top": 10,
+    "minRecall": 0.8,
+    "cites": [
+      "src/services/orders.ts"
+    ]
+  },
+  "bad": {
+    "fails": "save",
+    "reasons": [
+      "dead citation [src/services/orders.ts:24-47]"
+    ],
+    "defect": "a citation runs past the end of the file (24-47 for 24-27)"
+  }
+}

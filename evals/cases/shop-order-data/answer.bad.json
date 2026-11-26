@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "order-data",
+  "question": "What details are kept for each order and the items in it?",
+  "answer": "Each `Order` row keeps an autoincrement `id`, a `userId` foreign key tied to `User`, a `status` of type `OrderStatus` defaulting to `PENDING`, a `createdAt` timestamp, an `items` relation, and an index on `userId` [prisma/schema.prisma:36-45]. The possible `status` values are the `OrderStatus` enum values `PENDING`, `PAID`, and `SHIPPED` [prisma/schema.prisma:13-17]. Each `OrderItem` keeps only its own `id`, an `orderId` linking it to its `Order`, a `productId` linking it to its `Product`, and the ordered `quantity` [prisma/schema.prisma:47-54].",
+  "nodes": [
+    "entity:Orders",
+    "entity:OrderItem",
+    "entity:User",
+    "entity:Product",
+    "file:prisma/schema.prisma"
+  ],
+  "edges": [
+    {
+      "from": "entity:Orders",
+      "to": "entity:OrderItem"
+    },
+    {
+      "from": "entity:Orders",
+      "to": "entity:User"
+    },
+    {
+      "from": "entity:OrderItem",
+      "to": "entity:Product"
+    }
+  ],
+  "focus": "entity:Orders"
+}

@@ -15868,8 +15868,8 @@ var init_centrality = __esm({
 function branchRe(family) {
   let re = branchRes.get(family);
   if (!re) {
-    const words = ["if", "for", "while", ...BRANCH_WORDS[family] ?? ANY_LANGUAGE];
-    re = new RegExp(`(?<![.\\w$])(?:${words.join("|")})\\b|&&|\\|\\||(?<![?:])\\?(?![?.:])`, "g");
+    const words2 = ["if", "for", "while", ...BRANCH_WORDS[family] ?? ANY_LANGUAGE];
+    re = new RegExp(`(?<![.\\w$])(?:${words2.join("|")})\\b|&&|\\|\\||(?<![?:])\\?(?![?.:])`, "g");
     branchRes.set(family, re);
   }
   return re;
@@ -30477,29 +30477,29 @@ function buildHaystack(text2) {
   }
   return { counts, groups, raw: folded.toLowerCase(), length };
 }
-function scoreHaystack(hay, terms, saturate = false, idf) {
+function scoreHaystack(hay2, terms, saturate = false, idf) {
   let score = 0;
   const matched = [];
   for (const t of terms) {
     let weight = 0;
     let count2 = 0;
-    const exactCount = hay.counts.get(t.exact) ?? 0;
+    const exactCount = hay2.counts.get(t.exact) ?? 0;
     if (exactCount > 0) {
       weight = 3;
       count2 = exactCount;
     } else {
       for (const f of t.forms) {
-        const c2 = hay.counts.get(f) ?? 0;
+        const c2 = hay2.counts.get(f) ?? 0;
         if (c2 > count2) count2 = c2;
       }
       if (count2 > 0) weight = 2;
       else {
         for (const g of t.groups) {
-          const c2 = hay.groups.get(g) ?? 0;
+          const c2 = hay2.groups.get(g) ?? 0;
           if (c2 > count2) count2 = c2;
         }
         if (count2 > 0) weight = 1.5;
-        else if (hay.raw.includes(t.exact)) {
+        else if (hay2.raw.includes(t.exact)) {
           weight = 1;
           count2 = 1;
         }
@@ -30510,7 +30510,7 @@ function scoreHaystack(hay, terms, saturate = false, idf) {
     score += (saturate ? weight * Math.min(1.5, 1 + Math.log1p(count2 - 1) * 0.25) : weight) * rarity;
     matched.push(t.raw);
   }
-  if (saturate) score /= 1 + Math.log(Math.max(1, hay.length / 200));
+  if (saturate) score /= 1 + Math.log(Math.max(1, hay2.length / 200));
   return { score, matched };
 }
 var MAX_HITS = 20;
@@ -30668,8 +30668,8 @@ function scoreModules(graph, query, prose, symbolNames) {
     const enrichedText = prose?.get(m.slug);
     const pro = enrichedText ? scoreHaystack(buildHaystack(enrichedText), terms, true, idf) : { score: 0, matched: [] };
     const scoredFiles = members.map((f) => {
-      const hay = textOf([f.rel, f.title, f.summary, namesOf(f.rel)]);
-      const s = scoreHaystack(buildHaystack(hay), terms, false, idf);
+      const hay2 = textOf([f.rel, f.title, f.summary, namesOf(f.rel)]);
+      const s = scoreHaystack(buildHaystack(hay2), terms, false, idf);
       return { f, score: s.score, matched: s.matched, degree: f.degIn + f.degOut };
     }).sort((a, b) => b.score - a.score || b.degree - a.degree || byStr(a.f.rel, b.f.rel));
     const bestFile = scoredFiles[0]?.score ?? 0;
@@ -33156,11 +33156,11 @@ function isServiceName(rawName, config = false) {
     const tokens = name2.split("_");
     return tokens.some((t) => UPPER_SERVICE_TOKENS.test(t)) || config && tokens.some((t) => UPPER_URL_TOKENS.test(t));
   }
-  const words = name2.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").split(/[\s_\-.]+/).filter(Boolean).map((w) => w.toLowerCase());
-  const last = words[words.length - 1];
+  const words2 = name2.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").split(/[\s_\-.]+/).filter(Boolean).map((w) => w.toLowerCase());
+  const last = words2[words2.length - 1];
   if (!last || !SERVICE_TAILS.has(last)) return false;
-  if (words.length === 1) return last === "endpoint" || last === "dsn";
-  const qualifiers = words.slice(0, -1).filter((w) => SERVICE_QUALIFIERS.has(w));
+  if (words2.length === 1) return last === "endpoint" || last === "dsn";
+  const qualifiers = words2.slice(0, -1).filter((w) => SERVICE_QUALIFIERS.has(w));
   return qualifiers.some((w) => !WEAK_QUALIFIERS.has(w)) || config && qualifiers.length > 0;
 }
 function enclosingCall(sk, from) {
@@ -37759,8 +37759,8 @@ var zeroMetrics = () => ({ loc: 0, pagerank: 0, churn: 0, tests: 0 });
 var uniqSorted = (xs) => [...new Set(xs)].sort(cmp6);
 function humanizeSegment(path) {
   const last = path.split("/").filter(Boolean).pop() ?? path;
-  const words = last.replace(/[^A-Za-z0-9]+/g, " ").trim().toLowerCase();
-  return words ? words[0].toUpperCase() + words.slice(1) : path;
+  const words2 = last.replace(/[^A-Za-z0-9]+/g, " ").trim().toLowerCase();
+  return words2 ? words2[0].toUpperCase() + words2.slice(1) : path;
 }
 function globSpecificity(glob2) {
   const i2 = glob2.search(/[*?]/);
@@ -39289,9 +39289,9 @@ function changeMarkdown(change, view) {
     `**${plural3(directCount(f), "file")} changed** (${f.added} added, ${f.changed} changed, ${f.removed} removed) and **${f.impacted} impacted** within ${change.depth} hops: ${baseWords(change)}.`,
     ""
   ];
-  const touches = KIND_WORDS.map(([k, words]) => [words, byStatus(change, k, k !== "cap" && k !== "sys")]).filter(([, s]) => s);
+  const touches = KIND_WORDS.map(([k, words2]) => [words2, byStatus(change, k, k !== "cap" && k !== "sys")]).filter(([, s]) => s);
   out2.push("### What it touches", "");
-  if (touches.length) for (const [words, s] of touches) out2.push(`- **${words}**: ${s}.`);
+  if (touches.length) for (const [words2, s] of touches) out2.push(`- **${words2}**: ${s}.`);
   else out2.push("- Nothing on the map beyond the files themselves.");
   out2.push("");
   if (change.risk.length) {
@@ -39332,7 +39332,7 @@ function formatChange(change) {
   const lines = [
     `diff       ${baseWords(change).replace(/`/g, "")}: ${plural3(directCount(f), "file")} changed (${f.added} added, ${f.changed} changed, ${f.removed} removed), ${f.impacted} impacted (depth ${change.depth})`
   ];
-  for (const [k, words] of [
+  for (const [k, words2] of [
     ["cap", "capabilities"],
     ["sys", "systems"],
     ["mod", "modules"],
@@ -39342,7 +39342,7 @@ function formatChange(change) {
     ["job", "jobs"]
   ]) {
     const s = byStatus(change, k, false);
-    if (s) lines.push(`${words.padEnd(13)}${s}`);
+    if (s) lines.push(`${words2.padEnd(13)}${s}`);
   }
   if (change.risk.length) {
     lines.push("risk");
@@ -40465,6 +40465,341 @@ import { fileURLToPath as fileURLToPath4 } from "url";
 // src/lens.ts
 import { existsSync as existsSync25, readdirSync as readdirSync7, readFileSync as readFileSync30, statSync as statSync18 } from "fs";
 import { join as join49, resolve as resolve27 } from "path";
+
+// src/lens-terms.ts
+var SYNONYM_WEIGHT = 0.6;
+var FRENCH_MARKERS = new Set(
+  "le la les des du une est sont que qui quoi comment quel quelle quels quelles pour dans avec sur cette ces quand elle elles ils pas ou aux au je tu nous vous leur leurs sa ses son mon ma mes ton ta tes cela ceci ca etre fait faut peut peux doit entre chaque tout tous toute toutes quelqu quelque se ne qu jusqu lorsqu puis donc alors aussi tres plus moins".split(" ")
+);
+var FRENCH_STOPWORDS = new Set(
+  [
+    ...FRENCH_MARKERS,
+    ..."de un et il on en par ce l d c j m n s t y a".split(" "),
+    ..."exactement concretement vraiment juste seulement bien comme ainsi deja encore toujours jamais rien autre autres meme".split(" "),
+    ..."passe passer passee passent devient devenir arrive arriver aboutit aboutir change changer cote moi toi lui eux".split(" "),
+    ..."etape etapes parcours complet complete demande dire decris decrire explique expliquer savoir veut veux voudrais".split(" "),
+    ..."chose choses facon maniere cas fois quoi quel".split(" ")
+  ].filter(Boolean)
+);
+var ENGLISH_FILLER = new Set(
+  "work works working happen happens happening walk whole thing things someone somebody anyone exactly actually just really way tell describe explain show me please can could would should will there here like kind sort end come comes back hit hits between through also only still going mean means good bad able need needs want wants".split(" ")
+);
+var KIND_WORDS2 = new Set("route endpoint screen page table entity field column job api ecran champ".split(" "));
+var FRENCH_TO_ENGLISH = {
+  commande: ["order"],
+  annul: ["cancel"],
+  retract: ["cancel"],
+  supprim: ["delete", "remove"],
+  effac: ["delete", "remove"],
+  produit: ["product"],
+  article: ["item", "article"],
+  ligne: ["item", "line"],
+  client: ["customer", "client", "user"],
+  acheteur: ["customer", "buyer", "user"],
+  utilisateur: ["user"],
+  panier: ["cart", "basket"],
+  paiement: ["payment", "pay"],
+  payer: ["pay", "payment"],
+  paye: ["pay", "payment"],
+  achat: ["purchase", "order"],
+  achet: ["purchase", "buy", "order"],
+  vente: ["sale", "product"],
+  catalogue: ["catalog", "product"],
+  prix: ["price"],
+  montant: ["amount", "total", "price"],
+  facture: ["invoice"],
+  livraison: ["delivery", "shipping"],
+  livr: ["delivery", "shipping"],
+  expedi: ["shipping", "shipment"],
+  rembours: ["refund"],
+  abonnement: ["subscription"],
+  compte: ["account"],
+  connexion: ["login", "auth", "session"],
+  connect: ["login", "auth"],
+  inscri: ["signup", "register"],
+  motdepasse: ["password"],
+  courriel: ["email", "mail"],
+  envoi: ["send"],
+  envoy: ["send"],
+  notifi: ["notification", "notify"],
+  recherch: ["search"],
+  cherch: ["search", "find"],
+  fichier: ["file", "upload"],
+  image: ["image"],
+  tache: ["task", "job"],
+  planifi: ["schedule", "cron"],
+  sante: ["health"],
+  etat: ["status", "state", "health"],
+  statut: ["status"],
+  donnee: ["data"],
+  champ: ["field"],
+  fiche: ["record"],
+  identifiant: ["id"],
+  liste: ["list"],
+  lister: ["list"],
+  recuper: ["get", "fetch"],
+  obten: ["get"],
+  obtien: ["get"],
+  consult: ["get", "view"],
+  affich: ["show", "view", "display"],
+  voir: ["view", "show"],
+  parcour: ["list", "browse"],
+  creat: ["create"],
+  creer: ["create"],
+  cree: ["create"],
+  ajout: ["add", "create"],
+  enregistr: ["save", "store", "record"],
+  conserv: ["store", "save"],
+  stock: ["store", "stock"],
+  modifi: ["update", "edit"],
+  miseajour: ["update"],
+  valid: ["validate", "submit", "confirm"],
+  confirm: ["confirm"],
+  verifi: ["check", "verify"],
+  lien: ["relation", "link"],
+  reli: ["relation", "link"],
+  rattach: ["relation"],
+  referen: ["reference", "relation"],
+  structur: ["structure", "schema"],
+  serveur: ["server"],
+  requete: ["request", "query"],
+  reponse: ["response"],
+  renvoi: ["return", "response"],
+  retourn: ["return"],
+  erreur: ["error"],
+  journal: ["log"],
+  ecran: ["screen", "page"],
+  bouton: ["button"],
+  formulaire: ["form"],
+  tableaudebord: ["dashboard"],
+  rapport: ["report"],
+  parametre: ["setting", "config"],
+  reglage: ["setting", "config"],
+  role: ["role"],
+  droit: ["permission", "role"],
+  equipe: ["team"],
+  entreprise: ["company", "organization"],
+  societe: ["company"],
+  adresse: ["address"],
+  commentaire: ["comment"],
+  avis: ["review"],
+  stockage: ["storage"],
+  boutique: ["shop", "store"],
+  magasin: ["shop", "store"]
+};
+var SYNONYMS = {
+  buy: ["order", "purchase"],
+  purchase: ["order"],
+  checkout: ["order", "cart", "pay"],
+  remove: ["delete"],
+  wipe: ["delete"],
+  erase: ["delete"],
+  alive: ["health"],
+  ping: ["health"],
+  liveness: ["health"],
+  readiness: ["health"],
+  heartbeat: ["health"],
+  uptime: ["health"],
+  identifier: ["id"],
+  catalog: ["product"],
+  sale: ["product"],
+  sell: ["product"],
+  status: ["health"],
+  sign: ["login", "auth"],
+  signin: ["login", "auth"],
+  login: ["auth", "session"]
+};
+var KIND_HINTS = [
+  [
+    "entity",
+    [
+      "data",
+      "field",
+      "column",
+      "table",
+      "record",
+      "stor",
+      "kept",
+      "keep",
+      "save",
+      "persist",
+      "database",
+      "schema",
+      "model",
+      "structur",
+      "relation",
+      "link",
+      "connect",
+      "tie",
+      "referenc",
+      "remember",
+      "information",
+      "contain",
+      "donnee",
+      "champ",
+      "fiche",
+      "base",
+      "conserv",
+      "retien",
+      "reten",
+      "lien",
+      "reli",
+      "rattach",
+      "enregistr",
+      "inform",
+      "info"
+    ]
+  ],
+  ["route", ["endpoint", "route", "api", "request", "http", "url", "return", "respon", "renvoi", "retourn", "repond", "requete", "interrog", "ping"]],
+  ["screen", ["page", "screen", "button", "click", "form", "ecran", "bouton", "cliqu", "formulaire"]],
+  ["job", ["job", "cron", "schedul", "queue", "worker", "background", "tache", "planifi"]]
+];
+var METHOD_HINTS = [
+  [
+    ["POST"],
+    [
+      "create",
+      "add",
+      "place",
+      "plac",
+      "submit",
+      "new",
+      "make",
+      "buy",
+      "purchas",
+      "checkout",
+      "send",
+      "register",
+      "creat",
+      "creer",
+      "ajout",
+      "valid",
+      "envoi",
+      "soumet",
+      "achet"
+    ]
+  ],
+  [
+    ["GET"],
+    [
+      "get",
+      "fetch",
+      "retriev",
+      "view",
+      "show",
+      "read",
+      "list",
+      "look",
+      "find",
+      "brows",
+      "see",
+      "display",
+      "open",
+      "return",
+      "recuper",
+      "obten",
+      "obtien",
+      "consult",
+      "affich",
+      "voir",
+      "parcour",
+      "renvoi",
+      "lire",
+      "interrog"
+    ]
+  ],
+  [["DELETE"], ["delet", "remov", "cancel", "wipe", "eras", "destroy", "supprim", "annul", "effac", "retract"]],
+  [
+    ["PUT", "PATCH"],
+    ["updat", "chang", "edit", "modif", "renam", "miseajour"]
+  ]
+];
+var ONE_HINTS = ["id", "identifier", "identifiant", "specific", "single", "particular", "precis", "particul", "detail"];
+var ALL_HINTS = ["all", "every", "list", "brows", "toute", "tous", "liste", "lister", "parcour"];
+var IRREGULAR = {
+  bought: "buy",
+  sold: "sell",
+  paid: "pay",
+  sent: "send",
+  made: "make",
+  kept: "keep",
+  found: "find",
+  gave: "give",
+  given: "give",
+  taken: "take",
+  took: "take",
+  written: "write",
+  wrote: "write",
+  ran: "run",
+  shipped: "ship",
+  children: "child",
+  people: "person"
+};
+function englishStem(raw) {
+  let t = raw;
+  const irregular = IRREGULAR[t];
+  if (irregular) return irregular;
+  if (t.length > 5 && (t.endsWith("ies") || t.endsWith("ied"))) t = `${t.slice(0, -3)}y`;
+  else if (t.length > 5 && t.endsWith("ing")) t = t.slice(0, -3);
+  else if (t.length > 4 && t.endsWith("ed")) t = t.slice(0, -2);
+  else if (t.length > 3 && t.endsWith("s") && !/(ss|us|is)$/.test(t)) t = t.slice(0, -1);
+  if (t.length > 4 && t[t.length - 1] === t[t.length - 2] && !/[aeiou]/.test(t[t.length - 1])) t = t.slice(0, -1);
+  return t;
+}
+var frenchSingular = (t) => t.length > 4 && (t.endsWith("s") || t.endsWith("x")) && !t.endsWith("ss") ? t.slice(0, -1) : t;
+function words(question) {
+  return codeindex_engine_exports.foldText(question).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+}
+function longestPrefix(word, table) {
+  let best;
+  for (const k of Object.keys(table)) if (word.startsWith(k) && (!best || k.length > best.length)) best = k;
+  return best === void 0 ? void 0 : table[best];
+}
+var hinted = (ws, prefixes) => ws.some((w) => prefixes.some((p) => w.startsWith(p)));
+function readQuestion(question) {
+  const all = words(question);
+  const joined = all.join(" ").replace(/\bmot de passe\b/g, "motdepasse").replace(/\bmise a jour\b/g, "miseajour").replace(/\btableau de bord\b/g, "tableaudebord");
+  const ws = joined.split(" ").filter(Boolean);
+  const french = ws.some((w) => FRENCH_MARKERS.has(w));
+  const weight = /* @__PURE__ */ new Map();
+  const add = (t, w) => {
+    if (t.length < 3 && t !== "id" || KIND_WORDS2.has(t)) return;
+    if (w > (weight.get(t) ?? 0)) weight.set(t, w);
+  };
+  if (french) {
+    for (const raw of ws) {
+      if (FRENCH_STOPWORDS.has(raw)) continue;
+      const w = frenchSingular(raw);
+      const en = longestPrefix(w, FRENCH_TO_ENGLISH);
+      if (en) for (const t of en) add(englishStem(t), 1);
+      if (w.length >= 4) add(w, 1);
+    }
+  } else {
+    for (const raw of codeindex_engine_exports.keywords(question)) {
+      const lower = codeindex_engine_exports.foldText(raw).toLowerCase();
+      if (!/^[a-z0-9]+$/.test(lower) || ENGLISH_FILLER.has(lower)) continue;
+      add(englishStem(lower), 1);
+    }
+  }
+  for (const t of [...weight.keys()]) for (const s of SYNONYMS[t] ?? []) add(englishStem(s), SYNONYM_WEIGHT);
+  const kinds2 = /* @__PURE__ */ new Set();
+  for (const [kind, prefixes] of KIND_HINTS) if (hinted(ws, prefixes)) kinds2.add(kind);
+  const methods = /* @__PURE__ */ new Set();
+  for (const [ms, prefixes] of METHOD_HINTS) if (hinted(ws, prefixes)) for (const m of ms) methods.add(m);
+  const one = ws.some((w) => ONE_HINTS.some((p) => p === "id" ? w === "id" || w === "ids" : w.startsWith(p)));
+  const many = hinted(ws, ALL_HINTS);
+  const cardinality = one && !many ? "one" : many && !one ? "all" : void 0;
+  return {
+    terms: [...weight.keys()].sort(),
+    weight,
+    kinds: kinds2,
+    methods,
+    ...cardinality ? { cardinality } : {},
+    french
+  };
+}
+
+// src/lens.ts
 var LENS_BUDGET = 6e3;
 var CHARS_PER_TOKEN4 = 4;
 var FIND_K = 6;
@@ -40491,14 +40826,14 @@ function savedQuestions(repo) {
   return out2;
 }
 function questionSlug(question) {
-  const words = codeindex_engine_exports.foldText(question).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const words2 = codeindex_engine_exports.foldText(question).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   let slug = "";
-  for (const w of words) {
+  for (const w of words2) {
     const next = slug ? `${slug}-${w}` : w;
     if (next.length > ID_MAX) break;
     slug = next;
   }
-  if (!slug && words.length) slug = words[0].slice(0, ID_MAX);
+  if (!slug && words2.length) slug = words2[0].slice(0, ID_MAX);
   return SLUG_RE.test(slug) ? slug : "lens";
 }
 function proposeLensId(repo, question) {
@@ -40510,31 +40845,98 @@ function proposeLensId(repo, question) {
     if (!saved.has(id)) return { id, reask: false };
   }
 }
-function questionTerms(question) {
-  const out2 = /* @__PURE__ */ new Set();
-  for (const raw of codeindex_engine_exports.keywords(question)) {
-    let t = raw.toLowerCase();
-    if (!/^[a-z0-9]+$/.test(t)) continue;
-    if (t.length > 5 && t.endsWith("ies")) t = `${t.slice(0, -3)}y`;
-    else if (t.length > 5 && t.endsWith("ing")) t = t.slice(0, -3);
-    else if (t.length > 4 && t.endsWith("ed")) t = t.slice(0, -2);
-    else if (t.length > 3 && t.endsWith("s") && !t.endsWith("ss")) t = t.slice(0, -1);
-    if (t.length > 4 && t[t.length - 1] === t[t.length - 2] && !/[aeiou]/.test(t[t.length - 1])) t = t.slice(0, -1);
-    if (t.length >= 3) out2.add(t);
-  }
-  return [...out2].sort();
-}
 var NAME_KINDS = /* @__PURE__ */ new Set(["cap", "route", "screen", "entity", "job", "sym"]);
 var KIND_ORDER = ["cap", "route", "screen", "entity", "job", "sym", "mod"];
-function nameMatches(view, terms) {
-  if (!terms.length) return [];
+var DETAIL_SHARE = 0.5;
+var KIND_BONUS = 0.75;
+var METHOD_BONUS = 0.75;
+var CARDINALITY_BONUS = 0.5;
+var CAP_SHARE = 0.5;
+var BODY_LINES = 40;
+var lowerTokens = (text2) => {
+  const out2 = /* @__PURE__ */ new Set();
+  for (const raw of text2.split(/[^A-Za-z0-9_$]+/)) if (raw) for (const t of codeindex_engine_exports.subtokens(raw)) out2.add(codeindex_engine_exports.foldText(t).toLowerCase());
+  return [...out2];
+};
+var hay = (text2) => ({ tokens: lowerTokens(text2), whole: text2.toLowerCase() });
+function has(h, term) {
+  if (term === "id") return h.tokens.includes("id") || h.tokens.includes("ids");
+  return h.tokens.some((t) => t.startsWith(term)) || term.length >= 5 && h.whole.includes(term);
+}
+function detailText(repo, n, files) {
+  const parts2 = [];
+  if (n.summary) parts2.push(n.summary.replace(/\[[^\]]*\]/g, " "));
+  if (n.actors) parts2.push(n.actors.join(" "));
+  for (const f of n.fields ?? []) parts2.push(f.name, f.type, f.relation ?? "");
+  if (n.at && n.kind !== "cap") {
+    const i2 = n.at.lastIndexOf(":");
+    const rel2 = n.at.slice(0, i2);
+    const line2 = Number(n.at.slice(i2 + 1));
+    if (!files.has(rel2)) {
+      let text3;
+      try {
+        text3 = codeindex_engine_exports.readText(join49(repo, rel2));
+      } catch {
+        text3 = void 0;
+      }
+      files.set(rel2, text3);
+    }
+    const text2 = files.get(rel2);
+    if (text2 !== void 0 && Number.isInteger(line2) && line2 >= 1) {
+      const end = Math.min(extentFinder(rel2, text2)(line2), line2 + BODY_LINES - 1);
+      parts2.push(
+        text2.split(/\r?\n/).slice(line2 - 1, end).join("\n")
+      );
+    }
+  }
+  return parts2.join("\n");
+}
+var namesOne = (path) => /[:{[][^/]*[\]}]?$/.test(path.split("?")[0].replace(/\/+$/, ""));
+function nameMatches(repo, view, q) {
+  if (!q.terms.length) return [];
+  const files = /* @__PURE__ */ new Map();
+  const pool = view.nodes.filter((n) => NAME_KINDS.has(n.kind) && n.id !== "cap:_foundations").map((n) => ({ n, name: hay(`${n.label} ${n.id.slice(n.kind.length + 1)}`), detail: hay(detailText(repo, n, files)) }));
+  const df = /* @__PURE__ */ new Map();
+  for (const t of q.terms) df.set(t, pool.filter((p) => has(p.name, t) || has(p.detail, t)).length);
+  const idf = (t) => Math.log(1 + pool.length / (df.get(t) || 1));
+  const base = /* @__PURE__ */ new Map();
+  for (const p of pool) {
+    let score = 0;
+    const matched = [];
+    for (const t of q.terms) {
+      const w = (q.weight.get(t) ?? 1) * idf(t);
+      if (has(p.name, t)) score += w;
+      else if (has(p.detail, t)) score += w * DETAIL_SHARE;
+      else continue;
+      matched.push(t);
+    }
+    if (matched.length) base.set(p.n.id, { score, matched });
+  }
   const out2 = [];
-  for (const n of view.nodes) {
-    if (!NAME_KINDS.has(n.kind) || n.id === "cap:_foundations") continue;
-    const hay = `${n.label} ${n.id.slice(n.kind.length + 1)}`.toLowerCase();
-    const matched = terms.filter((t) => hay.includes(t));
-    if (!matched.length) continue;
-    out2.push({ id: n.id, kind: n.kind, label: n.label, ...n.at ? { at: n.at } : {}, via: "name", score: matched.length, matched });
+  for (const { n } of pool) {
+    const b = base.get(n.id);
+    if (!b) continue;
+    let score = b.score;
+    if (q.kinds.has(n.kind)) score += KIND_BONUS;
+    if (n.kind === "route") {
+      const sp = n.id.indexOf(" ");
+      const method = n.id.slice("route:".length, sp);
+      const path = n.id.slice(sp + 1);
+      if (q.methods.has(method)) score += METHOD_BONUS;
+      if (q.cardinality && q.cardinality === "one" === namesOne(path)) score += CARDINALITY_BONUS;
+    }
+    let cap = 0;
+    for (const c2 of n.caps ?? []) cap = Math.max(cap, base.get(c2)?.score ?? 0);
+    score += CAP_SHARE * cap;
+    out2.push({
+      id: n.id,
+      kind: n.kind,
+      label: n.label,
+      ...n.at ? { at: n.at } : {},
+      via: "name",
+      score: Math.round(score * 1e3) / 1e3,
+      matched: b.matched
+    });
   }
   return out2.sort((a, b) => b.score - a.score || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || cmp11(a.id, b.id)).slice(0, MATCHES);
 }
@@ -40626,8 +41028,7 @@ ${numbered(lines, from, to)}
   return out2;
 }
 function fmtCandidate(c2) {
-  const score = c2.via === "find" ? `score ${c2.score}` : `${c2.score} term(s)`;
-  return `- ${c2.id}  (${c2.label})${c2.at ? `  [${c2.at}]` : ""}  ${score}: ${c2.matched.join(", ") || "-"}`;
+  return `- ${c2.id}  (${c2.label})${c2.at ? `  [${c2.at}]` : ""}  score ${c2.score}: ${c2.matched.join(", ") || "-"}`;
 }
 function instructions(pack) {
   const lines = [
@@ -40658,10 +41059,11 @@ function lensNew(repoArg, question, opts = {}) {
     if (saved.has(id) && !reask) conflict = saved.get(id) ?? "(unreadable file)";
   } else ({ id, reask } = proposeLensId(repo, q));
   const file = `${LENSES_DIR}/${id}.json`;
-  const terms = questionTerms(q);
+  const reading = readQuestion(q);
+  const terms = reading.terms;
   const found = findMatches(live, viewPaths(repo).index, q);
-  const named = nameMatches(live.view, terms);
-  const candidates = [...found.candidates, ...named.filter((n) => !found.candidates.some((f) => f.id === n.id))];
+  const named = nameMatches(repo, live.view, reading);
+  const candidates = [...named, ...found.candidates.filter((f) => !named.some((n) => n.id === f.id))];
   const capIds = /* @__PURE__ */ new Set();
   for (const c2 of candidates) {
     if (c2.kind === "cap") capIds.add(c2.id);
@@ -40691,8 +41093,8 @@ function lensNew(repoArg, question, opts = {}) {
   const cand = ["## Candidate nodes"];
   const fromFind = candidates.filter((c2) => c2.via === "find");
   const fromName = candidates.filter((c2) => c2.via === "name");
-  if (fromFind.length) cand.push("Modules (ultraindex find):", ...fromFind.map(fmtCandidate));
   if (fromName.length) cand.push("Named like the question (routes, screens, entities, jobs, symbols, capabilities):", ...fromName.map(fmtCandidate));
+  if (fromFind.length) cand.push("Modules (ultraindex find):", ...fromFind.map(fmtCandidate));
   if (!candidates.length) cand.push("(nothing matched: try other words, or `ultraview show` / `dossier` on a node you know)");
   if (capabilities.length) cand.push(`Capabilities touched: ${capabilities.map((c2) => `${c2.id} (${c2.label})`).join(", ")}`);
   const neigh = neighbourhood.length ? ["## Neighbourhood (strongest edges)", ...neighbourhood.map((e) => `- ${e.from} -> ${e.to}  ${e.kind} w${e.weight}${e.cite ? ` [${e.cite}]` : ""}`)].join(
