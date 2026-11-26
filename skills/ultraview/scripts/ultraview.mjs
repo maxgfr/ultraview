@@ -40914,6 +40914,7 @@ function isBridged(question, terms = "") {
   return terms.trim() !== "" && englishShare(question) < ENGLISH_SHARE;
 }
 var searchable = (t) => ASCII_WORD.test(t) ? t.length >= 3 || t === "id" : t.length >= 2;
+var CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 function longestPrefix(word, table) {
   let best;
   for (const k of Object.keys(table)) if (word.startsWith(k) && (!best || k.length > best.length)) best = k;
@@ -40943,7 +40944,7 @@ function readQuestion(question, terms = "") {
   for (const t of supplied) if (!ENGLISH_FILLER.has(t)) add(stem4(t), 1);
   if (supplied.length && bridged) {
     for (const raw of ws) {
-      if (FRENCH_STOPWORDS.has(raw) || raw.length < 4) continue;
+      if (FRENCH_STOPWORDS.has(raw) || raw.length < 4 && !CJK.test(raw)) continue;
       add(french ? frenchSingular(raw) : raw, OWN_WORD_WEIGHT);
     }
   } else if (french) {

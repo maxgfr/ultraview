@@ -227,6 +227,8 @@ describe("lens new", () => {
     // A CJK run is split into overlapping bigrams, as the engine indexes it (Lucene CJKAnalyzer style).
     expect(readQuestion("购物车 页面").terms).toEqual(["物车", "购物", "页面"]);
     expect(readQuestion("注文をキャンセル").terms).toEqual(expect.arrayContaining(["注文", "キャ", "セル"]));
+    // With terms, the bigrams of a CJK question still catch code written in its language, at OWN_WORD_WEIGHT.
+    expect(readQuestion("如何取消订单？", "order cancel").weight.get("取消")).toBe(OWN_WORD_WEIGHT);
     // Still no one-letter Latin words, and English stems are not applied to other scripts.
     expect(readQuestion("Заказы и товары").terms).toEqual(expect.arrayContaining(["заказы", "товары"]));
     // A run-together identifier in the question is split like code.

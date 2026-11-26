@@ -433,6 +433,9 @@ export function isBridged(question: string, terms = ""): boolean {
 /** A word long enough to search for: 3 letters for a Latin word (`id` aside), 2 characters in another script (a CJK bigram). */
 const searchable = (t: string) => (ASCII_WORD.test(t) ? t.length >= 3 || t === "id" : t.length >= 2);
 
+/** Han, kana or Hangul: the engine splits a run of these into overlapping bigrams, so a whole word is 2 characters. */
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
 function longestPrefix<T>(word: string, table: Record<string, T>): T | undefined {
   let best: string | undefined;
   for (const k of Object.keys(table)) if (word.startsWith(k) && (!best || k.length > best.length)) best = k;
@@ -480,7 +483,8 @@ export function readQuestion(question: string, terms = ""): QuestionReading {
   if (supplied.length && bridged) {
     // The terms carry the search; the question's own words only catch code written in its language.
     for (const raw of ws) {
-      if (FRENCH_STOPWORDS.has(raw) || raw.length < 4) continue;
+      // Short words are dropped (they prefix English identifiers); a CJK bigram is the engine's whole word, so it stays.
+      if (FRENCH_STOPWORDS.has(raw) || (raw.length < 4 && !CJK.test(raw))) continue;
       add(french ? frenchSingular(raw) : raw, OWN_WORD_WEIGHT);
     }
   } else if (french) {

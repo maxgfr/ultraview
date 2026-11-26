@@ -121,7 +121,10 @@ own: with that re-pin (from 7.14.2), Japanese without terms went from 4/60 to
 8/60, the four new hits all asking for one product or order by its ID. The
 fixtures hold no CJK code, so the bigrams themselves match nothing here and
 the CJK rows with terms are unchanged. The re-pin's other changes (Prisma
-blocks as symbols, body search in `find`) moved no count.
+blocks as symbols, body search in `find`) moved no count. With `--terms`, a
+CJK question now keeps its own bigrams at the weight of its own words (a
+Latin word under 4 letters is still dropped), so they catch code written in
+its language; with no CJK code in the fixtures, no count moved.
 
 History. The ranking (`src/lens.ts`, `src/lens-terms.ts`) was developed
 against the English and French shop questions: 14/30 en and 3/30 fr with the
