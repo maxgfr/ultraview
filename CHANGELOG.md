@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.9.4](https://github.com/maxgfr/ultraview/compare/v1.9.3...v1.9.4) (2026-11-26)
+
+
+### Bug Fixes
+
+* **viewer:** pack unconnected entities in a grid in the Data view ([dab91c8](https://github.com/maxgfr/ultraview/commit/dab91c8de96669ef26be1412580ccfd9b6978778)), closes [#18](https://github.com/maxgfr/ultraview/issues/18)
+
 ## [1.9.3](https://github.com/maxgfr/ultraview/compare/v1.9.2...v1.9.3) (2026-11-26)
 
 
