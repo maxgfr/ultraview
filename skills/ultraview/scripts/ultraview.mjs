@@ -39957,19 +39957,22 @@ function uncitedSentences(text2) {
   return splitSentences(text2).flatMap((s) => citationlessClaims(s));
 }
 var CITATION_EXAMPLE = {
-  correct: "**In short:** a nightly job deletes expired carts [src/jobs/carts.ts:12-30]. It skips a cart with a pending payment [src/jobs/carts.ts:18].",
-  incorrect: "**In short:** a nightly job deletes expired carts. It skips a cart with a pending payment [src/jobs/carts.ts:18]. In summary, carts never pile up.",
-  uncited: ["**In short:** a nightly job deletes expired carts.", "In summary, carts never pile up."]
+  correct: "**In short:** a nightly job deletes expired carts, except those with a pending payment [src/jobs/carts.ts:12-30] [src/jobs/carts.ts:18]. It runs at 02:00 [src/jobs/schedule.ts:4].",
+  incorrect: "**In short:** a nightly job deletes expired carts, except those with a pending payment. It runs at 02:00 [src/jobs/schedule.ts:4]. In summary, carts never pile up.",
+  /** The opening summary, then the closing remark. */
+  uncited: ["**In short:** a nightly job deletes expired carts, except those with a pending payment.", "In summary, carts never pile up."]
 };
 var CITATION_RULE = [
   "EVERY sentence ends with at least one citation, [path:line] or [path:start-end], a file of this repository: the summary or opening line,",
   "each lead-in, transition and conclusion, the line that introduces a list, and each list item, as much as the main facts.",
   "A sentence ends at . ! or ? followed by a space and a capital; a paragraph or a list item with no full stop is one sentence.",
   "A bold label (**How it works.**, **In short:**) is part of the sentence it introduces: that sentence's citation covers it.",
+  "The opening summary (In short / En bref / En resumen\u2026, bold or not) ends with the citation(s) of the main fact(s) it sums up,",
+  "placed at the end of that summary sentence, before its full stop, even when the same lines are cited again below.",
   "A sentence you cannot cite (a recap, a reassurance, a guess) is dropped, not left uncited. # headings need no citation.",
   `Correct:   ${CITATION_EXAMPLE.correct}`,
   `Incorrect: ${CITATION_EXAMPLE.incorrect}`,
-  `           (refused: ${CITATION_EXAMPLE.uncited.map((s) => JSON.stringify(s)).join(" and ")} cite nothing)`
+  `           (refused: the opening summary ${JSON.stringify(CITATION_EXAMPLE.uncited[0])} and the closing ${JSON.stringify(CITATION_EXAMPLE.uncited[1])} cite nothing)`
 ];
 
 // src/timeline.ts
@@ -43487,7 +43490,7 @@ function correctionPrompt(prompt, previous, problems) {
     "",
     "Reply with ONLY the corrected JSON object (no prose before or after it). Keep what was right and fix exactly what the reasons name:",
     "a node id is written as the candidates list it (mod:<slug>, file:<path>, route:<METHOD> <path>\u2026); a sentence without a citation gets one, or goes",
-    "(a summary, lead-in, transition or conclusion too; a bold label belongs to the sentence after it).",
+    "(a lead-in, transition or conclusion too; a bold label belongs to the sentence after it; the opening summary ends with the citation(s) of the fact(s) it sums up).",
     "Do not start over: check an id or a line with the ultraview commands above only when you need to.",
     ""
   ].join("\n");

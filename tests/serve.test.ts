@@ -529,8 +529,14 @@ describe("ask bridge", () => {
       expect(p).toContain("each lead-in, transition and conclusion, the line that introduces a list, and each list item");
       expect(p).toContain("A bold label (**How it works.**, **In short:**) is part of the sentence it introduces");
       expect(p).toContain("is dropped, not left uncited");
+      expect(p).toContain(
+        "The opening summary (In short / En bref / En resumen…, bold or not) ends with the citation(s) of the main fact(s) it sums up,\n     placed at the end of that summary sentence",
+      );
+      expect(p).toContain(`(refused: the opening summary ${JSON.stringify(CITATION_EXAMPLE.uncited[0])} and the closing`);
     }
-    expect(correctionPrompt("P", {}, [])).toContain("(a summary, lead-in, transition or conclusion too; a bold label belongs to the sentence after it).");
+    expect(correctionPrompt("P", {}, [])).toContain(
+      "(a lead-in, transition or conclusion too; a bold label belongs to the sentence after it; the opening summary ends with the citation(s) of the fact(s) it sums up).",
+    );
   });
 
   it("asks the agent for English --terms when the question is not in English", () => {

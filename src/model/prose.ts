@@ -108,10 +108,12 @@ export function uncitedSentences(text: string): string[] {
  * so the prompts never show an example the gate disagrees with).
  */
 export const CITATION_EXAMPLE = {
-  correct: "**In short:** a nightly job deletes expired carts [src/jobs/carts.ts:12-30]. It skips a cart with a pending payment [src/jobs/carts.ts:18].",
+  correct:
+    "**In short:** a nightly job deletes expired carts, except those with a pending payment [src/jobs/carts.ts:12-30] [src/jobs/carts.ts:18]. It runs at 02:00 [src/jobs/schedule.ts:4].",
   incorrect:
-    "**In short:** a nightly job deletes expired carts. It skips a cart with a pending payment [src/jobs/carts.ts:18]. In summary, carts never pile up.",
-  uncited: ["**In short:** a nightly job deletes expired carts.", "In summary, carts never pile up."],
+    "**In short:** a nightly job deletes expired carts, except those with a pending payment. It runs at 02:00 [src/jobs/schedule.ts:4]. In summary, carts never pile up.",
+  /** The opening summary, then the closing remark. */
+  uncited: ["**In short:** a nightly job deletes expired carts, except those with a pending payment.", "In summary, carts never pile up."],
 } as const;
 
 /**
@@ -124,8 +126,10 @@ export const CITATION_RULE: readonly string[] = [
   "each lead-in, transition and conclusion, the line that introduces a list, and each list item, as much as the main facts.",
   "A sentence ends at . ! or ? followed by a space and a capital; a paragraph or a list item with no full stop is one sentence.",
   "A bold label (**How it works.**, **In short:**) is part of the sentence it introduces: that sentence's citation covers it.",
+  "The opening summary (In short / En bref / En resumen…, bold or not) ends with the citation(s) of the main fact(s) it sums up,",
+  "placed at the end of that summary sentence, before its full stop, even when the same lines are cited again below.",
   "A sentence you cannot cite (a recap, a reassurance, a guess) is dropped, not left uncited. # headings need no citation.",
   `Correct:   ${CITATION_EXAMPLE.correct}`,
   `Incorrect: ${CITATION_EXAMPLE.incorrect}`,
-  `           (refused: ${CITATION_EXAMPLE.uncited.map((s) => JSON.stringify(s)).join(" and ")} cite nothing)`,
+  `           (refused: the opening summary ${JSON.stringify(CITATION_EXAMPLE.uncited[0])} and the closing ${JSON.stringify(CITATION_EXAMPLE.uncited[1])} cite nothing)`,
 ];

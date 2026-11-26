@@ -85,6 +85,10 @@ describe("prose rules", () => {
   it("shows the agents an example the gate agrees with", () => {
     expect(uncitedSentences(CITATION_EXAMPLE.correct)).toEqual([]);
     expect(uncitedSentences(CITATION_EXAMPLE.incorrect)).toEqual([...CITATION_EXAMPLE.uncited]);
+    // The correct example's opening summary carries the citations of the facts it sums up, at its end.
+    const summary = splitSentences(CITATION_EXAMPLE.correct)[0]!;
+    expect(summary.startsWith("**In short:**")).toBe(true);
+    expect(summary).toMatch(/(?:\s*\[[^\]]+\]){2}\.$/);
     const rule = CITATION_RULE.join("\n");
     for (const part of [
       "EVERY sentence",
@@ -95,6 +99,7 @@ describe("prose rules", () => {
       "introduces a list",
       "bold label",
       "dropped",
+      "opening summary",
       CITATION_EXAMPLE.correct,
     ])
       expect(rule).toContain(part);

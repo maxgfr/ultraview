@@ -31,10 +31,14 @@
   covers it; a bold label with nothing after it is checked as a sentence.
   Bold text inside a sentence is not a label: `It **deletes every cart.**
   Then …` is two sentences.
-- Correct: `**In short:** a nightly job deletes expired carts
-  [src/jobs/carts.ts:12-30]. It skips a cart with a pending payment
-  [src/jobs/carts.ts:18].` Refused: the same with no citation after the
-  first sentence, or with a closing `In summary, carts never pile up.`
+- The opening summary ("In short: …", "En bref : …", "En resumen, …", bold
+  or not) is the sentence most often left uncited: end it with the
+  citation(s) of the main fact(s) it sums up, before its full stop, even
+  when the same lines are cited again below.
+- Correct: `**In short:** a nightly job deletes expired carts, except those
+  with a pending payment [src/jobs/carts.ts:12-30] [src/jobs/carts.ts:18].
+  It runs at 02:00 [src/jobs/schedule.ts:4].` Refused: the same summary
+  with no citation, or a closing `In summary, carts never pile up.`
 - Cite the lines that show the claim, not the top of the file. A range for a
   block, one line for one fact.
 - `check` proves each citation resolves to real lines and each sentence has

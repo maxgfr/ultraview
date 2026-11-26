@@ -510,7 +510,7 @@ export function correctionPrompt(prompt: string, previous: Record<string, unknow
     "",
     "Reply with ONLY the corrected JSON object (no prose before or after it). Keep what was right and fix exactly what the reasons name:",
     "a node id is written as the candidates list it (mod:<slug>, file:<path>, route:<METHOD> <path>…); a sentence without a citation gets one, or goes",
-    "(a summary, lead-in, transition or conclusion too; a bold label belongs to the sentence after it).",
+    "(a lead-in, transition or conclusion too; a bold label belongs to the sentence after it; the opening summary ends with the citation(s) of the fact(s) it sums up).",
     "Do not start over: check an id or a line with the ultraview commands above only when you need to.",
     "",
   ].join("\n");

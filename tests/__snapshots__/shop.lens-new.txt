@@ -428,10 +428,12 @@ Exported: enum OrderStatus @ 13, enum-member PENDING @ 14, enum-member PAID @ 15
    each lead-in, transition and conclusion, the line that introduces a list, and each list item, as much as the main facts.
    A sentence ends at . ! or ? followed by a space and a capital; a paragraph or a list item with no full stop is one sentence.
    A bold label (**How it works.**, **In short:**) is part of the sentence it introduces: that sentence's citation covers it.
+   The opening summary (In short / En bref / En resumen…, bold or not) ends with the citation(s) of the main fact(s) it sums up,
+   placed at the end of that summary sentence, before its full stop, even when the same lines are cited again below.
    A sentence you cannot cite (a recap, a reassurance, a guess) is dropped, not left uncited. # headings need no citation.
-   Correct:   **In short:** a nightly job deletes expired carts [src/jobs/carts.ts:12-30]. It skips a cart with a pending payment [src/jobs/carts.ts:18].
-   Incorrect: **In short:** a nightly job deletes expired carts. It skips a cart with a pending payment [src/jobs/carts.ts:18]. In summary, carts never pile up.
-              (refused: "**In short:** a nightly job deletes expired carts." and "In summary, carts never pile up." cite nothing)
+   Correct:   **In short:** a nightly job deletes expired carts, except those with a pending payment [src/jobs/carts.ts:12-30] [src/jobs/carts.ts:18]. It runs at 02:00 [src/jobs/schedule.ts:4].
+   Incorrect: **In short:** a nightly job deletes expired carts, except those with a pending payment. It runs at 02:00 [src/jobs/schedule.ts:4]. In summary, carts never pile up.
+              (refused: the opening summary "**In short:** a nightly job deletes expired carts, except those with a pending payment." and the closing "In summary, carts never pile up." cite nothing)
 3. `nodes`: the node ids the answer is about (pick from the candidates, or any id `ultraview show` knows); `edges` (optional): the links between them that matter; `focus`: the one node to centre the map on.
 4. Write the JSON above, filled in, to .ultraview/lenses/how-does-cancelling-an-order-work.json. Leave `sources` out: `lens save` stamps it.
 5. Run `ultraview lens save .ultraview/lenses/how-does-cancelling-an-order-work.json`, then `ultraview check`, and fix what they report.
