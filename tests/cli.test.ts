@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { HELP, main, parseArgs } from "../src/cli.js";
 import { GITIGNORE_BODY } from "../src/build.js";
 import { readStatus } from "../src/status.js";
+import { ULTRAINDEX_VERSION } from "../src/engine.js";
 import { ULTRAVIEW_VERSION } from "../src/version.js";
 import { captureIo, copyFixture } from "./helpers.js";
 
@@ -30,7 +31,7 @@ describe("cli", () => {
     expect((await run([])).out).toBe(HELP);
     expect((await run(["--help"])).out).toBe(HELP);
     expect((await run(["-v"])).out).toBe(`${ULTRAVIEW_VERSION}\n`);
-    expect(JSON.parse((await run(["--version", "--json"])).out)).toMatchObject({ ultraview: ULTRAVIEW_VERSION, ultraindex: "7.14.0" });
+    expect(JSON.parse((await run(["--version", "--json"])).out)).toMatchObject({ ultraview: ULTRAVIEW_VERSION, ultraindex: ULTRAINDEX_VERSION });
     expect((await run(["nope"])).code).toBe(2);
     expect((await run(["build", "--frob"])).code).toBe(2);
     expect((await run(["build", "--repo"])).err).toContain("missing value for --repo");

@@ -29265,7 +29265,7 @@ ${HELP}`);
   }
 }
 init_text();
-var VERSION = "7.14.0";
+var VERSION = "7.14.2";
 var SCHEMA_VERSION2 = 5;
 var ENRICH_MARKER = "<!-- ui:enrich -->";
 function isEnrichedBody(body2) {
