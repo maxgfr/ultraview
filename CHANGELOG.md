@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+# [1.11.0](https://github.com/maxgfr/ultraview/compare/v1.10.0...v1.11.0) (2026-11-26)
+
+
+### Features
+
+* **explain:** instant answers from proven facts ([1ecae5e](https://github.com/maxgfr/ultraview/commit/1ecae5eabdd5e5edec41fe7a114c7bfda2b4a214)), closes [#22](https://github.com/maxgfr/ultraview/issues/22)
+
 # [1.10.0](https://github.com/maxgfr/ultraview/compare/v1.9.4...v1.10.0) (2026-11-26)
 
 
