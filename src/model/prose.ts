@@ -17,9 +17,11 @@ const LIST_ITEM = /^\s*([-*+]|\d+\.)\s+/;
 /**
  * A sentence ends at `.`, `!` or `?` (optionally followed by closing quotes /
  * brackets and by the citations that belong to it) when whitespace and a
- * capital, a digit or a markup opener follow.
+ * capital, a digit or a markup opener follow. A citation's path may hold two
+ * levels of brackets (`[app/[id]/page.tsx:3]`), as the engine's citation
+ * grammar allows.
  */
-const SENTENCE_BREAK = /(?<=[.!?]["')]*(?:\s*\[[^[\]\n]+\])*)\s+(?=[A-Z0-9"'(*_`])/;
+const SENTENCE_BREAK = /(?<=[.!?]["')]*(?:\s*\[(?:[^[\]\n]|\[(?:[^[\]\n]|\[[^\]\n]*\])*\])+\])*)\s+(?=[A-Z0-9"'(*_`])/;
 
 /** Paragraphs and list items of markdown-ish prose; code fences, headings and table rules dropped. */
 function proseUnits(text: string): string[] {

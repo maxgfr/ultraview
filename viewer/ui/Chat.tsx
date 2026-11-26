@@ -21,11 +21,12 @@ import {
   parseStep,
   progressLine,
   type TurnAnswer,
+  turnActionName,
 } from "../lib/chat.js";
 import type { Index } from "../lib/data.js";
 import { num, t } from "../lib/i18n.js";
 import { QUESTION_MAX, questionOk } from "../lib/live.js";
-import { type CiteRef, citeLabel } from "../lib/markdown.js";
+import { type CiteRef, citeLabel, citeWhere } from "../lib/markdown.js";
 import { askAboutEdge, askAboutInsight, askAboutNode, askAboutStep } from "../lib/prompts.js";
 import type { Insight } from "../lib/changes.js";
 import { useApp } from "./context.js";
@@ -258,7 +259,7 @@ function useCite(prefer: readonly string[]): (c: CiteRef, i: number) => JSX.Elem
   return (c, i) => {
     const id = citeNode(ix, byPath, c, prefer);
     if (!id) return <CiteChip key={i} cite={c} />;
-    const where = `${c.path}:${c.line}${c.end ? `-${c.end}` : ""}`;
+    const where = citeWhere(c);
     const label = t("chat.citeOpen", { where, label: ix.byId.get(id)?.label ?? id });
     return (
       <button key={i} type="button" class="cite" title={label} aria-label={label} onClick={() => chat.openNode(id)}>
@@ -309,7 +310,7 @@ function AnswerView({ a }: { a: Shown }): JSX.Element {
       {a.langFallback ? <p class="muted small">{t("chat.langFallback")}</p> : null}
       {a.facts && a.escalate && asking && !a.escalated ? <p class="chat-escalate-why">{t("chat.escalateWhy")}</p> : null}
       <div class="chat-a-actions">
-        <button type="button" class="btn btn-quiet" onClick={() => chat.show(a.answer, a.question, true)}>
+        <button type="button" class="btn btn-quiet" aria-label={turnActionName("showOnMap", a.question)} onClick={() => chat.show(a.answer, a.question, true)}>
           <Icon name="map" size={14} />
           {t("chat.showOnMap")}
         </button>
@@ -318,6 +319,7 @@ function AnswerView({ a }: { a: Shown }): JSX.Element {
             type="button"
             class={`btn${a.escalate ? " btn-primary" : ""}`}
             disabled={!ready}
+            aria-label={turnActionName("escalate", a.question)}
             onClick={() => chat.send(a.question, { ...(a.context ? { context: a.context } : {}), ...(a.from ? { from: a.from } : {}) })}
           >
             <Icon name="ask" size={14} />
@@ -328,11 +330,14 @@ function AnswerView({ a }: { a: Shown }): JSX.Element {
       </div>
       {a.followUps.length ? (
         <div class="chat-follow" role="group" aria-label={t("chat.followUps")}>
-          {a.followUps.map((f) => (
-            <button key={f} type="button" class="chat-chip" disabled={!ready} title={ready ? t("chat.followUpAsk") : undefined} onClick={() => chat.send(f)}>
-              {f}
-            </button>
-          ))}
+          {a.followUps.map((f) => {
+            const name = turnActionName("followUp", f);
+            return (
+              <button key={f} type="button" class="chat-chip" disabled={!ready} aria-label={name} title={ready ? name : undefined} onClick={() => chat.send(f)}>
+                {f}
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </article>
@@ -398,6 +403,7 @@ function EntryView({ e }: { e: ChatEntry }): JSX.Element {
               <button
                 type="button"
                 class="btn"
+                aria-label={turnActionName("retry", x.question)}
                 onClick={() => {
                   chat.dismiss(x.key);
                   chat.send(x.question, x.context ? { context: x.context } : {});
@@ -407,7 +413,7 @@ function EntryView({ e }: { e: ChatEntry }): JSX.Element {
                 {t("chat.retry")}
               </button>
             ) : null}
-            <button type="button" class="btn btn-quiet" onClick={() => chat.dismiss(x.key)}>
+            <button type="button" class="btn btn-quiet" aria-label={turnActionName("dismiss", x.question)} onClick={() => chat.dismiss(x.key)}>
               {t("ask.dismiss")}
             </button>
           </div>

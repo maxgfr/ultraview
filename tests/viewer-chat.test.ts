@@ -265,6 +265,7 @@ describe("chat citations", () => {
     expect(citeNode(ix, byPath, citeAt("[src/services/orders.ts:26]")!)).toBe("sym:src/services/orders.ts#cancelOrder");
     expect(citeNode(ix, byPath, citeAt("[src/services/orders.ts:1]")!)).toBe("file:src/services/orders.ts");
     expect(citeNode(ix, byPath, citeAt("[nowhere/x.ts:3]")!)).toBeUndefined();
+    expect(citeNode(ix, byPath, citeAt("[src/services/orders.ts]")!)).toBe("file:src/services/orders.ts"); // no line: the file
   });
 
   it("a node with a span wins, the answer's own nodes break ties", () => {

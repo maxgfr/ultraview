@@ -202,6 +202,21 @@ export function answerIds(a: TurnAnswer, known: (id: string) => boolean = () => 
   return out;
 }
 
+// --- accessible names --------------------------------------------------------------
+
+/** The per-turn actions of the chat panel, each repeated once per answer. */
+export type TurnAction = "followUp" | "showOnMap" | "escalate" | "retry" | "dismiss";
+
+/**
+ * The accessible name of a per-turn action: the action and the question it
+ * acts on (`Ask: How is an order paid?`), so a screen reader tells the three
+ * follow-ups, or two "Show on the map" buttons, apart. It starts with the
+ * visible label (or, for a follow-up chip, holds its visible question).
+ */
+export function turnActionName(action: TurnAction, question: string): string {
+  return t(`chat.action.${action}`, { question });
+}
+
 // --- citations -----------------------------------------------------------------------
 
 /** Nodes by the file they live in, for `citeNode`. */
@@ -221,7 +236,8 @@ export function nodesByPath(ix: Index): Map<string, XNode[]> {
 /**
  * The node a citation `[path:line]` points at, for the side panel: the
  * narrowest node whose span holds the line, else the nearest node defined at
- * or above it in that file, else the file. Nodes the answer names win a tie.
+ * or above it in that file, else the file (always the file for a citation
+ * without a line). Nodes the answer names win a tie.
  * Undefined when the map holds nothing in that file.
  */
 export function citeNode(
@@ -230,6 +246,7 @@ export function citeNode(
   cite: Pick<CiteRef, "path" | "line">,
   prefer: readonly string[] = [],
 ): string | undefined {
+  const line = cite.line;
   const inFile = byPath.get(cite.path) ?? [];
   let best: { id: string; rank: number; named: boolean } | undefined;
   const better = (id: string, rank: number) => {
@@ -237,13 +254,13 @@ export function citeNode(
     if (!best || rank < best.rank || (rank === best.rank && ((named && !best.named) || (named === best.named && id < best.id)))) best = { id, rank, named };
   };
   for (const n of inFile) {
-    if (n.kind === "file" || !n.at) continue;
+    if (n.kind === "file" || !n.at || line === undefined) continue;
     const m = /:(\d+)(?:-(\d+))?$/.exec(n.at);
     if (!m) continue;
     const start = Number(m[1]);
     const end = m[2] !== undefined ? Number(m[2]) : undefined;
-    if (end !== undefined && start <= cite.line && cite.line <= end) better(n.id, end - start);
-    else if (start <= cite.line) better(n.id, 1e6 + (cite.line - start));
+    if (end !== undefined && start <= line && line <= end) better(n.id, end - start);
+    else if (start <= line) better(n.id, 1e6 + (line - start));
   }
   if (best) return best.id;
   const file = `file:${cite.path}`;

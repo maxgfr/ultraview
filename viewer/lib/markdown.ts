@@ -1,15 +1,19 @@
 // The markdown subset lens answers, summaries and notes use: paragraphs,
 // bullet and numbered lists, headings, `inline code`, **bold**, *emphasis*,
-// [links](https://…) and citations [path:line] / [path:10-12].
+// [links](https://…) and citations [path:line] / [path:10-12] (lib/cite.ts).
 //
 // Parsed into a small tree that the UI turns into elements — never into an
 // HTML string — so text is always text: `<script>` stays literal, and a link
 // only keeps an href that passes `safeHref` (http, https, mailto, in-page
 // anchors and plain relative paths). Anything else renders as its text.
 
+import { citationAt, citationLines, stripNonProse } from "./cite.js";
+
+/** A citation as the viewer draws it: `raw` is the whole token, brackets included. */
 export interface CiteRef {
   path: string;
-  line: number;
+  /** Absent for a whole-file citation (`[src/app/[id]/page.tsx]`). */
+  line?: number;
   end?: number;
   raw: string;
 }
@@ -28,27 +32,42 @@ export type Block =
   | { t: "ul"; items: Inline[][] }
   | { t: "ol"; start: number; items: Inline[][] };
 
-const CITE_RE = /^\[([^\s[\]]+?):(\d+)(?:-(\d+))?\]/;
-
-/** A citation at the start of `s` (`[path:line]`, `[path:10-12]`), if one is there. */
+/**
+ * A citation at the start of `s`, if one is there: the gates' grammar
+ * (lib/cite.ts), so `[app/[id]/page.tsx:3]`, `[pages/[[...params]].tsx:175-185]`,
+ * `[src/(shop)/+page.svelte:2]` and `[src/a.ts]` are all chips. A bare name
+ * without a slash is a chip only as `name.ext:line` without spaces: the engine
+ * only checks those when such a file exists (`[Node.js]` is no citation), and
+ * the viewer cannot tell.
+ */
 export function citeAt(s: string): CiteRef | undefined {
-  const m = CITE_RE.exec(s);
-  if (!m) return undefined;
-  const path = m[1] as string;
-  if (!/[./]/.test(path)) return undefined; // a bare word like [Note:3] is not a path
-  const line = Number(m[2]);
-  const end = m[3] !== undefined ? Number(m[3]) : undefined;
-  return { path, line, ...(end !== undefined && end !== line ? { end } : {}), raw: m[0] };
+  const hit = citationAt(s);
+  if (!hit) return undefined;
+  const { path, start, end } = citationLines(hit.citation);
+  if (!path.includes("/") && (start === undefined || /\s/.test(path))) return undefined;
+  return {
+    path,
+    ...(start !== undefined ? { line: start } : {}),
+    ...(end !== undefined && end !== start ? { end } : {}),
+    raw: s.slice(0, hit.length),
+  };
 }
 
-/** Every citation in a piece of prose, in order. */
-export function parseCites(text: string): CiteRef[] {
-  const out: CiteRef[] = [];
-  for (let i = text.indexOf("["); i !== -1; i = text.indexOf("[", i + 1)) {
-    const c = citeAt(text.slice(i));
-    if (c) out.push(c);
+/** The citations of `text` with where they start, skipping code and comments as the engine does. */
+function citesIn(text: string): { at: number; cite: CiteRef }[] {
+  const prose = stripNonProse(text);
+  const out: { at: number; cite: CiteRef }[] = [];
+  for (let i = prose.indexOf("["); i !== -1; ) {
+    const cite = citeAt(text.slice(i));
+    if (cite) out.push({ at: i, cite });
+    i = prose.indexOf("[", i + (cite ? cite.raw.length : 1));
   }
   return out;
+}
+
+/** Every citation in a piece of prose, in order (one per chip). */
+export function parseCites(text: string): CiteRef[] {
+  return citesIn(text).map((c) => c.cite);
 }
 
 /** Parse `path:line` / `path:10-12` (a node's `at`, a model edge's `cite`). */
@@ -140,7 +159,8 @@ export function parseInline(s: string, depth = 0): Inline[] {
     }
     if (ch === "[") {
       const cite = citeAt(s.slice(i));
-      if (cite) {
+      // A path without a line followed by `(href)` is a link's label (`[docs/a.md](docs/a.md)`).
+      if (cite && (cite.line !== undefined || s[i + cite.raw.length] !== "(")) {
         flush();
         out.push({ t: "cite", cite });
         i += cite.raw.length;
@@ -223,23 +243,23 @@ export function parseMarkdown(src: string): Block[] {
 /** The basename-and-line label of a citation chip (`orders.ts:12`, `orders.ts:10–12`). */
 export function citeLabel(c: CiteRef): string {
   const base = c.path.split("/").pop() || c.path;
-  return `${base}:${c.line}${c.end ? `–${c.end}` : ""}`;
+  return c.line === undefined ? base : `${base}:${c.line}${c.end ? `–${c.end}` : ""}`;
+}
+
+/** A citation's full location (`src/a.ts:10-12`, `src/a.ts` for a whole file). */
+export function citeWhere(c: Pick<CiteRef, "path" | "line" | "end">): string {
+  return `${c.path}${c.line !== undefined ? `:${c.line}` : ""}${c.line !== undefined && c.end ? `-${c.end}` : ""}`;
 }
 
 /** Prose with its citations taken out (for one-line previews). */
 export function stripCites(text: string): string {
   let out = "";
-  for (let i = 0; i < text.length; ) {
-    if (text[i] === "[") {
-      const c = citeAt(text.slice(i));
-      if (c) {
-        i += c.raw.length;
-        continue;
-      }
-    }
-    out += text[i];
-    i++;
+  let from = 0;
+  for (const { at, cite } of citesIn(text)) {
+    out += text.slice(from, at);
+    from = at + cite.raw.length;
   }
+  out += text.slice(from);
   return out
     .replace(/\s+([.,;:!?])/g, "$1")
     .replace(/\s{2,}/g, " ")

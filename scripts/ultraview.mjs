@@ -39905,7 +39905,7 @@ var FENCE = /^\s*(```|~~~)/;
 var HEADING_OR_RULE = /^(#{1,6}\s|([-*_])\2{2,}\s*$)/;
 var TABLE_SEP = /^[\s:|-]+$/;
 var LIST_ITEM = /^\s*([-*+]|\d+\.)\s+/;
-var SENTENCE_BREAK = /(?<=[.!?]["')]*(?:\s*\[[^[\]\n]+\])*)\s+(?=[A-Z0-9"'(*_`])/;
+var SENTENCE_BREAK = /(?<=[.!?]["')]*(?:\s*\[(?:[^[\]\n]|\[(?:[^[\]\n]|\[[^\]\n]*\])*\])+\])*)\s+(?=[A-Z0-9"'(*_`])/;
 function proseUnits(text2) {
   const units = [];
   let cur = [];

@@ -4,14 +4,14 @@
 import type { ComponentChildren, JSX } from "preact";
 import { editorUrl } from "../lib/editor.js";
 import { t } from "../lib/i18n.js";
-import { type Block, type CiteRef, citeLabel, type Inline, parseInline, parseLocation, parseMarkdown } from "../lib/markdown.js";
+import { type Block, type CiteRef, citeLabel, citeWhere, type Inline, parseInline, parseLocation, parseMarkdown } from "../lib/markdown.js";
 import { useApp } from "./context.js";
 import { Icon } from "./icons.js";
 
 export function CiteChip({ cite, full }: { cite: CiteRef; full?: boolean }): JSX.Element {
   const { settings, repo, copy } = useApp();
   const href = editorUrl(settings.editor, repo, cite.path, cite.line, cite.end);
-  const where = `${cite.path}:${cite.line}${cite.end ? `-${cite.end}` : ""}`;
+  const where = citeWhere(cite);
   const label = full ? where : citeLabel(cite);
   if (!href) {
     return (
