@@ -24,6 +24,7 @@ import { type AnyKind, anyKindOf, type Counts, type Index, treePath, type XEdge,
 import { FILL_TARGET, GROUP_LIMIT, groupMembers, groupTrail, type PathMember } from "./groups.js";
 import { summarizeHubs } from "./hubs.js";
 import { dirSegments, disambiguate } from "./labels.js";
+import { cardSize } from "./wrap.js";
 
 export const LEVELS = ["biz", "sys", "mod", "file", "sym"] as const;
 export type Level = (typeof LEVELS)[number];
@@ -238,6 +239,26 @@ function kindRank(k: AnyKind): number {
 
 function sizeOf(role: Exclude<SceneRole, "group">) {
   return { ...SIZE[role] };
+}
+
+/** Room a flow's step badge takes on the right of a card's label (ui/Graph.tsx draws it). */
+export const BADGE_ROOM = 22;
+
+/**
+ * Size each card to its label (lib/wrap.ts): a long label wraps to two lines
+ * and the card grows to hold them. A folder part ("Part 2") and an aggregate
+ * chip draw a short label of their own and keep their size. `reserve` is room
+ * kept on the right of every label (flow step badges).
+ */
+function fitLabels(list: readonly SceneNode[], reserve = 0): void {
+  for (const n of list) {
+    if (n.role === "group" || n.role === "agg" || n.part !== undefined) continue;
+    const size = cardSize(n.role, n.label, reserve);
+    if (size) {
+      n.w = size.w;
+      n.h = size.h;
+    }
+  }
 }
 
 /** The members of a level as the folder grouping reads them. */
@@ -507,6 +528,7 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
   const cards = [...nodes.values()].filter((n) => n.role !== "group").length;
   const kept = s.showAll ? split.kept : strongest(split.kept, Math.min(EDGE_LIMIT, Math.max(EDGE_MIN, 2 * cards)));
   relabel(ix, [...nodes.values()]);
+  fitLabels([...nodes.values()]);
   const ordered = [...nodes.values()].sort((a, b) => {
     const ra = a.role === "group" ? 0 : 1;
     const rb = b.role === "group" ? 0 : 1;
@@ -574,6 +596,7 @@ export function subgraphScene(
   key: string,
   ids: readonly string[],
   extra: readonly { from: string; to: string; kind?: XEdgeKind | "step"; label?: string }[] = [],
+  opts: { badged?: boolean } = {},
 ): Scene {
   const nodes: SceneNode[] = [];
   const drawnAs = new Map<string, string>();
@@ -585,6 +608,7 @@ export function subgraphScene(
     nodes.push({ id, ref: id, role, kind: n.kind, label: n.label, ...sizeOf(role) });
     drawnAs.set(id, id);
   }
+  fitLabels(nodes, opts.badged ? BADGE_ROOM : 0);
   const merged = new Map<string, { from: string; to: string; kinds: Set<XEdgeKind | "step">; weight: number; label?: string }>();
   const addEdge = (from: string, to: string, kind: XEdgeKind | "step", weight: number, label?: string) => {
     if (from === to || !drawnAs.has(from) || !drawnAs.has(to)) return;

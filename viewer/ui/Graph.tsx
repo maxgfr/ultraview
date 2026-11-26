@@ -11,9 +11,23 @@ import type { OverlayKind } from "../lib/changes.js";
 import type { Box, Layout, Pt } from "../lib/elk.js";
 import { connector, revealedHubEdges } from "../lib/hubs.js";
 import { t } from "../lib/i18n.js";
-import { ERD_HEAD, ERD_MAX_FIELDS, ERD_ROW, type Scene, type SceneEdge, type SceneNode } from "../lib/levels.js";
+import { BADGE_ROOM, ERD_HEAD, ERD_MAX_FIELDS, ERD_ROW, type Scene, type SceneEdge, type SceneNode } from "../lib/levels.js";
+import { CARD_TEXT, cardLines, type WrapRole } from "../lib/wrap.js";
 import { useApp } from "./context.js";
-import { capVar, describeNode, ellipsize, fitParts, groupParts, kindName, sceneLabel, sublineParts, textWidth } from "./format.js";
+import {
+  capVar,
+  cardAria,
+  cardTitle,
+  type DrawnLine,
+  drawnLine,
+  ellipsize,
+  fitParts,
+  groupParts,
+  kindName,
+  sceneLabel,
+  sublineParts,
+  textWidth,
+} from "./format.js";
 import { Glyph, Icon } from "./icons.js";
 import { cachedLayout, layoutScene, releaseLayout } from "./layout.js";
 import { perfPainted, perfStep } from "./perf.js";
@@ -474,6 +488,7 @@ export function Graph(p: GraphProps): JSX.Element {
           onKeyDown={(e) => onNodeKey(n, e)}
           onFocus={() => setFocusId(n.id)}
         >
+          <title>{n.label}</title>
           <rect class="grp-hit" x={0} y={0} width={box.w} height={34} rx={14} />
           <Glyph name={n.kind} x={14} y={10} size={14} />
           <text class="grp-label" x={34} y={21.5}>
@@ -556,13 +571,15 @@ export function Graph(p: GraphProps): JSX.Element {
           ? fitParts(sublineParts(ix, node, state.audience), subMax, 11.5)
           : "";
     const capColor = n.kind === "cap" ? capVar(ix, n.ref) : node?.caps[0] ? capVar(ix, node.caps[0]) : "var(--cap-none)";
-    const aria = folder
-      ? `${t("kind.folder")}: ${sceneLabel(n)}. ${groupParts(n.counts ?? {}).join(", ")}. ${t("graph.folderHint")}`
-      : agg
-        ? `${label}. ${t(n.kind === "entity" ? "graph.aggDataHint" : "graph.aggHint")}`
-        : node
-          ? describeNode(ix, node, state.audience)
-          : `${kindName(n.kind)}: ${label}`;
+    // The label on up to two lines, as the scene sized the card for it (lib/wrap.ts); a part, an aggregate and an ERD card keep one line.
+    const labelMax = box.w - labelX - (badge ? 12 + BADGE_ROOM : 12);
+    const oneLine = erd || agg || n.part !== undefined;
+    const lines: DrawnLine[] = oneLine
+      ? [{ text: ellipsize(label, labelMax, labelSize, 600) }]
+      : cardLines(n.role, label, box.w, badge ? BADGE_ROOM : 0).lines.map((l) => drawnLine(l, labelMax, labelSize));
+    const lineGap = oneLine ? 0 : (CARD_TEXT[n.role as WrapRole]?.line ?? 16);
+    const shift = ((lines.length - 1) * lineGap) / 2;
+    const labelY = erd ? 25 : sub ? box.h / 2 - 3 - shift : box.h / 2 + 4.5 - shift;
     return (
       <g
         key={n.id}
@@ -571,7 +588,7 @@ export function Graph(p: GraphProps): JSX.Element {
         transform={`translate(${box.x} ${box.y})`}
         role="button"
         tabIndex={tabbable === n.id ? 0 : -1}
-        aria-label={`${aria}${cluster && !folder ? `. ${t("graph.clusterHint")}` : ""}${ghost ? `. ${t("graph.ghostHint")}` : ""}${usedBy ? `. ${t("graph.hubHint", { count: usedBy })}` : ""}`}
+        aria-label={cardAria(ix, n, state.audience, usedBy)}
         aria-pressed={sel}
         onClick={(e) => {
           e.stopPropagation();
@@ -586,6 +603,7 @@ export function Graph(p: GraphProps): JSX.Element {
         onPointerEnter={() => setHover(n.id)}
         onPointerLeave={() => setHover((h) => (h === n.id ? undefined : h))}
       >
+        <title>{cardTitle(n)}</title>
         {cluster ? (
           <>
             <rect class="stack" x={8} y={-8} width={box.w - 16} height={box.h} rx={12} />
@@ -604,11 +622,20 @@ export function Graph(p: GraphProps): JSX.Element {
           y={iconBox ? (erd ? 6 : (box.h - iconBox) / 2) + (iconBox - iconSize) / 2 : (box.h - iconSize) / 2}
           size={iconSize}
         />
-        <text class="label" x={labelX} y={erd ? 25 : sub ? box.h / 2 - 3 : box.h / 2 + 4.5} style={{ fontSize: `${labelSize}px` }}>
-          {ellipsize(label, box.w - labelX - (badge ? 34 : 12), labelSize, 600)}
-        </text>
+        {lines.map((l, i) => (
+          <text
+            key={i}
+            class="label"
+            x={labelX}
+            y={labelY + i * lineGap}
+            style={{ fontSize: `${labelSize}px` }}
+            {...(l.fit ? { textLength: l.fit, lengthAdjust: "spacingAndGlyphs" } : {})}
+          >
+            {l.text}
+          </text>
+        ))}
         {sub ? (
-          <text class="sub" x={labelX} y={box.h / 2 + 14}>
+          <text class="sub" x={labelX} y={box.h / 2 + 14 + shift}>
             {sub}
           </text>
         ) : null}

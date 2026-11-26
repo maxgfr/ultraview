@@ -84,7 +84,7 @@ export function FlowsView(): JSX.Element {
     if (!flow) return undefined;
     const ids = flow.steps.map((s) => s.node);
     const extra = ids.slice(1).map((id, i) => ({ from: ids[i]!, to: id, kind: "step" as const }));
-    return subgraphScene(ix, `flow:${flow.id}`, ids, extra);
+    return subgraphScene(ix, `flow:${flow.id}`, ids, extra, { badged: true });
   }, [flow, ix, version]);
   const badges = useMemo(() => {
     const m = new Map<string, string>();
