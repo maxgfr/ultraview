@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import { appendFileSync as appendFileSync2, existsSync as existsSync31, mkdirSync as mkdirSync12, readFileSync as readFileSync35, realpathSync as realpathSync8 } from "fs";
+import { appendFileSync as appendFileSync2, existsSync as existsSync31, mkdirSync as mkdirSync12, readFileSync as readFileSync36, realpathSync as realpathSync8 } from "fs";
 import { relative as relative17, resolve as resolve33 } from "path";
 import { fileURLToPath as fileURLToPath5, pathToFileURL as pathToFileURL4 } from "url";
 
@@ -38985,7 +38985,7 @@ function assembleWithNotes(inp) {
   };
   const emptyGlobs = [];
   const files = graph.files.filter((f) => !f.generated).sort((a, b) => cmp6(a.rel, b.rel));
-  const churnOf = (rel2) => inp.churn?.get(rel2) ?? 0;
+  const churnOf2 = (rel2) => inp.churn?.get(rel2) ?? 0;
   const rels = files.map((f) => f.rel);
   const testMap = codeindex_engine_exports.computeTestMap(graph);
   const rules = systemRules(model, inp.workspaces);
@@ -39043,7 +39043,7 @@ function assembleWithNotes(inp) {
         metrics: {
           loc: sliceFiles.reduce((n, f) => n + f.lines, 0),
           pagerank: round4((m.pagerank ?? 0) * (split ? share : 1)),
-          churn: sliceFiles.reduce((n, f) => n + churnOf(f.rel), 0),
+          churn: sliceFiles.reduce((n, f) => n + churnOf2(f.rel), 0),
           // A slice: the distinct test files covering its own files.
           tests: split ? new Set(sliceFiles.flatMap((f) => testMap.testedByFile.get(f.rel) ?? [])).size : m.testedBy?.length ?? 0
         },
@@ -39078,7 +39078,7 @@ function assembleWithNotes(inp) {
       label: f.rel.split("/").pop() ?? f.rel,
       parent: fileParent.get(f.rel) ?? modId(f.module),
       cites: [],
-      metrics: { loc: f.lines, pagerank: round4(f.pagerank ?? 0), churn: churnOf(f.rel), tests: testMap.testedByFile.get(f.rel)?.length ?? 0 },
+      metrics: { loc: f.lines, pagerank: round4(f.pagerank ?? 0), churn: churnOf2(f.rel), tests: testMap.testedByFile.get(f.rel)?.length ?? 0 },
       caps: [],
       tags: uniqSorted([f.fileKind, ...f.testFile ? ["test"] : []])
     });
@@ -43678,8 +43678,8 @@ async function chatAgent(req) {
 }
 
 // src/explain.ts
-import { existsSync as existsSync28, statSync as statSync20 } from "fs";
-import { join as join52 } from "path";
+import { existsSync as existsSync28, readFileSync as readFileSync34, statSync as statSync20 } from "fs";
+import { join as join52, posix as posix10 } from "path";
 
 // src/explain-strings.ts
 var en = {
@@ -43731,6 +43731,22 @@ var en = {
   "rel.files": "It holds the files: {list}.",
   "rel.model": "Linked to {name}: {label}.",
   "rel.modelNoLabel": "Linked to {name}.",
+  // What a system, module or capability is made of, and what it leans on.
+  "rel.mainModules": "Its main modules: {list}.",
+  "rel.mainParts": "Its main parts: {list}.",
+  "rel.entries": "Entry points: {list}.",
+  "rel.entries.business": "It starts from: {list}.",
+  "entry.bin.dev": "the command `{name}`",
+  "entry.bin.business": "the command {name}",
+  "entry.script.dev": "the script `{name}`",
+  "entry.script.business": "the script {name}",
+  "entry.main": "the main file `{name}`",
+  "rel.dependsOn": "It depends on: {list}.",
+  "rel.dependedOnBy": "Depended on by: {list}.",
+  "rel.tests.dev": "Tests covering it: {list}.",
+  "rel.tests.business": "Automated tests check it: {list}.",
+  "rel.churn.dev": "Its most changed files lately: {list}.",
+  "rel.churn.business": "Its parts that changed most lately: {list}.",
   "flow.step": "In the flow \u201C{title}\u201D, step {n}: {note}",
   more: "and {n} more"
 };
@@ -43781,6 +43797,21 @@ var fr = {
   "rel.files": "Il contient les fichiers : {list}.",
   "rel.model": "Li\xE9 \xE0 {name} : {label}.",
   "rel.modelNoLabel": "Li\xE9 \xE0 {name}.",
+  "rel.mainModules": "Ses modules principaux : {list}.",
+  "rel.mainParts": "Ses parties principales : {list}.",
+  "rel.entries": "Points d'entr\xE9e : {list}.",
+  "rel.entries.business": "Il d\xE9marre depuis : {list}.",
+  "entry.bin.dev": "la commande `{name}`",
+  "entry.bin.business": "la commande {name}",
+  "entry.script.dev": "le script `{name}`",
+  "entry.script.business": "le script {name}",
+  "entry.main": "le fichier principal `{name}`",
+  "rel.dependsOn": "Il d\xE9pend de : {list}.",
+  "rel.dependedOnBy": "Ce qui d\xE9pend de lui : {list}.",
+  "rel.tests.dev": "Tests qui le couvrent : {list}.",
+  "rel.tests.business": "Des tests automatiques le v\xE9rifient : {list}.",
+  "rel.churn.dev": "Ses fichiers les plus modifi\xE9s r\xE9cemment : {list}.",
+  "rel.churn.business": "Ses parties les plus modifi\xE9es r\xE9cemment : {list}.",
   "flow.step": "Dans le parcours \xAB {title} \xBB, \xE9tape {n} : {note}",
   more: "et {n} autres"
 };
@@ -43795,6 +43826,7 @@ function explainText(lang, key, params = {}) {
 var EXPLAIN_MODES = ["business", "dev"];
 var EXPLAIN_LIST = 6;
 var ESCALATE_FACTS = 2;
+var ESCALATE_GROUP_FACTS = 3;
 var LANG_RE2 = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8}){0,3}$/;
 var cmp13 = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 function push(map, key, value) {
@@ -43815,11 +43847,100 @@ function loadFileCalls(root) {
     if (calls?.length)
       sites.set(
         rel2,
-        calls.map((c2) => ({ name: c2.name, line: c2.line }))
+        calls.map((c2) => ({ name: c2.name, line: c2.line, ...c2.receiver ? { receiver: c2.receiver } : {} }))
       );
   }
   siteCache = { key, sites };
   return sites;
+}
+function once(make2) {
+  let value;
+  return () => (value ??= { v: make2() }).v;
+}
+function jsonKeyLines(text2) {
+  const out2 = /* @__PURE__ */ new Map();
+  const keys = [];
+  const open = [];
+  let line2 = 1;
+  for (let i2 = 0; i2 < text2.length; i2++) {
+    const c2 = text2[i2];
+    if (c2 === "\n") line2++;
+    else if (c2 === "{" || c2 === "[") open.push(c2);
+    else if (c2 === "}" || c2 === "]") {
+      open.pop();
+      keys.length = Math.min(keys.length, open.length);
+    } else if (c2 === '"') {
+      let str3 = "";
+      for (i2++; i2 < text2.length && text2[i2] !== '"'; i2++) {
+        if (text2[i2] === "\\") i2++;
+        str3 += text2[i2];
+      }
+      if (open[open.length - 1] !== "{") continue;
+      let k = i2 + 1;
+      while (k < text2.length && /\s/.test(text2[k])) k++;
+      if (text2[k] !== ":") continue;
+      keys.length = open.length - 1;
+      keys.push(str3);
+      out2.set(keys.join("\0"), line2);
+    }
+  }
+  return out2;
+}
+function packageEntries(text2) {
+  let pkg;
+  try {
+    pkg = JSON.parse(text2) ?? {};
+  } catch {
+    return [];
+  }
+  if (typeof pkg !== "object") return [];
+  const lines = jsonKeyLines(text2);
+  const entries = [];
+  const add = (e, key) => {
+    const line2 = lines.get(key);
+    if (line2) entries.push({ ...e, line: line2 });
+  };
+  if (typeof pkg.bin === "string" && typeof pkg.name === "string") add({ kind: "bin", name: pkg.name.split("/").pop(), target: pkg.bin }, "bin");
+  else if (pkg.bin && typeof pkg.bin === "object") {
+    for (const [name2, target] of Object.entries(pkg.bin)) if (typeof target === "string") add({ kind: "bin", name: name2, target }, `bin\0${name2}`);
+  }
+  if (typeof pkg.main === "string") add({ kind: "main", name: pkg.main, target: pkg.main }, "main");
+  if (pkg.scripts && typeof pkg.scripts === "object") {
+    for (const [name2, command] of Object.entries(pkg.scripts)) if (typeof command === "string") add({ kind: "script", name: name2, command }, `scripts\0${name2}`);
+  }
+  return entries;
+}
+function pyprojectEntries(text2) {
+  const entries = [];
+  let section = "";
+  text2.split("\n").forEach((l, i2) => {
+    const head = /^\s*\[([^\]]+)\]\s*$/.exec(l);
+    if (head) section = head[1].trim();
+    else if (section === "project.scripts" || section === "tool.poetry.scripts") {
+      const m = /^\s*"?([\w.-]+)"?\s*=\s*"([^"]+)"/.exec(l);
+      if (m) entries.push({ kind: "bin", name: m[1], target: m[2], line: i2 + 1 });
+    }
+  });
+  return entries;
+}
+function loadManifests(root, nodes) {
+  if (!root) return [];
+  const out2 = [];
+  for (const n of nodes) {
+    if (n.kind !== "file") continue;
+    const rel2 = n.id.slice("file:".length);
+    const base = rel2.slice(rel2.lastIndexOf("/") + 1);
+    if (base !== "package.json" && base !== "pyproject.toml") continue;
+    let text2;
+    try {
+      text2 = readFileSync34(join52(root, rel2), "utf8");
+    } catch {
+      continue;
+    }
+    const entries = base === "package.json" ? packageEntries(text2) : pyprojectEntries(text2);
+    if (entries.length) out2.push({ rel: rel2, dir: rel2.includes("/") ? rel2.slice(0, rel2.lastIndexOf("/")) : "", entries });
+  }
+  return out2;
 }
 var contexts = /* @__PURE__ */ new WeakMap();
 function explainContext(live) {
@@ -43829,10 +43950,12 @@ function explainContext(live) {
   const inputs = live.loaded.inputs;
   const facts = inputs.facts;
   const out2 = /* @__PURE__ */ new Map();
+  const inn = /* @__PURE__ */ new Map();
   const imports = /* @__PURE__ */ new Map();
   const importers = /* @__PURE__ */ new Map();
   for (const e of view.edges) {
     push(out2, e.from, e);
+    push(inn, e.to, e);
     if (e.kind === "import" && e.from.startsWith("file:") && e.to.startsWith("file:")) {
       const a = e.from.slice(5);
       const b = e.to.slice(5);
@@ -43847,6 +43970,9 @@ function explainContext(live) {
   const jobFacts = new Map(facts.jobs.map((j) => [jobId(j.id), j]));
   const entityFacts = new Map(facts.entities.map((e) => [entityId(e.name), e]));
   const children = /* @__PURE__ */ new Map();
+  const modOf = /* @__PURE__ */ new Map();
+  const sysOf = /* @__PURE__ */ new Map();
+  const exportsByFile = /* @__PURE__ */ new Map();
   const holders = /* @__PURE__ */ new Map();
   const symsByName = /* @__PURE__ */ new Map();
   for (const n of view.nodes) {
@@ -43865,6 +43991,7 @@ function explainContext(live) {
     inputs,
     lines: fileLineTable(inputs.graph),
     out: out2,
+    inn,
     children,
     holders,
     symsByName,
@@ -43880,7 +44007,25 @@ function explainContext(live) {
     usesByFile: /* @__PURE__ */ new Map(),
     extsById: /* @__PURE__ */ new Map(),
     extsByFile: /* @__PURE__ */ new Map(),
-    callSites: () => loadFileCalls(inputs.root)
+    callSites: () => loadFileCalls(inputs.root),
+    testsOf: once(() => codeindex_engine_exports.computeTestMap(inputs.graph).testedByFile),
+    manifests: once(() => loadManifests(inputs.root, view.nodes)),
+    ancestor: (id, kind) => {
+      const memo3 = kind === "mod" ? modOf : sysOf;
+      if (memo3.has(id)) return memo3.get(id);
+      let cur = byId.get(id);
+      while (cur && cur.kind !== kind) cur = cur.parent ? byId.get(cur.parent) : void 0;
+      memo3.set(id, cur?.id);
+      return cur?.id;
+    },
+    exportsOf: (rel2) => {
+      let names = exportsByFile.get(rel2);
+      if (!names) {
+        names = new Set((children.get(`file:${rel2}`) ?? []).filter((x) => x.kind === "sym").map((x) => x.label));
+        exportsByFile.set(rel2, names);
+      }
+      return names;
+    }
   };
   for (const c2 of facts.calls) {
     push(ctx.callsByFile, c2.file, c2);
@@ -43955,13 +44100,20 @@ var Writer = class {
   is(key, params, cite) {
     if (cite) this.line(`${this.t(key, params)} ${cite}`, true);
   }
-  /** A list sentence: `key` with `{list}` = the items, each followed by its citation; merged by name, first cite kept. */
+  /**
+   * A list sentence: `key` with `{list}` = the items, each followed by its
+   * citation; merged by name, first cite kept. Only the items it names (the
+   * first EXPLAIN_LIST names) add their nodes and edges: a system's 2000
+   * symbols stay "and 1994 more", not 2000 highlighted nodes.
+   */
   list(key, items, params = {}) {
     const seen = /* @__PURE__ */ new Map();
     for (const i2 of items) if (!seen.has(i2.name)) seen.set(i2.name, i2);
     const uniq = [...seen.values()];
     if (!uniq.length) return;
+    const named = new Set(uniq.slice(0, EXPLAIN_LIST).map((i2) => i2.name));
     for (const i2 of items) {
+      if (!named.has(i2.name)) continue;
       if (i2.node) this.nodes.add(i2.node);
       if (i2.edge) this.edges.set(`${i2.edge.from}
 ${i2.edge.to}
@@ -43989,12 +44141,13 @@ ${x.edge.kind ?? ""}`, x.edge);
   }
   /** How the answer names a node: code names in dev, plain words in business (never a symbol or a file). */
   name(n) {
+    const label = n.slice ? `${n.label} ${n.slice.qualifier}` : n.label;
     if (this.dev) {
       if (n.kind === "file") return `\`${fileOfId(n.id)}\``;
-      if (n.kind === "cap" || n.kind === "sys") return n.label;
-      return `\`${n.label}\``;
+      if (n.kind === "cap" || n.kind === "sys") return label;
+      return `\`${label}\``;
     }
-    return n.kind === "sym" || n.kind === "file" ? this.place(n) : n.label;
+    return n.kind === "sym" || n.kind === "file" ? this.place(n) : label;
   }
   /** Where a node sits, in plain words: its capabilities, else its system, else its module. */
   place(n) {
@@ -44311,33 +44464,233 @@ function explainFile(w, n) {
   capsLine(w, n, cite);
   explainFiles(w, n, [n], w.ctx.children.get(n.id) ?? []);
 }
+function fileWords(rel2) {
+  const parts2 = rel2.split("/");
+  const stem4 = parts2[parts2.length - 1].replace(/\.[^.]+$/, "");
+  const generic = /^(index|main|mod|__init__|__main__|init)$/i.test(stem4) && parts2.length > 1;
+  return humanizeSegment(generic ? parts2[parts2.length - 2] : stem4);
+}
+function fileItem(w, rel2) {
+  const cite = w.cite(rel2, 1);
+  if (!cite) return void 0;
+  return { name: w.dev ? `\`${rel2}\`` : fileWords(rel2), cite, node: `file:${rel2}` };
+}
+var byPagerank = (a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp13(a.id, b.id);
+function codeFirst(files) {
+  const code = files.filter((f) => f.tags.includes("code"));
+  return code.length ? code : files;
+}
+function mainModules(w, n, files) {
+  const byMod = /* @__PURE__ */ new Map();
+  for (const f of codeFirst(files)) if (f.parent && w.ctx.byId.get(f.parent)?.kind === "mod") push(byMod, f.parent, f);
+  const score = (id) => n.kind === "sys" ? w.ctx.byId.get(id).metrics.pagerank : byMod.get(id).reduce((k, f) => k + f.metrics.pagerank, 0);
+  const items = [...byMod.keys()].sort((a, b) => score(b) - score(a) || cmp13(a, b)).flatMap((id) => {
+    const top = [...byMod.get(id)].sort(byPagerank)[0];
+    const cite = w.cite(fileOfId(top.id), 1);
+    return cite ? [{ name: w.name(w.ctx.byId.get(id)), cite, node: id }] : [];
+  });
+  w.list("rel.mainModules", items);
+}
+function entryFile(dir, target, has2) {
+  const at = (p) => posix10.normalize(dir ? `${dir}/${p}` : p).replace(/^\.\//, "");
+  const tries = [];
+  if (/^[\w.]+:[\w.]+$/.test(target)) {
+    const mod = target.split(":")[0].replace(/\./g, "/");
+    tries.push(at(`${mod}.py`), at(`src/${mod}.py`), at(`${mod}/__init__.py`), at(`src/${mod}/__init__.py`));
+  } else {
+    const base = at(target);
+    if (base.startsWith("..")) return void 0;
+    const prefix = dir ? `${dir}/` : "";
+    const rest = base.startsWith(prefix) ? base.slice(prefix.length) : base;
+    for (const p of [base, `${prefix}${rest.replace(/^(dist|build|out|lib)\//, "src/")}`]) {
+      tries.push(p);
+      const stem4 = p.replace(/\.[cm]?[jt]sx?$/, "");
+      for (const ext of [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]) tries.push(`${stem4}${ext}`);
+    }
+  }
+  return tries.find(has2);
+}
+function entryPoints(w, files, all) {
+  const own = new Set(all.map((f) => fileOfId(f.id)));
+  const code = new Set(files.filter((f) => f.tags.includes("code")).map((f) => fileOfId(f.id)));
+  const has2 = (rel2) => code.has(rel2);
+  const dirs = /* @__PURE__ */ new Set();
+  for (const rel2 of code) for (let i2 = rel2.lastIndexOf("/"); i2 > 0; i2 = rel2.lastIndexOf("/", i2 - 1)) dirs.add(rel2.slice(0, i2));
+  const bins = [];
+  const mains = [];
+  const started = [];
+  const scripts = [];
+  for (const m of w.ctx.manifests()) {
+    const owned = own.has(m.rel);
+    if (!owned && m.dir && !dirs.has(m.dir)) continue;
+    for (const e of m.entries) {
+      const cite = w.cite(m.rel, e.line);
+      if (!cite) continue;
+      const file = e.target !== void 0 ? entryFile(m.dir, e.target, has2) : void 0;
+      const node = file ? `file:${file}` : void 0;
+      if (e.kind === "bin" && (owned || file))
+        bins.push({ name: w.t(w.dev ? "entry.bin.dev" : "entry.bin.business", { name: e.name }), cite, ...node ? { node } : {} });
+      else if (e.kind === "main" && w.dev && (owned || file))
+        mains.push({ name: w.t("entry.main", { name: file ?? e.name }), cite, ...node ? { node } : {} });
+      else if (e.kind === "script") {
+        const runs = (e.command ?? "").split(/\s+/).map((tok) => tok.replace(/^["']|["']$/g, "")).map((tok) => posix10.normalize(m.dir ? `${m.dir}/${tok}` : tok)).find(has2);
+        if (!runs && (!owned || !w.dev)) continue;
+        const item = { name: w.t(w.dev ? "entry.script.dev" : "entry.script.business", { name: e.name }), cite, ...runs ? { node: `file:${runs}` } : {} };
+        (runs ? started : scripts).push(item);
+      }
+    }
+  }
+  const cli = [];
+  if (w.dev) {
+    const named = new Set([...bins, ...mains].map((i2) => i2.node));
+    for (const rel2 of [...code].sort(cmp13)) {
+      const base = rel2.slice(rel2.lastIndexOf("/") + 1);
+      if (named.has(`file:${rel2}`) || !(/^(cli|main|__main__)\.\w+$/.test(base) || /(^|\/)bin\//.test(rel2))) continue;
+      const item = fileItem(w, rel2);
+      if (item) cli.push(item);
+    }
+  }
+  w.list(w.dev ? "rel.entries" : "rel.entries.business", [...bins, ...mains, ...started, ...cli, ...scripts]);
+}
+function edgeEvidence(w, e, caps) {
+  if (!e.from.startsWith("file:")) return void 0;
+  const fa = e.from.slice("file:".length);
+  const fromOk = (line2) => !caps || !!w.holderAt(fa, line2)?.caps.includes(caps.from);
+  const toOk = (n) => !caps || !!n?.caps.includes(caps.to);
+  const at = (file, line2) => {
+    const cite = line2 !== void 0 ? w.cite(file, line2) : void 0;
+    return cite ? { cite, precise: true } : void 0;
+  };
+  const first = (lines2) => lines2.length ? Math.min(...lines2) : void 0;
+  if (e.to.startsWith("route:")) {
+    if (!toOk(w.ctx.byId.get(e.to))) return void 0;
+    return at(fa, first((w.ctx.callsByFile.get(fa) ?? []).filter((c2) => c2.route === e.to && fromOk(c2.line)).map((c2) => c2.line)));
+  }
+  if (e.to.startsWith("job:")) {
+    const j = w.ctx.jobFacts.get(e.to);
+    return j && toOk(w.ctx.byId.get(e.to)) ? at(j.file, j.line) : void 0;
+  }
+  if (!e.to.startsWith("file:")) return void 0;
+  const fb = e.to.slice("file:".length);
+  const names = w.ctx.exportsOf(fb);
+  const lines = [];
+  if (names.size)
+    for (const s of w.ctx.callSites().get(fa) ?? []) {
+      const name2 = names.has(s.name) ? s.name : s.receiver !== void 0 && names.has(s.receiver) ? s.receiver : void 0;
+      if (name2 === void 0 || !fromOk(s.line)) continue;
+      if (caps && !(w.ctx.symsByName.get(name2) ?? []).some((x) => x.parent === e.to && toOk(x))) continue;
+      lines.push(s.line);
+    }
+  const call2 = at(fa, first(lines));
+  if (call2 || caps) return call2;
+  const head = w.cite(fa, 1);
+  return head ? { cite: head, precise: false } : void 0;
+}
+function dependencies(w, n, files) {
+  const level = n.kind;
+  const peers = (edges, key) => {
+    const m = /* @__PURE__ */ new Map();
+    for (const e of edges ?? []) {
+      const other = e[key];
+      if (!e.derived || other === n.id || other === FOUNDATIONS_CAP || kindOf2(other) !== level || !w.ctx.byId.has(other)) continue;
+      const cur = m.get(other) ?? { weight: 0, kind: e.kind, top: 0 };
+      cur.weight += e.weight;
+      if (e.weight > cur.top) Object.assign(cur, { kind: e.kind, top: e.weight });
+      m.set(other, cur);
+    }
+    return m;
+  };
+  const outs = peers(w.ctx.out.get(n.id), "to");
+  const ins = peers(w.ctx.inn.get(n.id), "from");
+  if (!outs.size && !ins.size) return;
+  const lift = (id) => {
+    if (level === "cap") return w.ctx.byId.get(id)?.caps ?? [];
+    const up = w.ctx.ancestor(id, level);
+    return up ? [up] : [];
+  };
+  const outEv = /* @__PURE__ */ new Map();
+  const inEv = /* @__PURE__ */ new Map();
+  const offer = (found, other, e, out2) => {
+    if (found.get(other)?.precise) return;
+    const ev = edgeEvidence(w, e, level === "cap" ? out2 ? { from: n.id, to: other } : { from: other, to: n.id } : void 0);
+    if (ev && (ev.precise || !found.has(other))) found.set(other, ev);
+  };
+  for (const f of files) {
+    if (outs.size) {
+      for (const e of w.ctx.out.get(f.id) ?? []) for (const t of lift(e.to)) if (outs.has(t)) offer(outEv, t, e, true);
+    }
+    if (!ins.size) continue;
+    for (const m of [f, ...w.ctx.children.get(f.id) ?? []]) {
+      for (const e of w.ctx.inn.get(m.id) ?? []) {
+        if (!e.from.startsWith("file:") || w.ctx.byId.get(e.from)?.tags.includes("test")) continue;
+        for (const t of lift(e.from)) if (ins.has(t)) offer(inEv, t, e, false);
+      }
+    }
+  }
+  const items = (side, found, out2) => [...side.entries()].sort((a, b) => b[1].weight - a[1].weight || cmp13(a[0], b[0])).flatMap(([other, { kind }]) => {
+    const ev = found.get(other);
+    if (!ev) return [];
+    const edge = out2 ? w.edge(n.id, other, kind) : w.edge(other, n.id, kind);
+    const sys = level === "mod" ? w.ctx.ancestor(other, "sys") : void 0;
+    const where = sys && sys !== w.ctx.ancestor(n.id, "sys") && !w.ctx.byId.get(other).slice ? ` (${w.ctx.byId.get(sys).label})` : "";
+    return [{ name: `${w.name(w.ctx.byId.get(other))}${where}`, cite: ev.cite, node: other, edge }];
+  });
+  w.list("rel.dependsOn", items(outs, outEv, true));
+  w.list("rel.dependedOnBy", items(ins, inEv, false));
+}
+function testsOf(w, files) {
+  const covers = /* @__PURE__ */ new Map();
+  const map = w.ctx.testsOf();
+  for (const f of files) for (const t of map.get(fileOfId(f.id)) ?? []) covers.set(t, (covers.get(t) ?? 0) + 1);
+  const items = [...covers.entries()].sort((a, b) => b[1] - a[1] || cmp13(a[0], b[0])).flatMap(([rel2]) => {
+    const item = fileItem(w, rel2);
+    return item ? [item] : [];
+  });
+  w.list(w.dev ? "rel.tests.dev" : "rel.tests.business", items);
+}
+function churnOf(w, files) {
+  const items = files.filter((f) => f.metrics.churn > 0).sort((a, b) => b.metrics.churn - a.metrics.churn || cmp13(a.id, b.id)).flatMap((f) => {
+    const item = fileItem(w, fileOfId(f.id));
+    return item ? [item] : [];
+  });
+  w.list(w.dev ? "rel.churn.dev" : "rel.churn.business", items);
+}
+function madeOf(w, n, files, all) {
+  if (n.kind !== "mod") mainModules(w, n, files);
+  else {
+    const ranked = [...codeFirst(files)].sort(byPagerank).flatMap((f) => {
+      const item = fileItem(w, fileOfId(f.id));
+      return item ? [item] : [];
+    });
+    w.list(w.dev ? "rel.files" : "rel.mainParts", ranked);
+  }
+  entryPoints(w, files, all);
+  dependencies(w, n, files);
+  testsOf(w, files);
+  churnOf(w, files);
+}
 function explainGroup(w, n) {
   const nodes = w.ctx.view.nodes;
+  let all;
   if (n.kind === "cap") {
-    const files2 = nodes.filter((x) => x.kind === "file" && x.caps.includes(n.id) && !x.tags.includes("test"));
-    const declared2 = nodes.filter((x) => x.caps.includes(n.id) && x.kind !== "file" && x.kind !== "mod" && x.kind !== "sys");
-    explainFiles(w, n, files2, declared2, (h) => !!h && h.caps.includes(n.id));
-    return;
-  }
-  let files;
-  if (n.kind === "sys") {
+    all = nodes.filter((x) => x.kind === "file" && x.caps.includes(n.id));
+  } else if (n.kind === "sys") {
     const mods = new Set((w.ctx.children.get(n.id) ?? []).map((m) => m.id));
-    files = nodes.filter((x) => x.kind === "file" && x.parent !== void 0 && mods.has(x.parent));
-  } else files = (w.ctx.children.get(n.id) ?? []).filter((x) => x.kind === "file");
-  files = files.filter((f) => !f.tags.includes("test"));
-  explainFiles(
-    w,
-    n,
-    files,
-    files.flatMap((f) => w.ctx.children.get(f.id) ?? [])
-  );
-  if (w.dev && n.kind === "mod") {
-    const items = [...files].sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp13(a.id, b.id)).flatMap((f) => {
-      const cite = w.cite(fileOfId(f.id), 1);
-      return cite ? [{ name: w.name(f), cite, node: f.id }] : [];
-    });
-    w.list("rel.files", items);
-  }
+    all = nodes.filter((x) => x.kind === "file" && x.parent !== void 0 && mods.has(x.parent));
+  } else all = (w.ctx.children.get(n.id) ?? []).filter((x) => x.kind === "file");
+  const code = all.filter((f) => !f.tags.includes("test"));
+  const files = code.length ? code : all;
+  if (n.kind === "cap") {
+    const declared2 = nodes.filter((x) => x.caps.includes(n.id) && x.kind !== "file" && x.kind !== "mod" && x.kind !== "sys");
+    explainFiles(w, n, files, declared2, (h) => !!h && h.caps.includes(n.id));
+  } else
+    explainFiles(
+      w,
+      n,
+      files,
+      files.flatMap((f) => w.ctx.children.get(f.id) ?? [])
+    );
+  madeOf(w, n, files, all);
 }
 function explainNode(ctx, id, opts = {}) {
   const n = ctx.byId.get(id);
@@ -44391,7 +44744,7 @@ function explainNode(ctx, id, opts = {}) {
     edges: [...w.edges.values()].sort((a, b) => cmp13(a.from, b.from) || cmp13(a.to, b.to) || cmp13(a.kind ?? "", b.kind ?? "")),
     citations,
     counts: { prose: proseCount, facts: w.facts },
-    escalate: proseCount === 0 && w.facts < ESCALATE_FACTS,
+    escalate: proseCount === 0 && w.facts < (n.kind === "sys" || n.kind === "mod" || n.kind === "cap" ? ESCALATE_GROUP_FACTS : ESCALATE_FACTS),
     source: "facts"
   };
 }
@@ -44425,7 +44778,7 @@ function formatExplanation(x) {
 }
 
 // src/serve.ts
-import { existsSync as existsSync29, readdirSync as readdirSync9, readFileSync as readFileSync34, statSync as statSync21, watch } from "fs";
+import { existsSync as existsSync29, readdirSync as readdirSync9, readFileSync as readFileSync35, statSync as statSync21, watch } from "fs";
 import { createServer } from "http";
 import { isIP } from "net";
 import { dirname as dirname18, join as join53, relative as relative16, resolve as resolve31, sep as sep11 } from "path";
@@ -44532,7 +44885,7 @@ async function startServe(opts) {
   if (askModelError) throw new Error(askModelError);
   const askModel = opts.askModel;
   const agent = resolveAskAgent(opts.ask ?? "auto", env.PATH ?? env.Path);
-  const template = readFileSync34(opts.template ?? viewerTemplatePath(), "utf8");
+  const template = readFileSync35(opts.template ?? viewerTemplatePath(), "utf8");
   let state = { ...freshView(repo), version: 1 };
   writeView(paths.view, state.text);
   let html;
@@ -44551,7 +44904,7 @@ data: ${JSON.stringify(data)}
   const chatDir = join53(paths.dir, CHAT_DIR);
   const chatStamp = (id) => {
     try {
-      return readFileSync34(join53(chatDir, `${id}.json`), "utf8");
+      return readFileSync35(join53(chatDir, `${id}.json`), "utf8");
     } catch {
       return void 0;
     }
@@ -44715,7 +45068,7 @@ data: ${JSON.stringify(data)}
       if (name2 === "view.json") {
         let disk;
         try {
-          disk = readFileSync34(paths.view, "utf8");
+          disk = readFileSync35(paths.view, "utf8");
         } catch {
           disk = void 0;
         }
@@ -45713,7 +46066,7 @@ async function cmdExplain(p, io) {
   if (!EXPLAIN_MODES.includes(mode)) return usage(io, `--mode must be one of ${EXPLAIN_MODES.join(", ")} (got ${mode})`);
   const lang = p.values.lang;
   if (lang !== void 0 && !LANG_RE2.test(lang)) return usage(io, `--lang must be a language tag such as en, fr or pt-BR (got ${lang})`);
-  const live = liveView(p.values.repo ?? ".");
+  const live = freshView(p.values.repo ?? ".");
   const x = explainNode(explainContext(live), id, { mode, lang });
   if (!x) return unknownId(p, io, id, similarIds(live.view, id));
   io.out(p.bools.has("json") ? json(x) : formatExplanation(x));
@@ -45746,7 +46099,7 @@ async function cmdSave(p, io, what) {
   }
   let text2;
   try {
-    text2 = readFileSync35(resolve33(file), "utf8");
+    text2 = readFileSync36(resolve33(file), "utf8");
   } catch (e) {
     io.err(`ultraview: cannot read ${file}: ${e.message}
 `);
@@ -46033,7 +46386,7 @@ async function cmdLens(p, io) {
 async function cmdSaveTurn(p, io, file, thread) {
   let text2;
   try {
-    text2 = readFileSync35(resolve33(file), "utf8");
+    text2 = readFileSync36(resolve33(file), "utf8");
   } catch (e) {
     io.err(`ultraview: cannot read ${file}: ${e.message}
 `);

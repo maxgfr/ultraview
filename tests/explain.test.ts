@@ -7,13 +7,13 @@ import { agentInvocation, askModelProblem } from "../src/ask.js";
 import { buildMap } from "../src/build.js";
 import { main } from "../src/cli.js";
 import { checkCitations, fileLineTable } from "../src/engine.js";
-import { ESCALATE_FACTS, type Explanation, explainContext, explainNode, resolveExplainLang } from "../src/explain.js";
+import { ESCALATE_FACTS, ESCALATE_GROUP_FACTS, type Explanation, explainContext, explainNode, resolveExplainLang } from "../src/explain.js";
 import { EXPLAIN_LANGS, EXPLAIN_STRINGS } from "../src/explain-strings.js";
 import { uncitedSentences } from "../src/model/prose.js";
 import { saveLens } from "../src/save.js";
 import { type ServeHandle, startServe } from "../src/serve.js";
 import { liveView } from "../src/show.js";
-import { builtShop, captureIo, copyFixture, readModelFile } from "./helpers.js";
+import { builtShop, captureIo, copyFixture, git, gitInit, readModelFile } from "./helpers.js";
 
 let cleanups: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
@@ -225,6 +225,132 @@ describe("explain (other stacks)", () => {
     const screen = explainNode(ctx, "screen:/products", { mode: "dev" })!;
     expectLensGrade(repo, screen);
     expect(screen.answer).toContain("- Calls: `GET /api/products` [pages/products/index.vue:2], `POST /api/products` [pages/products/index.vue:5].");
+  });
+});
+
+describe("explain (a system without routes or data)", () => {
+  // A workspace of two packages, no model: a CLI (bin, scripts, two commands, a test) over a core library.
+  it("says what it is made of, where it starts, what it leans on and what tests it, every sentence cited", async () => {
+    const repo = await built("cli-workspace");
+    const ctx = explainContext(liveView(repo));
+    const ex = (id: string, mode: "business" | "dev", lang?: string) => {
+      const x = explainNode(ctx, id, { mode, ...(lang ? { lang } : {}) });
+      expect(x, id).toBeDefined();
+      expectLensGrade(repo, x!);
+      return x!;
+    };
+
+    const cli = ex("sys:packages-cli", "dev");
+    expect(cli.counts.prose).toBe(0);
+    expect(cli.counts.facts).toBeGreaterThanOrEqual(ESCALATE_GROUP_FACTS);
+    expect(cli.escalate).toBe(false);
+    expect(bullets(cli)).toEqual([
+      "- It defines: `main` [packages/cli/src/cli.ts:5], `runCount` [packages/cli/src/commands/count.ts:3], `runGreet` [packages/cli/src/commands/greet.ts:3].",
+      "- Its main modules: `Commands` [packages/cli/src/commands/greet.ts:1], `Src` [packages/cli/src/cli.ts:1].",
+      "- Entry points: the command `tool` [packages/cli/package.json:6], the script `start` [packages/cli/package.json:9], the script `build` [packages/cli/package.json:10].",
+      "- It depends on: @tools/core [packages/cli/src/commands/count.ts:4].",
+      "- Tests covering it: `packages/cli/test/greet.test.ts` [packages/cli/test/greet.test.ts:1].",
+    ]);
+    // The bin's target (dist/cli.js) is the source file it is built from.
+    expect(cli.nodes).toContain("file:packages/cli/src/cli.ts");
+    expect(cli.edges).toContainEqual({ from: "sys:packages-cli", to: "sys:packages-core", kind: expect.any(String) });
+
+    // Business: plain words, no symbol, no file, no backtick; only the scripts that start one of its files.
+    const cliBiz = ex("sys:packages-cli", "business");
+    expect(cliBiz.escalate).toBe(false);
+    expect(bullets(cliBiz)).toEqual([
+      "- Its main modules: Commands [packages/cli/src/commands/greet.ts:1], Src [packages/cli/src/cli.ts:1].",
+      "- It starts from: the command tool [packages/cli/package.json:6], the script start [packages/cli/package.json:9].",
+      "- It depends on: @tools/core [packages/cli/src/commands/count.ts:4].",
+      "- Automated tests check it: Greet test [packages/cli/test/greet.test.ts:1].",
+    ]);
+
+    // The library: its main file, and who depends on it.
+    const core = ex("sys:packages-core", "dev");
+    expect(core.escalate).toBe(false);
+    expect(core.answer).toContain(
+      "- Entry points: the main file `packages/core/src/index.ts` [packages/core/package.json:5], the script `build` [packages/core/package.json:7].",
+    );
+    expect(core.answer).toContain("- Depended on by: @tools/cli [packages/cli/src/commands/count.ts:4].");
+    // Business words drop its build script: its parts and who leans on it are all that is left, thin.
+    const coreBiz = ex("sys:packages-core", "business");
+    expect(coreBiz.counts).toEqual({ prose: 0, facts: 2 });
+    expect(coreBiz.escalate).toBe(true);
+
+    // A module: its files by PageRank, its neighbours (another system's module named with its system), its tests.
+    const mod = ex("mod:packages-cli-src-commands", "dev");
+    expect(mod.escalate).toBe(false);
+    expect(mod.answer).toContain(
+      "- It holds the files: `packages/cli/src/commands/greet.ts` [packages/cli/src/commands/greet.ts:1], `packages/cli/src/commands/count.ts` [packages/cli/src/commands/count.ts:1].",
+    );
+    expect(mod.answer).toContain("- It depends on: `Src` (@tools/core) [packages/cli/src/commands/count.ts:4].");
+    expect(mod.answer).toContain("- Depended on by: `Src` [packages/cli/src/cli.ts:8].");
+    const modBiz = ex("mod:packages-cli-src-commands", "business");
+    expect(bullets(modBiz)).toEqual([
+      "- Its main parts: Greet [packages/cli/src/commands/greet.ts:1], Count [packages/cli/src/commands/count.ts:1].",
+      "- It depends on: Src (@tools/core) [packages/cli/src/commands/count.ts:4].",
+      "- Depended on by: Src [packages/cli/src/cli.ts:8].",
+      "- Automated tests check it: Greet test [packages/cli/test/greet.test.ts:1].",
+    ]);
+
+    for (const id of ["sys:packages-cli", "sys:packages-core", "mod:packages-cli-src-commands", "mod:packages-core-src"]) {
+      const b = bullets(ex(id, "business")).join("\n");
+      expect(b, id).not.toMatch(/runGreet|runCount|countWords|`/);
+      expect(b.replace(/\[[^\]]+\]/g, ""), id).not.toMatch(/packages\/|\.ts\b|\.json\b/);
+    }
+
+    // French templates.
+    const fr = ex("sys:packages-cli", "business", "fr");
+    expect(fr.answer).toContain("- Il démarre depuis : la commande tool [packages/cli/package.json:6], le script start [packages/cli/package.json:9].");
+    expect(fr.answer).toContain("- Il dépend de : @tools/core [packages/cli/src/commands/count.ts:4].");
+  });
+
+  it("cites a neighbour at the call underneath, and never pins a shared file on two capabilities", async () => {
+    const repo = await builtShop(cleanups as (() => void)[]);
+    const ctx = explainContext(liveView(repo));
+    const api = explainNode(ctx, "sys:api", { mode: "business" })!;
+    expectLensGrade(repo, api);
+    expect(bullets(api)).toEqual(
+      expect.arrayContaining([
+        "- Its main modules: Routes [src/routes/orders.ts:1], Services [src/services/orders.ts:1], Src [src/server.ts:1].",
+        "- It starts from: the script dev [package.json:7].",
+        "- It depends on: Database [src/services/orders.ts:1].",
+        "- Automated tests check it: Server test [src/server.test.ts:1].",
+      ]),
+    );
+    const services = explainNode(ctx, "mod:src-services", { mode: "dev" })!;
+    expect(services.answer).toContain("- Depended on by: `Routes` [src/routes/orders.ts:7].");
+    expect(services.answer).toContain("- It depends on: `Src @ Database` [src/services/orders.ts:1].");
+    // src/routes/orders.ts serves both order capabilities: no call from one's member to the other's, no dependency.
+    for (const id of ["cap:ordering", "cap:order-tracking"]) {
+      const x = explainNode(ctx, id, { mode: "dev" })!;
+      expectLensGrade(repo, x);
+      expect(x.answer, id).not.toMatch(/depends on|Depended on by/);
+    }
+  });
+
+  it("names its most changed files when the view measured churn, and still escalates a thin group", async () => {
+    const { dir, cleanup } = copyFixture("cli-workspace");
+    cleanups.push(cleanup);
+    gitInit(dir);
+    for (const n of [1, 2]) {
+      writeFileSync(join(dir, "packages/cli/src/commands/greet.ts"), `${readFileSync(join(dir, "packages/cli/src/commands/greet.ts"), "utf8")}// ${n}\n`);
+      git(dir, ["commit", "-qam", `greet ${n}`]);
+    }
+    await buildMap({ repo: dir, ast: false, builtAt: "2026-01-01T00:00:00.000Z" });
+    // The CLI reads churn from the view the last build wrote, as the side panel does.
+    const c = captureIo();
+    expect(await main(["explain", "sys:packages-cli", "--repo", dir, "--mode", "dev", "--json"], c.io)).toBe(0);
+    const x = JSON.parse(c.out()) as Explanation;
+    expect(x.answer).toContain(
+      "- Its most changed files lately: `packages/cli/src/commands/greet.ts` [packages/cli/src/commands/greet.ts:1], `packages/cli/package.json` [packages/cli/package.json:1], `packages/cli/src/cli.ts` [packages/cli/src/cli.ts:1], `packages/cli/src/commands/count.ts` [packages/cli/src/commands/count.ts:1].",
+    );
+    expectLensGrade(dir, x);
+
+    // One file, no neighbour, no test, no manifest: its parts alone are thin.
+    const thin = explainNode(explainContext(liveView(dir)), "mod:packages-core-src-text", { mode: "business" })!;
+    expect(thin.counts).toEqual({ prose: 0, facts: 2 });
+    expect(thin.escalate).toBe(true);
   });
 });
 

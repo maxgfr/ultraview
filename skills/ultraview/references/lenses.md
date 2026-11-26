@@ -142,10 +142,13 @@ is this?" instantly from what is already proven: the node's checked prose
 resolve), its extractor facts (a route's method, path and handler, an
 entity's fields and relations, a job's schedule) and its neighbourhood
 (callers and callees from the engine's call sites, data read and written,
-routes served, externals reached), every sentence cited where its evidence
-sits. `business` never names a symbol or a file; `dev` does. The templates are
+routes served, externals reached; for a system, a module or a capability,
+its main modules or files, its entry points, the systems or modules it depends
+on and that depend on it, its tests and its most changed files), every
+sentence cited where its evidence sits. `business` never names a symbol or a file; `dev` does. The templates are
 in English and French (`--lang fr`); any other language falls back to English
 and says so (`langFallback`). The result has the lens answer's shape
 (`answer`, `nodes`, `edges`) plus `citations` and `escalate`: true when the
-node has no prose and fewer than 2 facts beyond what it is. Then the facts
+node has no prose and fewer than 2 facts beyond what it is (3 for a system, a
+module or a capability). Then the facts
 are thin: ask the question as a lens instead.

@@ -20,6 +20,7 @@ import { latestChange } from "./model/load.js";
 import { TIMELINE_SOURCES, type TimelineItem, type TimelineSource } from "./model/types.js";
 import type { Problem } from "./model/validate.js";
 import { viewPaths } from "./paths.js";
+import { freshView } from "./refresh.js";
 import { type SaveResult, saveFlow, saveLens } from "./save.js";
 import { type IdRepair, repairLines } from "./gates.js";
 import { openFile, renderMap } from "./render.js";
@@ -461,7 +462,8 @@ async function cmdExplain(p: Parsed, io: Io): Promise<number> {
   if (!(EXPLAIN_MODES as readonly string[]).includes(mode)) return usage(io, `--mode must be one of ${EXPLAIN_MODES.join(", ")} (got ${mode})`);
   const lang = p.values.lang;
   if (lang !== undefined && !LANG_RE.test(lang)) return usage(io, `--lang must be a language tag such as en, fr or pt-BR (got ${lang})`);
-  const live = liveView(p.values.repo ?? ".");
+  // The view serve answers from: churn carried over from the last build, as the side panel shows it.
+  const live = freshView(p.values.repo ?? ".");
   const x = explainNode(explainContext(live), id, { mode: mode as ExplainMode, lang });
   if (!x) return unknownId(p, io, id, similarIds(live.view, id));
   io.out(p.bools.has("json") ? json(x) : formatExplanation(x));

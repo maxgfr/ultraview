@@ -12,7 +12,16 @@
 //     was found;
 //   - the neighbourhood: callers and callees (codeindex call sites, resolved
 //     through the import graph), data read and written, routes served,
-//     externals reached, each cited at the line its evidence sits on.
+//     externals reached, each cited at the line its evidence sits on;
+//   - for a system, a module or a capability, what it is made of and what it
+//     leans on: its main modules or files (by PageRank, cited at the file),
+//     its entry points (the bin / main / scripts of the package.json or
+//     pyproject.toml its files hold or point at, cited at the manifest's line;
+//     the only files read here, once per view), the systems / modules /
+//     capabilities it depends on and that depend on it (view edges, cited at a
+//     call site of the file-level edge underneath, else at the importing file),
+//     the tests covering its files and its most changed files (cited at the
+//     file).
 //
 // Every other sentence is a template (src/explain-strings.ts) filled with
 // facts, one per line, so the answer passes the lens rules: every sentence
@@ -20,12 +29,13 @@
 // (labels, capabilities, data names); `dev` does. `escalate` says the facts
 // are thin, so the viewer can offer the agent instead.
 
-import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
-import { checkCitations, fileLineTable, loadCache } from "./engine.js";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { join, posix } from "node:path";
+import { checkCitations, codeindex, fileLineTable, loadCache } from "./engine.js";
 import { type ExplainKey, type ExplainLang, EXPLAIN_LANGS, explainText } from "./explain-strings.js";
 import { type CallFact, type EntityFact, type EntityUseFact, type Facts, type JobFact, RPC_METHODS, type RouteFact, type ScreenFact } from "./extract/types.js";
-import { entityId, FOUNDATIONS_CAP, fileOfId, jobId, routeId, screenId, UNASSIGNED_SYS } from "./model/ids.js";
+import { humanizeSegment } from "./model/assemble.js";
+import { entityId, FOUNDATIONS_CAP, fileOfId, jobId, kindOf, routeId, screenId, UNASSIGNED_SYS } from "./model/ids.js";
 import type { LoadedInputs } from "./model/load.js";
 import { splitSentences, uncitedSentences } from "./model/prose.js";
 import type { LensEdge, ViewEdge, ViewEdgeKind, ViewModel, ViewNode } from "./model/types.js";
@@ -43,6 +53,13 @@ export const EXPLAIN_LIST = 6;
  * what it is: the answer would only restate its kind and place.
  */
 export const ESCALATE_FACTS = 2;
+/**
+ * The same bar for a system, a module or a capability, higher: its parts, its
+ * tests and its neighbours are there for almost any group, so two of them
+ * still say little about what it does. Fewer than this many fact sentences and
+ * no prose: escalate.
+ */
+export const ESCALATE_GROUP_FACTS = 3;
 /** A language tag `--lang` / `lang` accepts (BCP-47-ish: `fr`, `pt-BR`, `zh-Hant`). */
 export const LANG_RE = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{1,8}){0,3}$/;
 
@@ -63,7 +80,7 @@ export interface Explanation {
   citations: string[];
   /** Prose sentences kept and fact sentences written (beyond what the node is). */
   counts: { prose: number; facts: number };
-  /** The facts are thin (no prose, fewer than ESCALATE_FACTS facts): offer the agent. */
+  /** The facts are thin (no prose, fewer than ESCALATE_FACTS facts, ESCALATE_GROUP_FACTS for a system / module / capability): offer the agent. */
   escalate: boolean;
   source: "facts";
 }
@@ -72,6 +89,26 @@ export interface Explanation {
 interface FileCall {
   name: string;
   line: number;
+  receiver?: string;
+}
+
+/** One entry point a manifest declares, at the line it sits on. */
+interface ManifestEntry {
+  kind: "bin" | "main" | "script";
+  name: string;
+  line: number;
+  /** bin / main: the path (or `module:function`) it starts. */
+  target?: string;
+  /** script: its command line. */
+  command?: string;
+}
+
+/** A package.json or pyproject.toml of the view, and the entry points it declares. */
+interface ManifestInfo {
+  rel: string;
+  /** Its directory, repo-relative ("" at the root). */
+  dir: string;
+  entries: ManifestEntry[];
 }
 
 /** A node defined in a file, with the lines it spans. */
@@ -89,6 +126,7 @@ export interface ExplainContext {
   inputs: LoadedInputs["inputs"];
   lines: Map<string, number>;
   out: Map<string, ViewEdge[]>;
+  inn: Map<string, ViewEdge[]>;
   children: Map<string, ViewNode[]>;
   holders: Map<string, Holder[]>;
   symsByName: Map<string, ViewNode[]>;
@@ -106,6 +144,14 @@ export interface ExplainContext {
   extsByFile: Map<string, Facts["externals"]>;
   /** File → its call sites, from the codeindex extraction cache (loaded on first use). */
   callSites: () => Map<string, FileCall[]>;
+  /** File → the test files covering it (codeindex test map, computed on first use). */
+  testsOf: () => Map<string, string[]>;
+  /** The manifests of the view with their entry points (read on first use). */
+  manifests: () => ManifestInfo[];
+  /** The enclosing module (slice) or system of a node, memoized. */
+  ancestor: (id: string, kind: "mod" | "sys") => string | undefined;
+  /** The names a file exports (its symbols' labels), memoized. */
+  exportsOf: (rel: string) => Set<string>;
 }
 
 const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -131,11 +177,108 @@ function loadFileCalls(root: string | undefined): Map<string, FileCall[]> {
     if (calls?.length)
       sites.set(
         rel,
-        calls.map((c) => ({ name: c.name, line: c.line })),
+        calls.map((c) => ({ name: c.name, line: c.line, ...(c.receiver ? { receiver: c.receiver } : {}) })),
       );
   }
   siteCache = { key, sites };
   return sites;
+}
+
+/** `make` run on the first call, its value kept. */
+function once<T>(make: () => T): () => T {
+  let value: { v: T } | undefined;
+  return () => (value ??= { v: make() }).v;
+}
+
+/** The line of every key of a JSON object document, by its path (`bin`, `scripts\0dev`). */
+export function jsonKeyLines(text: string): Map<string, number> {
+  const out = new Map<string, number>();
+  const keys: string[] = [];
+  const open: string[] = [];
+  let line = 1;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "\n") line++;
+    else if (c === "{" || c === "[") open.push(c);
+    else if (c === "}" || c === "]") {
+      open.pop();
+      keys.length = Math.min(keys.length, open.length);
+    } else if (c === '"') {
+      let str = "";
+      for (i++; i < text.length && text[i] !== '"'; i++) {
+        if (text[i] === "\\") i++;
+        str += text[i];
+      }
+      if (open[open.length - 1] !== "{") continue;
+      let k = i + 1;
+      while (k < text.length && /\s/.test(text[k]!)) k++;
+      if (text[k] !== ":") continue;
+      keys.length = open.length - 1;
+      keys.push(str);
+      out.set(keys.join("\0"), line);
+    }
+  }
+  return out;
+}
+
+/** The entry points of a package.json: its bin commands, its main file, its scripts. */
+function packageEntries(text: string): ManifestEntry[] {
+  let pkg: { name?: unknown; bin?: unknown; main?: unknown; scripts?: unknown };
+  try {
+    pkg = JSON.parse(text) ?? {};
+  } catch {
+    return [];
+  }
+  if (typeof pkg !== "object") return [];
+  const lines = jsonKeyLines(text);
+  const entries: ManifestEntry[] = [];
+  const add = (e: Omit<ManifestEntry, "line">, key: string) => {
+    const line = lines.get(key);
+    if (line) entries.push({ ...e, line });
+  };
+  if (typeof pkg.bin === "string" && typeof pkg.name === "string") add({ kind: "bin", name: pkg.name.split("/").pop()!, target: pkg.bin }, "bin");
+  else if (pkg.bin && typeof pkg.bin === "object")
+    for (const [name, target] of Object.entries(pkg.bin)) if (typeof target === "string") add({ kind: "bin", name, target }, `bin\0${name}`);
+  if (typeof pkg.main === "string") add({ kind: "main", name: pkg.main, target: pkg.main }, "main");
+  if (pkg.scripts && typeof pkg.scripts === "object")
+    for (const [name, command] of Object.entries(pkg.scripts)) if (typeof command === "string") add({ kind: "script", name, command }, `scripts\0${name}`);
+  return entries;
+}
+
+/** The console scripts of a pyproject.toml (`[project.scripts]`, `[tool.poetry.scripts]`). */
+function pyprojectEntries(text: string): ManifestEntry[] {
+  const entries: ManifestEntry[] = [];
+  let section = "";
+  text.split("\n").forEach((l, i) => {
+    const head = /^\s*\[([^\]]+)\]\s*$/.exec(l);
+    if (head) section = head[1]!.trim();
+    else if (section === "project.scripts" || section === "tool.poetry.scripts") {
+      const m = /^\s*"?([\w.-]+)"?\s*=\s*"([^"]+)"/.exec(l);
+      if (m) entries.push({ kind: "bin", name: m[1]!, target: m[2]!, line: i + 1 });
+    }
+  });
+  return entries;
+}
+
+/** Every package.json / pyproject.toml file node of the view, read and parsed. */
+function loadManifests(root: string | undefined, nodes: readonly ViewNode[]): ManifestInfo[] {
+  if (!root) return [];
+  const out: ManifestInfo[] = [];
+  for (const n of nodes) {
+    if (n.kind !== "file") continue;
+    const rel = n.id.slice("file:".length);
+    const base = rel.slice(rel.lastIndexOf("/") + 1);
+    if (base !== "package.json" && base !== "pyproject.toml") continue;
+    let text: string;
+    try {
+      text = readFileSync(join(root, rel), "utf8");
+    } catch {
+      continue;
+    }
+    const entries = base === "package.json" ? packageEntries(text) : pyprojectEntries(text);
+    if (entries.length) out.push({ rel, dir: rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "", entries });
+  }
+  return out;
 }
 
 const contexts = new WeakMap<ViewModel, ExplainContext>();
@@ -148,10 +291,12 @@ export function explainContext(live: { view: ViewModel; byId: Map<string, ViewNo
   const inputs = live.loaded.inputs;
   const facts = inputs.facts;
   const out = new Map<string, ViewEdge[]>();
+  const inn = new Map<string, ViewEdge[]>();
   const imports = new Map<string, Set<string>>();
   const importers = new Map<string, Set<string>>();
   for (const e of view.edges) {
     push(out, e.from, e);
+    push(inn, e.to, e);
     if (e.kind === "import" && e.from.startsWith("file:") && e.to.startsWith("file:")) {
       const a = e.from.slice(5);
       const b = e.to.slice(5);
@@ -166,6 +311,9 @@ export function explainContext(live: { view: ViewModel; byId: Map<string, ViewNo
   const jobFacts = new Map(facts.jobs.map((j) => [jobId(j.id), j]));
   const entityFacts = new Map(facts.entities.map((e) => [entityId(e.name), e]));
   const children = new Map<string, ViewNode[]>();
+  const modOf = new Map<string, string | undefined>();
+  const sysOf = new Map<string, string | undefined>();
+  const exportsByFile = new Map<string, Set<string>>();
   const holders = new Map<string, Holder[]>();
   const symsByName = new Map<string, ViewNode[]>();
   for (const n of view.nodes) {
@@ -184,6 +332,7 @@ export function explainContext(live: { view: ViewModel; byId: Map<string, ViewNo
     inputs,
     lines: fileLineTable(inputs.graph),
     out,
+    inn,
     children,
     holders,
     symsByName,
@@ -200,6 +349,24 @@ export function explainContext(live: { view: ViewModel; byId: Map<string, ViewNo
     extsById: new Map(),
     extsByFile: new Map(),
     callSites: () => loadFileCalls(inputs.root),
+    testsOf: once(() => codeindex.computeTestMap(inputs.graph).testedByFile),
+    manifests: once(() => loadManifests(inputs.root, view.nodes)),
+    ancestor: (id, kind) => {
+      const memo = kind === "mod" ? modOf : sysOf;
+      if (memo.has(id)) return memo.get(id);
+      let cur = byId.get(id);
+      while (cur && cur.kind !== kind) cur = cur.parent ? byId.get(cur.parent) : undefined;
+      memo.set(id, cur?.id);
+      return cur?.id;
+    },
+    exportsOf: (rel) => {
+      let names = exportsByFile.get(rel);
+      if (!names) {
+        names = new Set((children.get(`file:${rel}`) ?? []).filter((x) => x.kind === "sym").map((x) => x.label));
+        exportsByFile.set(rel, names);
+      }
+      return names;
+    },
   };
   for (const c of facts.calls) {
     push(ctx.callsByFile, c.file, c);
@@ -290,13 +457,20 @@ class Writer {
     if (cite) this.line(`${this.t(key, params)} ${cite}`, true);
   }
 
-  /** A list sentence: `key` with `{list}` = the items, each followed by its citation; merged by name, first cite kept. */
+  /**
+   * A list sentence: `key` with `{list}` = the items, each followed by its
+   * citation; merged by name, first cite kept. Only the items it names (the
+   * first EXPLAIN_LIST names) add their nodes and edges: a system's 2000
+   * symbols stay "and 1994 more", not 2000 highlighted nodes.
+   */
   list(key: ExplainKey, items: Item[], params: Record<string, string | number> = {}): void {
     const seen = new Map<string, Item>();
     for (const i of items) if (!seen.has(i.name)) seen.set(i.name, i);
     const uniq = [...seen.values()];
     if (!uniq.length) return;
+    const named = new Set(uniq.slice(0, EXPLAIN_LIST).map((i) => i.name));
     for (const i of items) {
+      if (!named.has(i.name)) continue;
       if (i.node) this.nodes.add(i.node);
       if (i.edge) this.edges.set(`${i.edge.from}\n${i.edge.to}\n${i.edge.kind ?? ""}`, i.edge);
     }
@@ -328,12 +502,14 @@ class Writer {
 
   /** How the answer names a node: code names in dev, plain words in business (never a symbol or a file). */
   name(n: ViewNode): string {
+    // A module slice shares its module's label: its qualifier tells them apart.
+    const label = n.slice ? `${n.label} ${n.slice.qualifier}` : n.label;
     if (this.dev) {
       if (n.kind === "file") return `\`${fileOfId(n.id)}\``;
-      if (n.kind === "cap" || n.kind === "sys") return n.label;
-      return `\`${n.label}\``;
+      if (n.kind === "cap" || n.kind === "sys") return label;
+      return `\`${label}\``;
     }
-    return n.kind === "sym" || n.kind === "file" ? this.place(n) : n.label;
+    return n.kind === "sym" || n.kind === "file" ? this.place(n) : label;
   }
 
   /** Where a node sits, in plain words: its capabilities, else its system, else its module. */
@@ -693,37 +869,288 @@ function explainFile(w: Writer, n: ViewNode): void {
   explainFiles(w, n, [n], w.ctx.children.get(n.id) ?? []);
 }
 
-/** Module, system or capability: what its files declare and use. */
+/** A file in plain words: its stem humanized (`order-history.ts` → `Order history`), its folder's for an index file. */
+function fileWords(rel: string): string {
+  const parts = rel.split("/");
+  const stem = parts[parts.length - 1]!.replace(/\.[^.]+$/, "");
+  const generic = /^(index|main|mod|__init__|__main__|init)$/i.test(stem) && parts.length > 1;
+  return humanizeSegment(generic ? parts[parts.length - 2]! : stem);
+}
+
+/** A file named by the mode: its path in dev, plain words in business. */
+function fileItem(w: Writer, rel: string): Item | undefined {
+  const cite = w.cite(rel, 1);
+  if (!cite) return undefined;
+  return { name: w.dev ? `\`${rel}\`` : fileWords(rel), cite, node: `file:${rel}` };
+}
+
+const byPagerank = (a: ViewNode, b: ViewNode) => b.metrics.pagerank - a.metrics.pagerank || cmp(a.id, b.id);
+
+/** The code files among `files`, or all of them when none is code (a group of docs or configs). */
+function codeFirst(files: ViewNode[]): ViewNode[] {
+  const code = files.filter((f) => f.tags.includes("code"));
+  return code.length ? code : files;
+}
+
+/** A system's or a capability's main modules, by PageRank, each cited at its most central file of the group. */
+function mainModules(w: Writer, n: ViewNode, files: ViewNode[]): void {
+  const byMod = new Map<string, ViewNode[]>();
+  for (const f of codeFirst(files)) if (f.parent && w.ctx.byId.get(f.parent)?.kind === "mod") push(byMod, f.parent, f);
+  // A system ranks its modules by their own PageRank; a capability by the PageRank of its files in each.
+  const score = (id: string) => (n.kind === "sys" ? w.ctx.byId.get(id)!.metrics.pagerank : byMod.get(id)!.reduce((k, f) => k + f.metrics.pagerank, 0));
+  const items = [...byMod.keys()]
+    .sort((a, b) => score(b) - score(a) || cmp(a, b))
+    .flatMap((id): Item[] => {
+      const top = [...byMod.get(id)!].sort(byPagerank)[0]!;
+      const cite = w.cite(fileOfId(top.id)!, 1);
+      return cite ? [{ name: w.name(w.ctx.byId.get(id)!), cite, node: id }] : [];
+    });
+  w.list("rel.mainModules", items);
+}
+
+/** `target` (a manifest path, or a Python `module:function`) as a file of the group, when it is one. */
+function entryFile(dir: string, target: string, has: (rel: string) => boolean): string | undefined {
+  const at = (p: string) => posix.normalize(dir ? `${dir}/${p}` : p).replace(/^\.\//, "");
+  const tries: string[] = [];
+  if (/^[\w.]+:[\w.]+$/.test(target)) {
+    const mod = target.split(":")[0]!.replace(/\./g, "/");
+    tries.push(at(`${mod}.py`), at(`src/${mod}.py`), at(`${mod}/__init__.py`), at(`src/${mod}/__init__.py`));
+  } else {
+    const base = at(target);
+    if (base.startsWith("..")) return undefined;
+    const prefix = dir ? `${dir}/` : "";
+    const rest = base.startsWith(prefix) ? base.slice(prefix.length) : base;
+    for (const p of [base, `${prefix}${rest.replace(/^(dist|build|out|lib)\//, "src/")}`]) {
+      tries.push(p);
+      const stem = p.replace(/\.[cm]?[jt]sx?$/, "");
+      for (const ext of [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]) tries.push(`${stem}${ext}`);
+    }
+  }
+  return tries.find(has);
+}
+
+/**
+ * Where the group starts: the bin commands, main file and scripts of a
+ * manifest it holds (all of them in dev), or of a manifest above it (only the
+ * ones starting one of its files); in dev, also its CLI-shaped files.
+ */
+function entryPoints(w: Writer, files: ViewNode[], all: ViewNode[]): void {
+  const own = new Set(all.map((f) => fileOfId(f.id)!));
+  const code = new Set(files.filter((f) => f.tags.includes("code")).map((f) => fileOfId(f.id)!));
+  const has = (rel: string) => code.has(rel);
+  const dirs = new Set<string>();
+  for (const rel of code) for (let i = rel.lastIndexOf("/"); i > 0; i = rel.lastIndexOf("/", i - 1)) dirs.add(rel.slice(0, i));
+  const bins: Item[] = [];
+  const mains: Item[] = [];
+  const started: Item[] = [];
+  const scripts: Item[] = [];
+  for (const m of w.ctx.manifests()) {
+    const owned = own.has(m.rel);
+    if (!owned && m.dir && !dirs.has(m.dir)) continue;
+    for (const e of m.entries) {
+      const cite = w.cite(m.rel, e.line);
+      if (!cite) continue;
+      const file = e.target !== undefined ? entryFile(m.dir, e.target, has) : undefined;
+      const node = file ? `file:${file}` : undefined;
+      if (e.kind === "bin" && (owned || file))
+        bins.push({ name: w.t(w.dev ? "entry.bin.dev" : "entry.bin.business", { name: e.name }), cite, ...(node ? { node } : {}) });
+      else if (e.kind === "main" && w.dev && (owned || file))
+        mains.push({ name: w.t("entry.main", { name: file ?? e.name }), cite, ...(node ? { node } : {}) });
+      else if (e.kind === "script") {
+        const runs = (e.command ?? "")
+          .split(/\s+/)
+          .map((tok) => tok.replace(/^["']|["']$/g, ""))
+          .map((tok) => posix.normalize(m.dir ? `${m.dir}/${tok}` : tok))
+          .find(has);
+        // Business words: a script counts when it starts one of the group's files; dev lists the package's other scripts too.
+        if (!runs && (!owned || !w.dev)) continue;
+        const item = { name: w.t(w.dev ? "entry.script.dev" : "entry.script.business", { name: e.name }), cite, ...(runs ? { node: `file:${runs}` } : {}) };
+        (runs ? started : scripts).push(item);
+      }
+    }
+  }
+  const cli: Item[] = [];
+  if (w.dev) {
+    const named = new Set([...bins, ...mains].map((i) => i.node));
+    for (const rel of [...code].sort(cmp)) {
+      const base = rel.slice(rel.lastIndexOf("/") + 1);
+      if (named.has(`file:${rel}`) || !(/^(cli|main|__main__)\.\w+$/.test(base) || /(^|\/)bin\//.test(rel))) continue;
+      const item = fileItem(w, rel);
+      if (item) cli.push(item);
+    }
+  }
+  w.list(w.dev ? "rel.entries" : "rel.entries.business", [...bins, ...mains, ...started, ...cli, ...scripts]);
+}
+
+/**
+ * Where a file-level edge rests: the call to the target (a call site of one of
+ * its exports, a route call, a job), else the importing file. Between two
+ * capabilities (`caps`), files are often shared: only a call from a member of
+ * the one to a member of the other counts, and there is no file fallback.
+ */
+function edgeEvidence(w: Writer, e: ViewEdge, caps?: { from: string; to: string }): { cite: string; precise: boolean } | undefined {
+  if (!e.from.startsWith("file:")) return undefined;
+  const fa = e.from.slice("file:".length);
+  const fromOk = (line: number) => !caps || !!w.holderAt(fa, line)?.caps.includes(caps.from);
+  const toOk = (n: ViewNode | undefined) => !caps || !!n?.caps.includes(caps.to);
+  const at = (file: string, line: number | undefined) => {
+    const cite = line !== undefined ? w.cite(file, line) : undefined;
+    return cite ? { cite, precise: true } : undefined;
+  };
+  const first = (lines: number[]) => (lines.length ? Math.min(...lines) : undefined);
+  if (e.to.startsWith("route:")) {
+    if (!toOk(w.ctx.byId.get(e.to))) return undefined;
+    return at(fa, first((w.ctx.callsByFile.get(fa) ?? []).filter((c) => c.route === e.to && fromOk(c.line)).map((c) => c.line)));
+  }
+  if (e.to.startsWith("job:")) {
+    const j = w.ctx.jobFacts.get(e.to);
+    return j && toOk(w.ctx.byId.get(e.to)) ? at(j.file, j.line) : undefined;
+  }
+  if (!e.to.startsWith("file:")) return undefined;
+  const fb = e.to.slice("file:".length);
+  const names = w.ctx.exportsOf(fb);
+  const lines: number[] = [];
+  if (names.size)
+    for (const s of w.ctx.callSites().get(fa) ?? []) {
+      const name = names.has(s.name) ? s.name : s.receiver !== undefined && names.has(s.receiver) ? s.receiver : undefined;
+      if (name === undefined || !fromOk(s.line)) continue;
+      if (caps && !(w.ctx.symsByName.get(name) ?? []).some((x) => x.parent === e.to && toOk(x))) continue;
+      lines.push(s.line);
+    }
+  const call = at(fa, first(lines));
+  if (call || caps) return call;
+  const head = w.cite(fa, 1);
+  return head ? { cite: head, precise: false } : undefined;
+}
+
+/**
+ * The systems / modules / capabilities this one depends on and that depend on
+ * it (the view's rolled-up edges between nodes of its kind), each cited at the
+ * evidence of a file-level edge underneath.
+ */
+function dependencies(w: Writer, n: ViewNode, files: ViewNode[]): void {
+  const level = n.kind as "sys" | "mod" | "cap";
+  const peers = (edges: ViewEdge[] | undefined, key: "from" | "to") => {
+    const m = new Map<string, { weight: number; kind: ViewEdgeKind; top: number }>();
+    for (const e of edges ?? []) {
+      const other = e[key];
+      if (!e.derived || other === n.id || other === FOUNDATIONS_CAP || kindOf(other) !== level || !w.ctx.byId.has(other)) continue;
+      const cur = m.get(other) ?? { weight: 0, kind: e.kind, top: 0 };
+      cur.weight += e.weight;
+      if (e.weight > cur.top) Object.assign(cur, { kind: e.kind, top: e.weight });
+      m.set(other, cur);
+    }
+    return m;
+  };
+  const outs = peers(w.ctx.out.get(n.id), "to");
+  const ins = peers(w.ctx.inn.get(n.id), "from");
+  if (!outs.size && !ins.size) return;
+  const lift = (id: string): string[] => {
+    if (level === "cap") return w.ctx.byId.get(id)?.caps ?? [];
+    const up = w.ctx.ancestor(id, level);
+    return up ? [up] : [];
+  };
+  type Ev = { cite: string; precise: boolean };
+  const outEv = new Map<string, Ev>();
+  const inEv = new Map<string, Ev>();
+  const offer = (found: Map<string, Ev>, other: string, e: ViewEdge, out: boolean) => {
+    if (found.get(other)?.precise) return;
+    const ev = edgeEvidence(w, e, level === "cap" ? (out ? { from: n.id, to: other } : { from: other, to: n.id }) : undefined);
+    if (ev && (ev.precise || !found.has(other))) found.set(other, ev);
+  };
+  for (const f of files) {
+    if (outs.size) for (const e of w.ctx.out.get(f.id) ?? []) for (const t of lift(e.to)) if (outs.has(t)) offer(outEv, t, e, true);
+    if (!ins.size) continue;
+    for (const m of [f, ...(w.ctx.children.get(f.id) ?? [])]) {
+      for (const e of w.ctx.inn.get(m.id) ?? []) {
+        if (!e.from.startsWith("file:") || w.ctx.byId.get(e.from)?.tags.includes("test")) continue;
+        for (const t of lift(e.from)) if (ins.has(t)) offer(inEv, t, e, false);
+      }
+    }
+  }
+  const items = (side: Map<string, { weight: number; kind: ViewEdgeKind }>, found: Map<string, Ev>, out: boolean): Item[] =>
+    [...side.entries()]
+      .sort((a, b) => b[1].weight - a[1].weight || cmp(a[0], b[0]))
+      .flatMap(([other, { kind }]): Item[] => {
+        const ev = found.get(other);
+        if (!ev) return [];
+        const edge = out ? w.edge(n.id, other, kind) : w.edge(other, n.id, kind);
+        // Modules of different systems often share a label (`Src`): the other one's system tells them apart.
+        const sys = level === "mod" ? w.ctx.ancestor(other, "sys") : undefined;
+        const where = sys && sys !== w.ctx.ancestor(n.id, "sys") && !w.ctx.byId.get(other)!.slice ? ` (${w.ctx.byId.get(sys)!.label})` : "";
+        return [{ name: `${w.name(w.ctx.byId.get(other)!)}${where}`, cite: ev.cite, node: other, edge }];
+      });
+  w.list("rel.dependsOn", items(outs, outEv, true));
+  w.list("rel.dependedOnBy", items(ins, inEv, false));
+}
+
+/** The test files covering the group's files, the ones covering most first. */
+function testsOf(w: Writer, files: ViewNode[]): void {
+  const covers = new Map<string, number>();
+  const map = w.ctx.testsOf();
+  for (const f of files) for (const t of map.get(fileOfId(f.id)!) ?? []) covers.set(t, (covers.get(t) ?? 0) + 1);
+  const items = [...covers.entries()]
+    .sort((a, b) => b[1] - a[1] || cmp(a[0], b[0]))
+    .flatMap(([rel]) => {
+      const item = fileItem(w, rel);
+      return item ? [item] : [];
+    });
+  w.list(w.dev ? "rel.tests.dev" : "rel.tests.business", items);
+}
+
+/** The group's files changed the most in the churn window (when the view measured it). */
+function churnOf(w: Writer, files: ViewNode[]): void {
+  const items = files
+    .filter((f) => f.metrics.churn > 0)
+    .sort((a, b) => b.metrics.churn - a.metrics.churn || cmp(a.id, b.id))
+    .flatMap((f) => {
+      const item = fileItem(w, fileOfId(f.id)!);
+      return item ? [item] : [];
+    });
+  w.list(w.dev ? "rel.churn.dev" : "rel.churn.business", items);
+}
+
+/** What a group is made of and leans on: its main parts, entry points, neighbours, tests and recent changes. */
+function madeOf(w: Writer, n: ViewNode, files: ViewNode[], all: ViewNode[]): void {
+  if (n.kind !== "mod") mainModules(w, n, files);
+  else {
+    const ranked = [...codeFirst(files)].sort(byPagerank).flatMap((f) => {
+      const item = fileItem(w, fileOfId(f.id)!);
+      return item ? [item] : [];
+    });
+    w.list(w.dev ? "rel.files" : "rel.mainParts", ranked);
+  }
+  entryPoints(w, files, all);
+  dependencies(w, n, files);
+  testsOf(w, files);
+  churnOf(w, files);
+}
+
+/** Module, system or capability: what its files declare and use, then what it is made of. */
 function explainGroup(w: Writer, n: ViewNode): void {
   const nodes = w.ctx.view.nodes;
+  let all: ViewNode[];
+  if (n.kind === "cap") {
+    all = nodes.filter((x) => x.kind === "file" && x.caps.includes(n.id));
+  } else if (n.kind === "sys") {
+    const mods = new Set((w.ctx.children.get(n.id) ?? []).map((m) => m.id));
+    all = nodes.filter((x) => x.kind === "file" && x.parent !== undefined && mods.has(x.parent));
+  } else all = (w.ctx.children.get(n.id) ?? []).filter((x) => x.kind === "file");
+  // A group of tests only (a test module) is told by its test files.
+  const code = all.filter((f) => !f.tags.includes("test"));
+  const files = code.length ? code : all;
   if (n.kind === "cap") {
     // A capability's own members (claimed, or inherited from a claimed file), and the uses inside them.
-    const files = nodes.filter((x) => x.kind === "file" && x.caps.includes(n.id) && !x.tags.includes("test"));
     const declared = nodes.filter((x) => x.caps.includes(n.id) && x.kind !== "file" && x.kind !== "mod" && x.kind !== "sys");
     explainFiles(w, n, files, declared, (h) => !!h && h.caps.includes(n.id));
-    return;
-  }
-  let files: ViewNode[];
-  if (n.kind === "sys") {
-    const mods = new Set((w.ctx.children.get(n.id) ?? []).map((m) => m.id));
-    files = nodes.filter((x) => x.kind === "file" && x.parent !== undefined && mods.has(x.parent));
-  } else files = (w.ctx.children.get(n.id) ?? []).filter((x) => x.kind === "file");
-  files = files.filter((f) => !f.tags.includes("test"));
-  explainFiles(
-    w,
-    n,
-    files,
-    files.flatMap((f) => w.ctx.children.get(f.id) ?? []),
-  );
-  if (w.dev && n.kind === "mod") {
-    const items = [...files]
-      .sort((a, b) => b.metrics.pagerank - a.metrics.pagerank || cmp(a.id, b.id))
-      .flatMap((f): Item[] => {
-        const cite = w.cite(fileOfId(f.id)!, 1);
-        return cite ? [{ name: w.name(f), cite, node: f.id }] : [];
-      });
-    w.list("rel.files", items);
-  }
+  } else
+    explainFiles(
+      w,
+      n,
+      files,
+      files.flatMap((f) => w.ctx.children.get(f.id) ?? []),
+    );
+  madeOf(w, n, files, all);
 }
 
 /** Explain one node from proven material; undefined when the id is unknown. */
@@ -779,7 +1206,7 @@ export function explainNode(ctx: ExplainContext, id: string, opts: { mode?: Expl
     edges: [...w.edges.values()].sort((a, b) => cmp(a.from, b.from) || cmp(a.to, b.to) || cmp(a.kind ?? "", b.kind ?? "")),
     citations,
     counts: { prose: proseCount, facts: w.facts },
-    escalate: proseCount === 0 && w.facts < ESCALATE_FACTS,
+    escalate: proseCount === 0 && w.facts < (n.kind === "sys" || n.kind === "mod" || n.kind === "cap" ? ESCALATE_GROUP_FACTS : ESCALATE_FACTS),
     source: "facts",
   };
 }
