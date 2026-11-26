@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.9](https://github.com/maxgfr/ultraview/compare/v1.13.8...v1.13.9) (2026-11-26)
+
+
+### Bug Fixes
+
+* **viewer:** wrap long labels on cards ([c3f77ce](https://github.com/maxgfr/ultraview/commit/c3f77ceef07e55d2dacce81e71e7e7a4879c5a4f)), closes [#14](https://github.com/maxgfr/ultraview/issues/14)
+
 ## [1.13.8](https://github.com/maxgfr/ultraview/compare/v1.13.7...v1.13.8) (2026-11-26)
 
 
