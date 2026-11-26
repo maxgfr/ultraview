@@ -73,6 +73,7 @@ export function TopBar(): JSX.Element {
   const api = useApp();
   const { ix, state, update, settings, setSettings } = api;
   const [menu, setMenu] = useState(false);
+  const [sumOpen, setSumOpen] = useState(false);
   const n = counts(api);
   const summary = ix.view.app.summary ? stripCites(ix.view.app.summary) : "";
   const tour = ix.view.tour ?? [];
@@ -82,11 +83,25 @@ export function TopBar(): JSX.Element {
   return (
     <header class="top">
       <div class="brand">
-        <h1 class="app-name">{ix.view.app.name}</h1>
+        <h1 class="app-name" title={ix.view.app.name}>
+          {ix.view.app.name}
+        </h1>
         {summary ? (
-          <p class="app-sum" title={summary}>
+          <button
+            type="button"
+            class={`app-sum${sumOpen ? " open" : ""}`}
+            aria-expanded={sumOpen}
+            title={sumOpen ? t("top.summaryLess") : t("top.summaryMore")}
+            onClick={() => setSumOpen((o) => !o)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && sumOpen) {
+                e.stopPropagation();
+                setSumOpen(false);
+              }
+            }}
+          >
             {summary}
-          </p>
+          </button>
         ) : null}
       </div>
       <nav class="views" aria-label={t("top.views")}>
@@ -96,18 +111,31 @@ export function TopBar(): JSX.Element {
             type="button"
             class={`view-tab${state.view === v ? " on" : ""}`}
             aria-current={state.view === v ? "page" : undefined}
+            aria-label={n[v] ? `${t(`view.${v}`)} (${n[v]})` : t(`view.${v}`)}
             title={t(`view.${v}`)}
             onClick={() => update({ view: v, tour: undefined }, "push")}
           >
             <Icon name={VIEW_ICON[v]} size={14} />
-            <span class="view-label">{t(`view.${v}`)}</span>
-            {n[v] ? <span class="count">{n[v]}</span> : null}
+            <span class="view-label" aria-hidden="true">
+              {t(`view.${v}`)}
+            </span>
+            {n[v] ? (
+              <span class="count" aria-hidden="true">
+                {n[v]}
+              </span>
+            ) : null}
           </button>
         ))}
       </nav>
       <div class="top-actions">
         {tour.length ? (
-          <button type="button" class="btn btn-primary" title={t("top.startHere")} onClick={() => update({ tour: 0, view: "map" }, "push")}>
+          <button
+            type="button"
+            class="btn btn-primary"
+            title={t("top.startHere")}
+            aria-label={t("top.startHere")}
+            onClick={() => update({ tour: 0, view: "map" }, "push")}
+          >
             <Icon name="play" size={12} />
             <span class="start-label">{t("top.startHere")}</span>
           </button>
@@ -131,7 +159,14 @@ export function TopBar(): JSX.Element {
             </button>
           ))}
         </div>
-        <button type="button" class="search-btn" onClick={() => update({ searchOpen: true })} aria-keyshortcuts={mac ? "Meta+K" : "Control+K"}>
+        <button
+          type="button"
+          class="search-btn"
+          title={t("top.search")}
+          aria-label={t("top.search")}
+          onClick={() => update({ searchOpen: true })}
+          aria-keyshortcuts={mac ? "Meta+K" : "Control+K"}
+        >
           <Icon name="search" size={14} />
           <span>{t("top.search")}</span>
           <kbd>{mac ? "⌘K" : "Ctrl K"}</kbd>

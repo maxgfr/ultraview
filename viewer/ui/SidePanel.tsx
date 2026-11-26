@@ -5,6 +5,7 @@ import type { JSX } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import { ancestors, type AnyKind, type Index, locationOf, pathOf, type XEdge, type XNode } from "../lib/data.js";
 import { num, t } from "../lib/i18n.js";
+import { nodeLabels } from "../lib/labels.js";
 import { drillTarget } from "../lib/nav.js";
 import { askAboutNode } from "../lib/prompts.js";
 import { useApp } from "./context.js";
@@ -14,25 +15,27 @@ import { CiteChip, LocationChip, Prose } from "./Prose.js";
 
 const LIST_CAP = 40;
 
-function NodeLink({ id, note }: { id: string; note?: string }): JSX.Element {
+function NodeLink({ id, note, label }: { id: string; note?: string; label?: string }): JSX.Element {
   const { ix, select } = useApp();
   const n = ix.byId.get(id);
   return (
     <button type="button" class="node-link" onClick={() => select(id)}>
       <Icon name={n?.kind ?? "dot"} size={14} />
-      <span class="node-link-label">{n?.label ?? id}</span>
+      <span class="node-link-label">{label ?? n?.label ?? id}</span>
       {note ? <span class="node-link-note">{note}</span> : null}
     </button>
   );
 }
 
 function NodeList({ ids, notes }: { ids: string[]; notes?: Map<string, string> }): JSX.Element {
+  const { ix } = useApp();
   const shown = ids.slice(0, LIST_CAP);
+  const labels = nodeLabels(ix, shown);
   return (
     <ul class="node-list">
       {shown.map((id) => (
         <li key={id}>
-          <NodeLink id={id} note={notes?.get(id)} />
+          <NodeLink id={id} note={notes?.get(id)} label={labels.get(id)} />
         </li>
       ))}
       {ids.length > LIST_CAP ? <li class="muted small">{t("panel.andMore", { count: ids.length - LIST_CAP })}</li> : null}

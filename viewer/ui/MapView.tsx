@@ -1,6 +1,7 @@
 // The Map: level switcher, the semantic-zoom graph (or its accessible list),
-// breadcrumb, legend, the "show all" affordance for clustered levels, and the
-// change overlay / spotlight banners.
+// breadcrumb, legend, the "show all" affordance for views grouped by folder,
+// the open-aggregate, change overlay and spotlight banners, and the Business
+// empty state of a map without a business model.
 
 import type { JSX } from "preact";
 import { useMemo, useRef } from "preact/hooks";
@@ -9,7 +10,8 @@ import type { Index } from "../lib/data.js";
 import { t } from "../lib/i18n.js";
 import {
   buildScene,
-  CLUSTER_LIMIT,
+  type FreeKind,
+  GROUP_LIMIT,
   type Level,
   levelsFor,
   locate,
@@ -20,9 +22,11 @@ import {
   type ViewerAudience,
 } from "../lib/levels.js";
 import { breadcrumb } from "../lib/nav.js";
+import { businessMapPrompt } from "../lib/prompts.js";
 import { useApp } from "./context.js";
 import { Graph, graphCommand } from "./Graph.js";
 import { Icon } from "./icons.js";
+import { perfStart, perfTime } from "./perf.js";
 import { SceneList } from "./SceneList.js";
 
 const sceneCache = new Map<string, Scene>();
@@ -32,7 +36,7 @@ export function sceneFor(ix: Index, version: number, map: MapState, audience: Vi
   const key = `${version}\n${sceneKey(map, audience)}`;
   const hit = sceneCache.get(key);
   if (hit) return hit;
-  const s = buildScene(ix, map, audience);
+  const s = perfTime("scene", () => buildScene(ix, map, audience));
   if (sceneCache.size > 64) sceneCache.clear();
   sceneCache.set(key, s);
   return s;
@@ -48,7 +52,33 @@ export function spotIds(ix: Index, scene: Scene, ids: readonly string[]): Set<st
   return out;
 }
 
-const EDGE_LEGEND = ["call", "import", "http", "data", "event", "queue", "extends", "config", "uses"] as const;
+const EDGE_LEGEND = ["call", "import", "uses", "http", "data", "event", "queue", "extends", "config"] as const;
+const FREE_KINDS: readonly FreeKind[] = ["entity", "ext", "infra"];
+
+/** Business without a business map: what it would show, and the prompt that writes it. */
+function BusinessEmpty({ onSystems }: { onSystems: () => void }): JSX.Element {
+  const { ix, copy } = useApp();
+  const prompt = businessMapPrompt(ix.view.app.name);
+  return (
+    <div class="empty biz-empty">
+      <Icon name="cap" size={28} />
+      <h2>{t("biz.emptyTitle")}</h2>
+      <p>{t("biz.emptyBody")}</p>
+      <p class="muted small">{t("biz.emptyHow")}</p>
+      <pre class="prompt-box">{prompt}</pre>
+      <div class="empty-actions">
+        <button type="button" class="btn btn-primary" onClick={() => copy(prompt, t("toast.promptCopied"))}>
+          <Icon name="copy" size={14} />
+          {t("biz.copyPrompt")}
+        </button>
+        <button type="button" class="btn" onClick={onSystems}>
+          <Icon name="sys" size={14} />
+          {t("biz.openSystems")}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function Legend({ scene }: { scene: Scene }): JSX.Element | null {
   const kinds = new Set(scene.edges.map((e) => e.kind));
@@ -97,10 +127,41 @@ export function MapView(): JSX.Element {
   }, [overlayView, scene]);
   const center = state.center ? { id: locate(ix, scene, state.center.id) ?? state.center.id, nonce: state.center.nonce } : undefined;
 
-  const setLevel = (level: Level) => update({ map: { level }, spotlight: undefined }, "push");
-  const onSelect = (n: SceneNode | undefined) => select(n?.ref);
-  const onActivate = (n: SceneNode) => (n.role === "ghost" ? api.reveal(n.ref) : drill(n.id));
+  const setLevel = (level: Level) => {
+    perfStart(`level ${state.map.level} → ${level}`);
+    update({ map: { level }, spotlight: undefined }, "push");
+  };
+  const openGroup = (group: string) => {
+    perfStart(`open folder ${group}`);
+    update(
+      {
+        map: { level: state.map.level, ...(state.map.focus ? { focus: state.map.focus } : {}), group, ...(state.map.open ? { open: state.map.open } : {}) },
+        selected: undefined,
+        spotlight: undefined,
+      },
+      "push",
+    );
+  };
+  const setOpen = (kind: FreeKind, on: boolean) => {
+    const open = new Set(state.map.open ?? []);
+    if (on) open.add(kind);
+    else open.delete(kind);
+    perfStart(`${on ? "open" : "close"} ${kind}`);
+    update({ map: { ...state.map, open: [...open].sort() } }, "replace");
+  };
+  const onActivate = (n: SceneNode) => {
+    if (n.role === "ghost") api.reveal(n.ref);
+    else if (n.role === "cluster" && n.group !== undefined) openGroup(n.group);
+    else if (n.role === "agg") {
+      if (n.kind === "entity") update({ view: "data", selected: undefined, spotlight: undefined }, "push");
+      else setOpen(n.kind as FreeKind, true);
+    } else drill(n.id);
+  };
+  // Folder cards and aggregate chips stand for many nodes: selecting one opens it.
+  const onSelect = (n: SceneNode | undefined) => (n && (n.role === "agg" || (n.role === "cluster" && n.group !== undefined)) ? onActivate(n) : select(n?.ref));
   const showList = state.listMode || api.narrow;
+  const openKinds = FREE_KINDS.filter((k) => state.map.open?.includes(k));
+  const bizEmpty = state.map.level === "biz" && !ix.hasBusiness && !state.map.focus;
 
   return (
     <div class="map" ref={root}>
@@ -120,7 +181,7 @@ export function MapView(): JSX.Element {
           ))}
         </div>
         <div class="map-tools-right">
-          {!showList ? (
+          {!showList && !bizEmpty ? (
             <>
               <button type="button" class="icon-btn" aria-label={t("map.zoomOut")} title={t("map.zoomOut")} onClick={() => graphCommand(root.current, "out")}>
                 <Icon name="minus" />
@@ -147,17 +208,17 @@ export function MapView(): JSX.Element {
         </div>
       </div>
 
-      {scene.clustered || state.map.showAll || scene.edgesTotal > scene.edges.length || state.spotlight || overlayView ? (
+      {(scene.grouped || state.map.showAll || openKinds.length || scene.edgesTotal > scene.edges.length || state.spotlight || overlayView) && !bizEmpty ? (
         <div class="banners">
-          {scene.clustered ? (
+          {scene.grouped ? (
             <div class="banner" role="status">
-              <Icon name="cluster" size={14} />
-              <span>{t("map.clustered", { count: scene.total, limit: CLUSTER_LIMIT })}</span>
+              <Icon name="folder" size={14} />
+              <span>{t("map.grouped", { count: scene.total, limit: GROUP_LIMIT })}</span>
               <button type="button" class="link" onClick={() => update({ map: { ...state.map, showAll: true } }, "replace")}>
                 {t("map.showAll")}
               </button>
             </div>
-          ) : state.map.showAll && scene.total > CLUSTER_LIMIT ? (
+          ) : state.map.showAll && scene.total > GROUP_LIMIT ? (
             <div class="banner" role="status">
               <span>{t("map.showingAll", { count: scene.total })}</span>
               <button type="button" class="link" onClick={() => update({ map: { ...state.map, showAll: false } }, "replace")}>
@@ -165,10 +226,19 @@ export function MapView(): JSX.Element {
               </button>
             </div>
           ) : null}
+          {openKinds.map((k) => (
+            <div key={k} class="banner" role="status">
+              <Icon name={k} size={14} />
+              <span>{t(`map.open.${k}`)}</span>
+              <button type="button" class="link" onClick={() => setOpen(k, false)}>
+                {t("map.regroup")}
+              </button>
+            </div>
+          ))}
           {scene.edgesTotal > scene.edges.length ? (
             <div class="banner" role="status">
               <span>{t("map.edgesCapped", { shown: scene.edges.length, total: scene.edgesTotal })}</span>
-              {!scene.clustered ? (
+              {!scene.grouped ? (
                 <button type="button" class="link" onClick={() => update({ map: { ...state.map, showAll: true } }, "replace")}>
                   {t("map.showAllLinks")}
                 </button>
@@ -214,7 +284,9 @@ export function MapView(): JSX.Element {
       ) : null}
 
       <div class="map-canvas">
-        {showList ? (
+        {bizEmpty ? (
+          <BusinessEmpty onSystems={() => setLevel("sys")} />
+        ) : showList ? (
           <SceneList scene={scene} selected={selected} onSelect={onSelect} onActivate={onActivate} />
         ) : scene.nodes.length ? (
           <Graph
@@ -234,14 +306,14 @@ export function MapView(): JSX.Element {
             <p>{state.map.focus ? t("map.emptyFocus") : t(`map.empty.${state.map.level}`)}</p>
           </div>
         )}
-        {!showList ? <Legend scene={scene} /> : null}
+        {!showList && !bizEmpty ? <Legend scene={scene} /> : null}
       </div>
 
       <nav class="crumbs" aria-label={t("map.breadcrumb")}>
         <ol>
           {crumbs.map((c, i) => {
             const last = i === crumbs.length - 1;
-            const label = c.id ? c.label : t(`level.${c.level}`);
+            const label = c.part !== undefined ? t("map.part", { n: c.part + 1 }) : c.id ? c.label : t(`level.${c.level}`);
             return (
               <li key={c.id ?? c.label}>
                 {last ? (

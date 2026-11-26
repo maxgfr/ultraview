@@ -50,6 +50,10 @@ export interface Index {
   /** Ids of stale lenses / flows. */
   staleLenses: Set<string>;
   staleFlows: Set<string>;
+  /** Module id → the directory its files share (repo-relative, "" at the root). */
+  dirs: Map<string, string>;
+  /** Whether the agent wrote a business map (a capability besides Shared foundations). */
+  hasBusiness: boolean;
 }
 
 /** How many categorical colours the palette holds (styles.css `--cap-0` … `--cap-7`). */
@@ -136,6 +140,25 @@ export function buildIndex(view: ViewModel): Index {
   });
   capSlot.set(FOUNDATIONS_CAP, -1);
 
+  // Module directories: the longest directory every file of the module sits under.
+  const dirs = new Map<string, string>();
+  for (const n of nodes) {
+    if (n.kind !== "mod") continue;
+    let common: string[] | undefined;
+    for (const c of children.get(n.id) ?? []) {
+      const p = fileOfId(c);
+      if (!p) continue;
+      const segs = p.split("/").slice(0, -1);
+      if (!common) common = segs;
+      else {
+        let i = 0;
+        while (i < common.length && i < segs.length && common[i] === segs[i]) i++;
+        common.length = i;
+      }
+    }
+    if (common) dirs.set(n.id, common.join("/"));
+  }
+
   return {
     view,
     nodes,
@@ -149,7 +172,22 @@ export function buildIndex(view: ViewModel): Index {
     capSlot,
     staleLenses: new Set(view.stale?.lenses ?? []),
     staleFlows: new Set(view.stale?.flows ?? []),
+    dirs,
+    hasBusiness: nodes.some((n) => n.kind === "cap" && n.id !== FOUNDATIONS_CAP),
   };
+}
+
+/**
+ * Where a node sits in the repository tree, for grouping by folder: a module
+ * at its directory, a file at its path, a symbol / route / screen / job at its
+ * file. Undefined for nodes that live nowhere in particular (capabilities,
+ * systems, actors) and for anything without a known path.
+ */
+export function treePath(ix: Index, n: XNode): string | undefined {
+  if (n.kind === "mod") return ix.dirs.get(n.id);
+  if (n.kind === "file") return fileOfId(n.id);
+  if (n.kind === "sym" || n.kind === "route" || n.kind === "screen" || n.kind === "job") return pathOf(n);
+  return undefined;
 }
 
 /** Ancestors of a node, nearest first. */

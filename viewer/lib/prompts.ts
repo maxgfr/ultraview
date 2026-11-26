@@ -18,3 +18,7 @@ export function askAboutInsight(title: string, nodes: readonly string[]): string
   const where = nodes.length ? ` It involves ${nodes.slice(0, 8).join(", ")}.` : "";
   return `Using ultraview, look into this insight: "${title}".${where} Explain whether it is a real problem, cite [path:line] for every claim, and propose the smallest fix.`;
 }
+
+export function businessMapPrompt(app: string): string {
+  return `Use ultraview (/ultraview) to write the business map of ${app}: run \`ultraview status\` and follow it to describe the capabilities, who uses them and the systems in .ultraview/model.json, with a [path:line] citation for every claim. Then run \`ultraview check\` and \`ultraview render\`.`;
+}

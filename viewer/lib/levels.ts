@@ -11,11 +11,16 @@
 // Edges come pre-rolled-up in view.json (one set per level, chosen by the kinds
 // of their endpoints); the browser never re-aggregates the whole graph. It only
 // re-points an endpoint at its nearest drawn ancestor (a route at its file, a
-// file at its cluster) and merges parallel edges of different kinds into one
-// drawn line. A level with more than CLUSTER_LIMIT members is drawn as one
-// cluster per parent, with a "show all" affordance.
+// file at its folder card) and merges parallel edges of different kinds into
+// one drawn line. A view of more than GROUP_LIMIT cards groups its members by
+// folder (lib/groups.ts), with a "show all" escape; entities, externals and
+// infrastructure joining a view collapse into one aggregate chip per kind
+// unless the user opens that kind or pins one of them. Same-named cards get
+// the folder tail that tells them apart (lib/labels.ts).
 
-import { type AnyKind, anyKindOf, type Index, type XEdge, type XEdgeKind, type XNode } from "./data.js";
+import { type AnyKind, anyKindOf, type Counts, type Index, treePath, type XEdge, type XEdgeKind, type XNode } from "./data.js";
+import { GROUP_LIMIT, groupMembers, groupTrail, type PathMember } from "./groups.js";
+import { dirSegments, disambiguate } from "./labels.js";
 
 export const LEVELS = ["biz", "sys", "mod", "file", "sym"] as const;
 export type Level = (typeof LEVELS)[number];
@@ -23,16 +28,27 @@ export type Level = (typeof LEVELS)[number];
 export const AUDIENCES = ["business", "developer"] as const;
 export type ViewerAudience = (typeof AUDIENCES)[number];
 
-/** Past this many members a level is drawn as clusters. */
-export const CLUSTER_LIMIT = 250;
+export { GROUP_LIMIT };
+/** A level with boxes (systems around modules) groups each box on its own when it has at most this many. */
+export const BOX_MAX = 6;
+/** Cards a box gets at least when each box groups on its own. */
+export const BOX_MIN = 8;
+/** More than this many entities (externals, infrastructure) of a kind in a view collapse into one chip; Business keeps more. */
+export const AGG_LIMIT = 2;
+export const AGG_LIMIT_BIZ = 8;
 /**
  * Lines drawn per scene, at most (unless show all): layered layout time grows
- * with edges far faster than with nodes, and past a few hundred lines a map is
- * a hairball anyway. Every node keeps its strongest line first.
+ * with edges far faster than with nodes (150 lines keep a level switch well under
+ * a second on a large repo), and past that a map is a hairball anyway. Every
+ * node keeps its strongest line first.
  */
-export const EDGE_LIMIT = 300;
+export const EDGE_LIMIT = 150;
+/** Lines a small scene may always draw, whatever its card count. */
+export const EDGE_MIN = 40;
 /** Neighbours outside a focused node drawn as ghosts, at most. */
 export const GHOST_LIMIT = 24;
+/** Ghosts around a view grouped by folder, at most: the view is already full. */
+export const GHOST_LIMIT_GROUPED = 8;
 
 export interface MapState {
   level: Level;
@@ -40,8 +56,12 @@ export interface MapState {
   focus?: string;
   /** Files expanded in place (file level). */
   expanded?: string[];
-  /** Draw every member even past CLUSTER_LIMIT. */
+  /** Draw every member even past GROUP_LIMIT. */
   showAll?: boolean;
+  /** The folder (or part of one, `dir~n`) the view is narrowed to (lib/groups.ts). */
+  group?: string;
+  /** Free kinds shown one by one (`entity`, `ext`, `infra`) and free nodes pinned individually (their ids). */
+  open?: string[];
 }
 
 export const PRIMARY: Record<Level, readonly AnyKind[]> = {
@@ -71,20 +91,29 @@ export function levelsFor(audience: ViewerAudience): Level[] {
   return audience === "business" ? ["biz", "sys", "mod"] : [...LEVELS];
 }
 
-export type SceneRole = "card" | "chip" | "ghost" | "cluster" | "group";
+export type SceneRole = "card" | "chip" | "ghost" | "cluster" | "agg" | "group";
+
+/** The free kinds a view collapses into aggregate chips. */
+export type FreeKind = "entity" | "ext" | "infra";
 
 export interface SceneNode {
-  /** Scene id: the node id, or `cluster:<parent id>` for a cluster. */
+  /** Scene id: the node id, `dir:<group>` for a folder card, `agg:<kind>` for an aggregate chip. */
   id: string;
-  /** The view-model node it stands for (the parent, for a cluster). */
+  /** The view-model node it stands for (the scene id itself for folders and aggregates). */
   ref: string;
   role: SceneRole;
   kind: AnyKind;
   label: string;
   /** Containing group (scene id), if any. */
   parent?: string;
-  /** Members a cluster stands for. */
+  /** Members a folder card or an aggregate chip stands for. */
   count?: number;
+  /** Folder card: the group state that opens it. */
+  group?: string;
+  /** Folder card: a part of an over-full folder (0-based). */
+  part?: number;
+  /** Folder card: what its members hold, by kind (the members themselves included). */
+  counts?: Partial<Counts>;
   /** Fields drawn (ERD). */
   rows?: number;
   w: number;
@@ -106,12 +135,15 @@ export interface Scene {
   key: string;
   nodes: SceneNode[];
   edges: SceneEdge[];
-  /** Members of the level before clustering. */
+  /** Members of the view before grouping. */
   total: number;
   /** Lines before EDGE_LIMIT kept the strongest. */
   edgesTotal: number;
-  clustered: boolean;
-  /** View-model id → scene id it is drawn as (members, clusters, groups, ghosts). */
+  /** Members were grouped by folder. */
+  grouped: boolean;
+  /** Free kinds collapsed into an aggregate chip. */
+  aggregated: FreeKind[];
+  /** View-model id → scene id it is drawn as (members, folder cards, aggregates, boxes, ghosts). */
   drawnAs: Map<string, string>;
 }
 
@@ -120,6 +152,7 @@ export const SIZE: Record<Exclude<SceneRole, "group">, { w: number; h: number }>
   chip: { w: 164, h: 34 },
   ghost: { w: 184, h: 40 },
   cluster: { w: 216, h: 64 },
+  agg: { w: 188, h: 40 },
 };
 
 /** Which kind wins when several edge kinds join the same two nodes. */
@@ -139,7 +172,15 @@ export function dominantKind(kinds: Iterable<XEdgeKind | "step">): XEdgeKind | "
 }
 
 export function sceneKey(s: MapState, audience: ViewerAudience): string {
-  return [s.level, s.focus ?? "", [...(s.expanded ?? [])].sort().join(","), s.showAll ? "all" : "", audience].join("|");
+  return [
+    s.level,
+    s.focus ?? "",
+    [...(s.expanded ?? [])].sort().join(","),
+    s.showAll ? "all" : "",
+    s.group ?? "",
+    [...(s.open ?? [])].sort().join(","),
+    audience,
+  ].join("|");
 }
 
 const levelEdgeCache = new WeakMap<Index, Map<Level, XEdge[]>>();
@@ -173,7 +214,7 @@ function isUnder(ix: Index, id: string, ancestor: string): boolean {
   return false;
 }
 
-/** The nodes a level shows as its members (before clustering). */
+/** The nodes a level shows as its members (before grouping by folder). */
 export function levelMembers(ix: Index, s: MapState): XNode[] {
   const kinds = new Set(PRIMARY[s.level]);
   const focus = s.focus ? ix.byId.get(s.focus) : undefined;
@@ -192,10 +233,40 @@ function sizeOf(role: Exclude<SceneRole, "group">) {
   return { ...SIZE[role] };
 }
 
+/** The members of a level as the folder grouping reads them. */
+export function pathMembers(ix: Index, members: readonly XNode[]): PathMember[] {
+  return members.map((m) => {
+    const path = treePath(ix, m);
+    return path === undefined ? { id: m.id, label: m.label } : { id: m.id, label: m.label, path };
+  });
+}
+
+/** The folder steps of a grouped view, for the breadcrumb. */
+export function groupSteps(ix: Index, s: MapState): { group: string; label: string; part?: number }[] {
+  if (!s.group) return [];
+  return groupTrail(pathMembers(ix, levelMembers(ix, { level: s.level, ...(s.focus ? { focus: s.focus } : {}) })), s.group);
+}
+
+const FREE_LIST: readonly FreeKind[] = ["entity", "ext", "infra"];
+
+/** What a folder card's members hold, their own kind included. */
+function sumCounts(ix: Index, ids: readonly string[]): Partial<Counts> {
+  const out: Partial<Counts> = {};
+  for (const id of ids) {
+    const n = ix.byId.get(id);
+    if (!n) continue;
+    if (n.kind in COUNT_KINDS) out[n.kind as keyof Counts] = (out[n.kind as keyof Counts] ?? 0) + 1;
+    const c = ix.counts.get(id);
+    if (c) for (const k of Object.keys(c) as (keyof Counts)[]) if (c[k]) out[k] = (out[k] ?? 0) + c[k];
+  }
+  return out;
+}
+const COUNT_KINDS = { sys: 1, mod: 1, file: 1, sym: 1, route: 1, screen: 1, entity: 1, job: 1 };
+
 /** Build the scene of a map state. Pure: same index and state, same scene. */
 export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Scene {
   const key = sceneKey(s, audience);
-  const members = levelMembers(ix, s);
+  const all = levelMembers(ix, s);
   const nodes = new Map<string, SceneNode>();
   const drawnAs = new Map<string, string>();
   const add = (n: SceneNode) => {
@@ -203,51 +274,85 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
     drawnAs.set(n.ref, n.id);
   };
   const focus = s.focus ? ix.byId.get(s.focus) : undefined;
+  const open = new Set(s.open ?? []);
 
-  // --- members, or clusters of them --------------------------------------------
-  let clustered = false;
-  if (members.length > CLUSTER_LIMIT && !s.showAll) {
-    clustered = true;
-    const clusterBy = (depth: number) => {
-      const groups = new Map<string, XNode[]>();
-      for (const m of members) {
-        let p: string | undefined = m.parent;
-        for (let i = 1; i < depth && p; i++) p = ix.byId.get(p)?.parent ?? p;
-        const k = p ?? "";
-        const g = groups.get(k);
-        if (g) g.push(m);
-        else groups.set(k, [m]);
-      }
-      return groups;
-    };
-    let groups = clusterBy(1);
-    if (groups.size > CLUSTER_LIMIT) groups = clusterBy(2);
-    for (const [parent, list] of [...groups.entries()].sort((a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1))) {
-      if (list.length === 1 || !parent) {
-        for (const m of list) add({ id: m.id, ref: m.id, role: "card", kind: m.kind, label: m.label, ...sizeOf("card") });
-        continue;
-      }
-      const p = ix.byId.get(parent);
-      const id = `cluster:${parent}`;
-      nodes.set(id, { id, ref: parent, role: "cluster", kind: p?.kind ?? list[0]!.kind, label: p?.label ?? parent, count: list.length, ...sizeOf("cluster") });
-      for (const m of list) drawnAs.set(m.id, id);
-      if (!drawnAs.has(parent)) drawnAs.set(parent, id);
+  /** The box a member sits in at this level, if any. */
+  const boxOf = (m: XNode): string | undefined => {
+    if (s.level === "mod" && focus?.kind !== "sys") return m.parent;
+    if (s.level === "file" && focus?.kind !== "mod") return m.parent;
+    if (s.level === "sym") return m.parent;
+    return undefined;
+  };
+
+  // --- members, grouped by folder past GROUP_LIMIT ------------------------------
+  let members: XNode[] = all;
+  let total = all.length;
+  let grouped = false;
+  let boxes = true;
+  if (s.group || (all.length > GROUP_LIMIT && !s.showAll)) {
+    const byBox = new Map<string, XNode[]>();
+    for (const m of all) {
+      const b = boxOf(m) ?? "";
+      const list = byBox.get(b);
+      if (list) list.push(m);
+      else byBox.set(b, [m]);
     }
-  } else {
-    for (const m of members) add({ id: m.id, ref: m.id, role: "card", kind: m.kind, label: m.label, ...sizeOf("card") });
+    // A few boxes (systems around their modules) each group on their own, with a share of the limit.
+    const perBox = !s.group && byBox.size >= 2 && byBox.size <= BOX_MAX && !byBox.has("");
+    boxes = perBox;
+    const runs: [string | undefined, XNode[], number][] = perBox
+      ? [...byBox.entries()]
+          .sort((x, y) => (x[0] < y[0] ? -1 : 1))
+          .map(([b, list]) => [b, list, Math.max(BOX_MIN, Math.round((GROUP_LIMIT * list.length) / all.length))])
+      : [[undefined, all, s.showAll ? Number.POSITIVE_INFINITY : GROUP_LIMIT]];
+    members = [];
+    total = 0;
+    for (const [box, list, limit] of runs) {
+      const g = groupMembers(pathMembers(ix, list), s.group, limit);
+      total += g.total;
+      for (const item of g.items) {
+        if (item.type === "member") {
+          members.push(ix.byId.get(item.id)!);
+          continue;
+        }
+        grouped = true;
+        const id = `dir:${item.group}`;
+        const kind = ix.byId.get(item.ids[0]!)?.kind ?? PRIMARY[s.level][0]!;
+        add({
+          id,
+          ref: id,
+          role: "cluster",
+          kind,
+          label: item.label,
+          count: item.ids.length,
+          group: item.group,
+          ...(item.part !== undefined ? { part: item.part } : {}),
+          counts: sumCounts(ix, item.ids),
+          ...(box ? { parent: box } : {}),
+          ...sizeOf("cluster"),
+        });
+        for (const m of item.ids) {
+          drawnAs.set(m, id);
+          // Symbols stand for their file too, so file-level lines reach the folder.
+          const parent = s.level === "sym" ? ix.byId.get(m)?.parent : undefined;
+          if (parent && !drawnAs.has(parent) && ix.byId.get(parent)?.kind === "file") drawnAs.set(parent, id);
+        }
+      }
+    }
   }
+  for (const m of members) add({ id: m.id, ref: m.id, role: "card", kind: m.kind, label: m.label, ...sizeOf("card") });
 
-  // --- groups: members inside their parent's box --------------------------------
-  if (!clustered) {
-    const groupParent = (m: XNode): string | undefined => {
-      if (s.level === "mod" && focus?.kind !== "sys") return m.parent;
-      if (s.level === "file" && focus?.kind !== "mod") return m.parent;
-      if (s.level === "sym") return m.parent;
-      return undefined;
-    };
+  // --- boxes: members inside their parent's box -----------------------------------
+  if (boxes) {
     const parents = new Set<string>();
-    for (const m of members) {
-      const p = groupParent(m);
+    const boxed = [...nodes.values()];
+    const boxFor = (n: SceneNode): string | undefined => {
+      if (n.role === "cluster") return n.parent;
+      const m = ix.byId.get(n.ref);
+      return m ? boxOf(m) : undefined;
+    };
+    for (const n of boxed) {
+      const p = boxFor(n);
       if (p && ix.byId.has(p)) parents.add(p);
     }
     if (parents.size >= 2 || (s.level === "sym" && parents.size >= 1)) {
@@ -255,31 +360,25 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
         const pn = ix.byId.get(p)!;
         add({ id: p, ref: p, role: "group", kind: pn.kind, label: pn.label, w: 0, h: 0 });
       }
-      for (const m of members) {
-        const p = groupParent(m);
-        const n = nodes.get(m.id);
-        if (p && n && parents.has(p)) n.parent = p;
+      for (const n of boxed) {
+        const p = boxFor(n);
+        if (p && parents.has(p)) n.parent = p;
+        else delete n.parent;
       }
-    }
-    // Files expanded in place: the file becomes a box holding its symbols, routes, screens, jobs.
-    if (s.level === "file") {
-      for (const f of s.expanded ?? []) {
-        const card = nodes.get(f);
-        if (card?.role !== "card") continue;
-        const kids = (ix.children.get(f) ?? []).map((id) => ix.byId.get(id)!).filter((k) => LEAF_KINDS.has(k.kind));
-        if (!kids.length) continue;
-        card.role = "group";
-        card.w = 0;
-        card.h = 0;
-        for (const k of kids.sort(byLabel)) add({ id: k.id, ref: k.id, role: "card", kind: k.kind, label: k.label, parent: f, ...sizeOf("card") });
-      }
-    }
+    } else for (const n of boxed) delete n.parent;
   }
-
-  // Business level: every entity, external and infra piece as a chip.
-  if (s.level === "biz") {
-    for (const n of ix.nodes)
-      if (FREE.has(n.kind) && !nodes.has(n.id)) add({ id: n.id, ref: n.id, role: "chip", kind: n.kind, label: n.label, ...sizeOf("chip") });
+  // Files expanded in place: the file becomes a box holding its symbols, routes, screens, jobs.
+  if (s.level === "file") {
+    for (const f of s.expanded ?? []) {
+      const card = nodes.get(f);
+      if (card?.role !== "card") continue;
+      const kids = (ix.children.get(f) ?? []).map((id) => ix.byId.get(id)!).filter((k) => LEAF_KINDS.has(k.kind));
+      if (!kids.length) continue;
+      card.role = "group";
+      card.w = 0;
+      card.h = 0;
+      for (const k of kids.sort(byLabel)) add({ id: k.id, ref: k.id, role: "card", kind: k.kind, label: k.label, parent: f, ...sizeOf("card") });
+    }
   }
 
   // --- edges ---------------------------------------------------------------------
@@ -324,7 +423,7 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
     if (!a && !b) continue;
     const c = candidate(a ? e.to : e.from);
     if (!c || c.id === focus?.id) continue;
-    if (!FREE.has(c.kind) && !focus) continue; // unfocused levels already hold every member
+    if (!FREE.has(c.kind) && !focus && !s.group) continue; // unfocused, ungrouped levels already hold every member
     const acc = extra.get(c.id) ?? { node: c, weight: 0 };
     acc.weight += e.weight;
     extra.set(c.id, acc);
@@ -332,11 +431,37 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
   const ranked = [...extra.values()].sort((x, y) => y.weight - x.weight || (x.node.id < y.node.id ? -1 : 1));
   let ghosts = 0;
   for (const { node } of ranked) {
-    if (FREE.has(node.kind)) add({ id: node.id, ref: node.id, role: "chip", kind: node.kind, label: node.label, ...sizeOf("chip") });
-    else if (ghosts < GHOST_LIMIT) {
-      ghosts++;
-      add({ id: node.id, ref: node.id, role: "ghost", kind: node.kind, label: node.label, ...sizeOf("ghost") });
+    if (FREE.has(node.kind) || ghosts >= (grouped || s.group ? GHOST_LIMIT_GROUPED : GHOST_LIMIT)) continue;
+    ghosts++;
+    add({ id: node.id, ref: node.id, role: "ghost", kind: node.kind, label: node.label, ...sizeOf("ghost") });
+  }
+  // Free nodes: every one at Business, the connected ones elsewhere, plus the pinned ones;
+  // past the limit a kind collapses into one aggregate chip unless it is open.
+  const free = new Map<string, XNode>();
+  if (s.level === "biz") for (const n of ix.nodes) if (FREE.has(n.kind)) free.set(n.id, n);
+  for (const { node } of ranked) if (FREE.has(node.kind)) free.set(node.id, node);
+  const pinned = new Set<string>();
+  for (const id of open) {
+    const n = ix.byId.get(id);
+    if (n && FREE.has(n.kind)) {
+      free.set(id, n);
+      pinned.add(id);
     }
+  }
+  const aggregated: FreeKind[] = [];
+  const aggLimit = s.level === "biz" ? AGG_LIMIT_BIZ : AGG_LIMIT;
+  for (const kind of FREE_LIST) {
+    const list = [...free.values()].filter((n) => n.kind === kind && !pinned.has(n.id)).sort(byLabel);
+    if (list.length > aggLimit && !open.has(kind)) {
+      const id = `agg:${kind}`;
+      aggregated.push(kind);
+      nodes.set(id, { id, ref: id, role: "agg", kind, label: kind, count: list.length, ...sizeOf("agg") });
+      for (const n of list) drawnAs.set(n.id, id);
+    } else for (const n of list) add({ id: n.id, ref: n.id, role: "chip", kind: n.kind, label: n.label, ...sizeOf("chip") });
+  }
+  for (const id of [...pinned].sort()) {
+    const n = free.get(id)!;
+    add({ id, ref: id, role: "chip", kind: n.kind, label: n.label, ...sizeOf("chip") });
   }
   // Pass 2: draw, merging parallel edges of different kinds.
   type Acc = { from: string; to: string; kinds: Set<XEdgeKind>; weight: number; labels: Set<string> };
@@ -370,13 +495,32 @@ export function buildScene(ix: Index, s: MapState, audience: ViewerAudience): Sc
       };
     });
 
-  const kept = s.showAll ? edges : strongest(edges, EDGE_LIMIT);
+  // Past twice as many lines as cards a map turns into a hairball: keep each card's strongest first.
+  const cards = [...nodes.values()].filter((n) => n.role !== "group").length;
+  const kept = s.showAll ? edges : strongest(edges, Math.min(EDGE_LIMIT, Math.max(EDGE_MIN, 2 * cards)));
+  relabel(ix, [...nodes.values()]);
   const ordered = [...nodes.values()].sort((a, b) => {
     const ra = a.role === "group" ? 0 : 1;
     const rb = b.role === "group" ? 0 : 1;
     return ra - rb || kindRank(a.kind) - kindRank(b.kind) || (a.label < b.label ? -1 : a.label > b.label ? 1 : a.id < b.id ? -1 : 1);
   });
-  return { key, nodes: ordered, edges: kept, total: members.length, edgesTotal: edges.length, clustered, drawnAs };
+  return { key, nodes: ordered, edges: kept, total, edgesTotal: edges.length, grouped, aggregated, drawnAs };
+}
+
+/** Same-named cards in one view get the shortest folder tail that tells them apart. */
+function relabel(ix: Index, list: readonly SceneNode[]): void {
+  const named = list.filter((n) => n.role === "card" || n.role === "ghost" || n.role === "chip" || n.role === "group");
+  const labels = disambiguate(
+    named.map((n) => {
+      const x = ix.byId.get(n.ref);
+      const dir = x ? dirSegments(treePath(ix, x), x.kind !== "file") : undefined; // a symbol tells its file
+      return dir ? { id: n.id, label: n.label, dir } : { id: n.id, label: n.label };
+    }),
+  );
+  for (const n of named) {
+    const l = labels.get(n.id);
+    if (l) n.label = l;
+  }
 }
 
 /** At most `limit` edges: each node's strongest first, then by weight; original order kept. */
@@ -400,7 +544,7 @@ export function strongest(edges: readonly SceneEdge[], limit: number): SceneEdge
   return edges.filter((e) => keep.has(e.id));
 }
 
-/** The scene id a view-model node is drawn as (itself, its cluster, its box), if drawn. */
+/** The scene id a view-model node is drawn as (itself, its folder card or aggregate chip, its box), if drawn. */
 export function locate(ix: Index, scene: Scene, id: string): string | undefined {
   if (FREE.has(anyKindOf(id)!)) return scene.drawnAs.get(id);
   let cur: string | undefined = id;
@@ -450,7 +594,7 @@ export function subgraphScene(
     const kinds = [...m.kinds].sort((p, q) => KIND_PRIORITY.indexOf(p) - KIND_PRIORITY.indexOf(q));
     return { id: `${m.from}->${m.to}`, from: m.from, to: m.to, kind: dominantKind(kinds), kinds, weight: m.weight, ...(m.label ? { label: m.label } : {}) };
   });
-  return { key, nodes, edges, total: nodes.length, edgesTotal: edges.length, clustered: false, drawnAs };
+  return { key, nodes, edges, total: nodes.length, edgesTotal: edges.length, grouped: false, aggregated: [], drawnAs };
 }
 
 /** Fields an ERD card lists before "+ n more". */
@@ -490,5 +634,5 @@ export function erdScene(ix: Index): Scene {
       weight: p.weight,
       ...(p.labels.length ? { label: p.labels.join(" · ") } : {}),
     }));
-  return { key: "erd", nodes, edges, total: nodes.length, edgesTotal: edges.length, clustered: false, drawnAs };
+  return { key: "erd", nodes, edges, total: nodes.length, edgesTotal: edges.length, grouped: false, aggregated: [], drawnAs };
 }

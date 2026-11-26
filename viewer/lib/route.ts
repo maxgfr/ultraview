@@ -2,6 +2,7 @@
 // link an agent prints (`#lens=how-refunds-work`) opens exactly that.
 //
 //   #view=map&level=sys&focus=sys:api&node=mod:src
+//   #level=mod&focus=sys:app&group=src/app   (a folder of a grouped view; `src/app~1` is its 2nd part)
 //   #view=data&node=entity:Order
 //   #lens=<id>            (view = lenses)
 //   #flow=<id>&step=2     (view = flows; steps count from 1)
@@ -18,6 +19,8 @@ export interface Route {
   view: ViewName;
   level?: Level;
   focus?: string;
+  /** Folder of a grouped map view (lib/groups.ts). */
+  group?: string;
   /** Selected node. */
   node?: string;
   lens?: string;
@@ -63,6 +66,7 @@ export function parseHash(hash: string): Route {
   if (raw.change) r.change = raw.change;
   if (raw.node) r.node = raw.node;
   if (raw.focus) r.focus = raw.focus;
+  if (raw.group) r.group = raw.group;
   if (raw.level && (LEVELS as readonly string[]).includes(raw.level)) r.level = raw.level as Level;
   if (raw.step !== undefined && /^\d+$/.test(raw.step) && Number(raw.step) >= 1) r.step = Number(raw.step);
   const view = raw.view && (VIEWS as readonly string[]).includes(raw.view) ? (raw.view as ViewName) : impliedView(r);
@@ -78,6 +82,7 @@ export function formatHash(r: Route): string {
   if (r.change) parts.push(`change=${enc(r.change)}`);
   if (r.level) parts.push(`level=${r.level}`);
   if (r.focus) parts.push(`focus=${enc(r.focus)}`);
+  if (r.group) parts.push(`group=${enc(r.group)}`);
   if (r.node) parts.push(`node=${enc(r.node)}`);
   return parts.length ? `#${parts.join("&")}` : "";
 }

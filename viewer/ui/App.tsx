@@ -6,8 +6,8 @@ import { normalizeChanges, normalizeInsights, timelineViews } from "../lib/chang
 import { buildIndex } from "../lib/data.js";
 import { EDITORS, type Editor, type RepoRef } from "../lib/editor.js";
 import { detectLang, LANGS, type Lang, setLang, t } from "../lib/i18n.js";
-import { locate } from "../lib/levels.js";
-import { defaultAudience, drillTarget, levelAllowed, revealTarget } from "../lib/nav.js";
+import { FREE_KINDS, locate } from "../lib/levels.js";
+import { defaultAudience, drillTarget, homeLevel, levelAllowed, pin, revealTarget } from "../lib/nav.js";
 import { formatHash, parseHash, type Route } from "../lib/route.js";
 import { searchDocs } from "../lib/search.js";
 import type { ViewModel } from "../../src/model/types.js";
@@ -16,6 +16,7 @@ import { Icon } from "./icons.js";
 import { forgetLayoutsBefore } from "./layout.js";
 import { startLive } from "./live.js";
 import { MapView, sceneFor } from "./MapView.js";
+import { perfStart, perfTime } from "./perf.js";
 import { Search } from "./Search.js";
 import { SidePanel } from "./SidePanel.js";
 import { TopBar } from "./TopBar.js";
@@ -57,6 +58,7 @@ function routeOf(s: UiState): Route {
   if (s.view === "map") {
     r.level = s.map.level;
     if (s.map.focus) r.focus = s.map.focus;
+    if (s.map.group) r.group = s.map.group;
   }
   if (s.view === "lenses" && s.lens) r.lens = s.lens;
   if (s.view === "flows" && s.flow) {
@@ -73,8 +75,14 @@ function applyRoute(s: UiState, r: Route, ix: ReturnType<typeof buildIndex>): Ui
   let audience = s.audience;
   if (r.view === "map") {
     if (r.level) {
-      const same = r.level === s.map.level && r.focus === s.map.focus;
-      map = { level: r.level, ...(r.focus ? { focus: r.focus } : {}), ...(same && s.map.expanded ? { expanded: s.map.expanded } : {}) };
+      const same = r.level === s.map.level && r.focus === s.map.focus && r.group === s.map.group;
+      map = {
+        level: r.level,
+        ...(r.focus ? { focus: r.focus } : {}),
+        ...(r.group ? { group: r.group } : {}),
+        ...(same && s.map.expanded ? { expanded: s.map.expanded } : {}),
+        ...(same && s.map.open ? { open: s.map.open } : {}),
+      };
     } else if (r.node && ix.byId.has(r.node)) map = revealTarget(ix, r.node);
     if (!levelAllowed(map.level, audience)) audience = "developer";
   }
@@ -97,7 +105,7 @@ const RANK: Record<NavMode, number> = { none: 0, replace: 1, push: 2 };
 
 export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): JSX.Element {
   const [data, setData] = useState({ view: initial, version: 1 });
-  const ix = useMemo(() => buildIndex(data.view), [data]);
+  const ix = useMemo(() => perfTime("index", () => buildIndex(data.view)), [data]);
   const docs = useMemo(() => searchDocs(ix), [ix]);
   const changes = useMemo(() => [...normalizeChanges(ix.view.changes), ...timelineViews(ix.view.timeline)], [ix]);
   const insights = useMemo(() => normalizeInsights(ix.view.insights), [ix]);
@@ -110,7 +118,7 @@ export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): J
     applyRoute(
       {
         view: "map",
-        map: { level: "biz" },
+        map: { level: homeLevel(ix) },
         step: 0,
         audience: defaultAudience(initial.app?.audience),
         listMode: false,
@@ -228,7 +236,9 @@ export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): J
       let map = s.map;
       let audience = s.audience;
       const drawn = s.view === "map" ? locate(ix, sceneFor(ix, data.version, s.map, s.audience), id) : undefined;
-      if (drawn !== id) {
+      // An entity or external inside an aggregate chip: pin it out where the map already is.
+      if (drawn && drawn !== id && drawn.startsWith("agg:") && (FREE_KINDS as readonly string[]).includes(ix.byId.get(id)!.kind)) map = pin(s.map, id);
+      else if (drawn !== id) {
         map = revealTarget(ix, id);
         if (!levelAllowed(map.level, audience)) {
           audience = "developer";
@@ -243,30 +253,30 @@ export function App({ initial, repo }: { initial: ViewModel; repo: RepoRef }): J
   const drill = useCallback(
     (id: string) => {
       const s = stateRef.current;
-      const realId = id.startsWith("cluster:") ? id.slice(8) : id;
-      const n = ix.byId.get(realId);
-      if (n?.kind === "file" && s.map.level === "file" && !id.startsWith("cluster:")) {
+      const n = ix.byId.get(id);
+      if (n?.kind === "file" && s.map.level === "file") {
         const open = new Set(s.map.expanded ?? []);
-        if (open.has(realId)) open.delete(realId);
-        else if (ix.children.get(realId)?.length) open.add(realId);
+        if (open.has(id)) open.delete(id);
+        else if (ix.children.get(id)?.length) open.add(id);
         else {
-          select(realId);
+          select(id);
           return;
         }
-        update({ map: { ...s.map, expanded: [...open].sort() }, selected: realId, panelOpen: true }, "replace");
+        update({ map: { ...s.map, expanded: [...open].sort() }, selected: id, panelOpen: true }, "replace");
         return;
       }
-      const target = drillTarget(ix, realId);
+      const target = drillTarget(ix, id);
       if (!target) {
-        select(realId);
+        select(id);
         return;
       }
       if (!levelAllowed(target.level, s.audience)) {
         toast(t("toast.developerOnly"));
-        select(realId);
+        select(id);
         return;
       }
-      update({ map: target, selected: realId, spotlight: undefined }, "push");
+      perfStart(`drill ${id}`);
+      update({ map: target, selected: id, spotlight: undefined }, "push");
     },
     [ix, update, select, toast],
   );

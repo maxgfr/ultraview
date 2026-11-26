@@ -4,13 +4,14 @@
 import type { JSX } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { t } from "../lib/i18n.js";
+import { nodeLabels } from "../lib/labels.js";
 import { groupHits, type Hit, search } from "../lib/search.js";
 import { useApp } from "./context.js";
 import { kindName } from "./format.js";
 import { Icon } from "./icons.js";
 
 export function Search(): JSX.Element | null {
-  const { docs, state, update, reveal } = useApp();
+  const { ix, docs, state, update, reveal } = useApp();
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -18,6 +19,14 @@ export function Search(): JSX.Element | null {
   const hits = useMemo(() => search(docs, q, 60), [docs, q]);
   const groups = useMemo(() => groupHits(hits), [hits]);
   const flat: Hit[] = groups.flatMap((g) => g.hits);
+  const labels = useMemo(
+    () =>
+      nodeLabels(
+        ix,
+        hits.map((h) => h.id),
+      ),
+    [ix, hits],
+  );
 
   useEffect(() => {
     if (state.searchOpen) {
@@ -98,7 +107,7 @@ export function Search(): JSX.Element | null {
                     onKeyDown={onKey}
                   >
                     <Icon name={h.kind} size={14} />
-                    <span class="hit-label">{h.label}</span>
+                    <span class="hit-label">{labels.get(h.id) ?? h.label}</span>
                     {h.path && state.audience === "developer" ? <span class="hit-path">{h.path}</span> : null}
                   </div>
                 );

@@ -8,7 +8,7 @@ import { pathOf } from "../lib/data.js";
 import { num, t } from "../lib/i18n.js";
 import type { Scene, SceneNode } from "../lib/levels.js";
 import { useApp } from "./context.js";
-import { capVar, kindName, subline } from "./format.js";
+import { capVar, groupParts, kindName, sceneLabel, subline } from "./format.js";
 import { Icon } from "./icons.js";
 
 const ROW = 44;
@@ -136,8 +136,10 @@ export function SceneList({
           {rows.slice(v.start, v.end).map(({ n, depth }, j) => {
             const i = v.start + j;
             const node = ix.byId.get(n.ref);
-            const where =
-              n.role === "cluster"
+            const folder = n.role === "cluster" && n.group !== undefined;
+            const where = folder
+              ? groupParts(n.counts ?? {}).join(" · ")
+              : n.role === "cluster" || n.role === "agg"
                 ? t("graph.clusterCount", { count: n.count ?? 0 })
                 : node
                   ? dev
@@ -167,12 +169,12 @@ export function SceneList({
                     style={{ background: node?.caps[0] ? capVar(ix, node.caps[0]) : n.kind === "cap" ? capVar(ix, n.ref) : "var(--cap-none)" }}
                     aria-hidden="true"
                   />
-                  <Icon name={n.role === "cluster" ? "cluster" : n.kind} size={14} />
-                  <span class="sl-label">{n.label}</span>
+                  <Icon name={folder ? "folder" : n.role === "cluster" ? "cluster" : n.kind} size={14} />
+                  <span class="sl-label">{sceneLabel(n)}</span>
                   {n.role === "ghost" ? <span class="tag">{t("list.outside")}</span> : null}
                 </span>
                 <span role="cell" class="muted">
-                  {kindName(n.kind)}
+                  {folder ? kindName("folder") : kindName(n.kind)}
                 </span>
                 <span role="cell" class="muted sl-wide">
                   {where}

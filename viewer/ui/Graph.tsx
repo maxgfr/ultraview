@@ -10,9 +10,10 @@ import type { Box, Layout, Pt } from "../lib/elk.js";
 import { t } from "../lib/i18n.js";
 import { ERD_HEAD, ERD_MAX_FIELDS, ERD_ROW, type Scene, type SceneEdge, type SceneNode } from "../lib/levels.js";
 import { useApp } from "./context.js";
-import { capVar, describeNode, ellipsize, kindName, subline } from "./format.js";
+import { capVar, describeNode, ellipsize, fitParts, groupParts, kindName, sceneLabel, sublineParts } from "./format.js";
 import { Glyph, Icon } from "./icons.js";
 import { cachedLayout, layoutScene, releaseLayout } from "./layout.js";
+import { perfPainted, perfStep } from "./perf.js";
 
 export interface GraphProps {
   scene: Scene;
@@ -37,6 +38,8 @@ interface Cam {
 
 const MIN_K = 0.12;
 const MAX_K = 2.5;
+/** Fit to screen zooms a small graph in, up to this. */
+const FIT_MAX_K = 1.5;
 const cameras = new Map<string, Cam>();
 let graphSeq = 0;
 
@@ -105,7 +108,10 @@ export function Graph(p: GraphProps): JSX.Element {
     setLayout(hit);
     if (hit) return;
     layoutScene(version, scene).then(
-      (l) => alive && setLayout(l),
+      (l) => {
+        perfStep("layout");
+        if (alive) setLayout(l);
+      },
       () => {},
     );
     return () => {
@@ -147,7 +153,7 @@ export function Graph(p: GraphProps): JSX.Element {
     const { w, h } = viewport();
     const lw = Math.max(1, layout.width);
     const lh = Math.max(1, layout.height);
-    const k = Math.max(MIN_K, Math.min(1.1, (w - 48) / lw, (h - 96) / lh));
+    const k = Math.max(MIN_K, Math.min(FIT_MAX_K, (w - 48) / lw, (h - 96) / lh));
     return { k, x: (w - lw * k) / 2, y: Math.max(56, (h - lh * k) / 2) };
   };
   const fitView = (animate = true) => {
@@ -169,6 +175,7 @@ export function Graph(p: GraphProps): JSX.Element {
   // First layout of a key: fit; later visits restore the camera.
   useLayoutEffect(() => {
     if (!layout) return;
+    perfPainted(`${scene.nodes.length} nodes, ${scene.edges.length} edges`);
     const saved = cameras.get(scene.key);
     if (saved) {
       cam.current = { ...saved };
@@ -391,7 +398,7 @@ export function Graph(p: GraphProps): JSX.Element {
     const on = !lit || e.from === lit || e.to === lit;
     const from = byId.get(e.from);
     const to = byId.get(e.to);
-    const title = `${from?.label ?? e.from} → ${to?.label ?? e.to}: ${e.kinds.map((k) => t(`edge.${k}`)).join(", ")} (${t("graph.refs", { count: e.weight })})`;
+    const title = `${from ? sceneLabel(from) : e.from} → ${to ? sceneLabel(to) : e.to}: ${e.kinds.map((k) => t(`edge.${k}`)).join(", ")} (${t("graph.refs", { count: e.weight })})`;
     const double = e.kind === "event" || e.kind === "queue";
     const mid = e.label && p.variant === "erd" ? midpoint(pts) : undefined;
     return (
@@ -498,18 +505,34 @@ export function Graph(p: GraphProps): JSX.Element {
     const spot = p.spotlight?.has(n.id);
     const badge = p.badges?.get(n.id);
     const cls = `n r-${n.role} k-${n.kind}${sel ? " sel" : ""}${isLit(n.id) && lit ? " hl" : ""}${spot ? " spot" : ""}${ov ? ` ov ov-${ov}` : ""}`;
-    const chip = n.role === "chip";
+    const agg = n.role === "agg";
+    const chip = n.role === "chip" || agg;
     const ghost = n.role === "ghost";
     const cluster = n.role === "cluster";
+    const folder = cluster && !!n.group;
     const erd = p.variant === "erd";
     const iconSize = chip || ghost ? 14 : 16;
     const iconBox = chip || ghost ? 0 : 30;
     const labelX = chip || ghost ? 32 : 52;
     const labelSize = chip || ghost ? 12 : 13;
-    const sub =
-      cluster && n.count ? t("graph.clusterCount", { count: n.count, kind: "" }) : node && !chip && !ghost && !erd ? subline(ix, node, state.audience) : "";
+    // A part of an over-full folder: "Part 2" on top, its first – last names below.
+    const label = n.part !== undefined ? t("map.part", { n: n.part + 1 }) : sceneLabel(n);
+    const subMax = box.w - labelX - 12;
+    const sub = folder
+      ? fitParts(n.part !== undefined ? [n.label] : groupParts(n.counts ?? {}), subMax, 11.5)
+      : cluster && n.count
+        ? t("graph.clusterCount", { count: n.count, kind: "" })
+        : node && !chip && !ghost && !erd
+          ? fitParts(sublineParts(ix, node, state.audience), subMax, 11.5)
+          : "";
     const capColor = n.kind === "cap" ? capVar(ix, n.ref) : node?.caps[0] ? capVar(ix, node.caps[0]) : "var(--cap-none)";
-    const aria = node ? describeNode(ix, node, state.audience) : `${kindName(n.kind)}: ${n.label}`;
+    const aria = folder
+      ? `${t("kind.folder")}: ${sceneLabel(n)}. ${groupParts(n.counts ?? {}).join(", ")}. ${t("graph.folderHint")}`
+      : agg
+        ? `${label}. ${t(n.kind === "entity" ? "graph.aggDataHint" : "graph.aggHint")}`
+        : node
+          ? describeNode(ix, node, state.audience)
+          : `${kindName(n.kind)}: ${label}`;
     return (
       <g
         key={n.id}
@@ -518,7 +541,7 @@ export function Graph(p: GraphProps): JSX.Element {
         transform={`translate(${box.x} ${box.y})`}
         role="button"
         tabIndex={tabbable === n.id ? 0 : -1}
-        aria-label={`${aria}${cluster ? `. ${t("graph.clusterHint")}` : ""}${ghost ? `. ${t("graph.ghostHint")}` : ""}`}
+        aria-label={`${aria}${cluster && !folder ? `. ${t("graph.clusterHint")}` : ""}${ghost ? `. ${t("graph.ghostHint")}` : ""}`}
         aria-pressed={sel}
         onClick={(e) => {
           e.stopPropagation();
@@ -538,23 +561,25 @@ export function Graph(p: GraphProps): JSX.Element {
             <rect class="stack" x={8} y={-8} width={box.w - 16} height={box.h} rx={12} />
             <rect class="stack" x={4} y={-4} width={box.w - 8} height={box.h} rx={12} />
           </>
+        ) : agg ? (
+          <rect class="stack" x={5} y={-5} width={box.w - 10} height={box.h} rx={9} />
         ) : null}
         <rect class="bg" width={box.w} height={box.h} rx={chip ? 9 : 12} />
         {iconBox ? (
           <rect class="ico-bg" x={12} y={erd ? 6 : (box.h - iconBox) / 2 - (sub ? 0 : 0)} width={iconBox} height={iconBox} rx={8} style={{ fill: capColor }} />
         ) : null}
         <Glyph
-          name={cluster ? "cluster" : n.kind}
+          name={folder ? "folder" : cluster ? "cluster" : n.kind}
           x={iconBox ? 12 + (iconBox - iconSize) / 2 : 11}
           y={iconBox ? (erd ? 6 : (box.h - iconBox) / 2) + (iconBox - iconSize) / 2 : (box.h - iconSize) / 2}
           size={iconSize}
         />
         <text class="label" x={labelX} y={erd ? 25 : sub ? box.h / 2 - 3 : box.h / 2 + 4.5} style={{ fontSize: `${labelSize}px` }}>
-          {ellipsize(n.label, box.w - labelX - (badge ? 34 : 12), labelSize, 600)}
+          {ellipsize(label, box.w - labelX - (badge ? 34 : 12), labelSize, 600)}
         </text>
         {sub ? (
           <text class="sub" x={labelX} y={box.h / 2 + 14}>
-            {ellipsize(sub, box.w - labelX - 12, 11.5)}
+            {sub}
           </text>
         ) : null}
         {erd ? renderErdBody(n, box) : null}

@@ -48,7 +48,7 @@
   --k-queue: #a86400;
   --k-extends: #3b3e45;
   --k-config: #8d9097;
-  --k-uses: #9c9fa6;
+  --k-uses: #9a6b3f;
   --k-step: #2b5bd0;
 
   --ov-new: #24733a;
@@ -104,7 +104,7 @@
   --k-queue: #f0b44c;
   --k-extends: #cdd0d6;
   --k-config: #7d8088;
-  --k-uses: #7d8088;
+  --k-uses: #c89a6a;
   --k-step: #8fb0ff;
 
   --ov-new: #6fd38a;
@@ -155,7 +155,7 @@
     --k-queue: #f0b44c;
     --k-extends: #cdd0d6;
     --k-config: #7d8088;
-    --k-uses: #7d8088;
+    --k-uses: #c89a6a;
     --k-step: #8fb0ff;
     --ov-new: #6fd38a;
     --ov-changed: #f0b44c;
@@ -527,12 +527,17 @@ button.cite {
 }
 
 .brand {
+  position: relative;
   min-width: 0;
-  flex: 0 1 280px;
+  flex: 1 1 280px;
+  max-width: 320px;
 }
 
 .app-name {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.01em;
@@ -540,20 +545,49 @@ button.cite {
 }
 
 .app-sum {
+  display: block;
+  max-width: 100%;
   margin: 0;
+  padding: 0;
   overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: none;
   color: var(--text-3);
+  font: inherit;
   font-size: 12px;
   line-height: 1.35;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
+.app-sum:hover {
+  color: var(--text-2);
+}
+
+/* Expanded: the whole summary, over the map, from where the line starts. */
+.app-sum.open {
+  position: absolute;
+  z-index: 40;
+  top: 16px;
+  left: -10px;
+  width: max(100%, 380px);
+  max-width: min(520px, 90vw);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  color: var(--text-2);
+  white-space: normal;
+}
+
+/* The views never shrink: their labels stay whole, the brand gives way first. */
 .views {
   display: flex;
+  flex: none;
   gap: 2px;
-  min-width: 0;
-  overflow-x: auto;
 }
 
 .view-tab {
@@ -587,6 +621,7 @@ button.cite {
 
 .top-actions {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 8px;
   margin-left: auto;
@@ -891,6 +926,29 @@ button.cite {
   margin: 4px 0;
 }
 
+.biz-empty .prompt-box {
+  max-width: 64ch;
+  margin: 8px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .empty.full {
   height: 100vh;
 }
@@ -1026,6 +1084,29 @@ button.cite {
 
 .n.r-chip.k-ext .bg {
   stroke-dasharray: 3 2;
+}
+
+.n.r-agg {
+  cursor: pointer;
+}
+
+.n.r-agg .bg {
+  fill: var(--surface);
+  stroke: var(--border-strong);
+}
+
+.n.r-agg .stack {
+  fill: var(--surface-2);
+  stroke: var(--border);
+}
+
+.n.r-agg.k-entity .bg {
+  fill: color-mix(in srgb, var(--k-data) 8%, var(--surface));
+  stroke: color-mix(in srgb, var(--k-data) 45%, var(--border));
+}
+
+.n.r-cluster {
+  cursor: pointer;
 }
 
 .n.r-ghost .bg {
@@ -1192,6 +1273,12 @@ button.cite {
 .e.k-config .e-line,
 .legend-line.k-config .e-line {
   stroke-dasharray: 7 3 1.5 3;
+}
+
+/* Someone using a capability (actor → capability), not code depending on code: long dashes, warm. */
+.e.k-uses .e-line,
+.legend-line.k-uses .e-line {
+  stroke-dasharray: 11 4;
 }
 
 .e.k-step .e-line {
@@ -2153,7 +2240,6 @@ button.cite {
 /* ------------------------------------------------------------------- narrow */
 
 @media (max-width: 1360px) {
-  .app-sum,
   .search-btn span,
   .view-tab .count,
   .start-label {
@@ -2164,14 +2250,45 @@ button.cite {
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1200px) {
+  .top {
+    gap: 12px;
+  }
+  .view-tab {
+    padding: 0 8px;
+  }
+  .search-btn kbd {
+    display: none;
+  }
+  .search-btn {
+    padding: 0 8px;
+  }
+  .crumb-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .top {
+    gap: 8px;
+    padding-left: 12px;
+  }
+  .view-tab {
+    gap: 5px;
+    padding: 0 6px;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+}
+
+/* Below 1024 px the views show their icons only (named by title and aria-label). */
+@media (max-width: 1023px) {
   .brand {
     flex-basis: auto;
   }
-  .view-label {
-    display: none;
-  }
-  .crumb-hint {
+  .view-label,
+  .app-sum:not(.open) {
     display: none;
   }
 }

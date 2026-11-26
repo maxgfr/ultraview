@@ -11,18 +11,7 @@ import { buildIndex } from "../viewer/lib/data.js";
 import { absPath, editorUrl, webRemote } from "../viewer/lib/editor.js";
 import { fromElk, gridLayout, toElkGraph } from "../viewer/lib/elk.js";
 import { detectLang, setLang, t } from "../viewer/lib/i18n.js";
-import {
-  buildScene,
-  CLUSTER_LIMIT,
-  EDGE_LIMIT,
-  erdScene,
-  strongest,
-  levelEdges,
-  levelMembers,
-  levelsFor,
-  locate,
-  subgraphScene,
-} from "../viewer/lib/levels.js";
+import { buildScene, EDGE_LIMIT, GROUP_LIMIT, erdScene, strongest, levelEdges, levelMembers, levelsFor, locate, subgraphScene } from "../viewer/lib/levels.js";
 import { type Block, citeAt, citeLabel, type Inline, parseCites, parseInline, parseMarkdown, safeHref, stripCites } from "../viewer/lib/markdown.js";
 import { breadcrumb, defaultAudience, drillTarget, levelAllowed, revealTarget } from "../viewer/lib/nav.js";
 import { askAboutNode, reaskLens } from "../viewer/lib/prompts.js";
@@ -138,19 +127,17 @@ describe("levels", () => {
     expect(s.nodes.filter((n) => n.role === "ghost").map((n) => n.id)).toContain("file:src/routes/orders.ts");
   });
 
-  it("clusters a level past the limit, unless show all", () => {
-    const big = buildIndex(bigView(CLUSTER_LIMIT + 50, 3));
+  it("groups a level past the limit by folder, unless show all", () => {
+    const big = buildIndex(bigView(GROUP_LIMIT + 50, 3));
     const s = buildScene(big, { level: "file" }, "developer");
-    expect(s.clustered).toBe(true);
-    expect(s.total).toBe(CLUSTER_LIMIT + 50);
-    expect(s.nodes.map((n) => n.id).sort()).toEqual(["cluster:mod:m0", "cluster:mod:m1", "cluster:mod:m2"]);
-    expect(s.nodes[0]!.count! + s.nodes[1]!.count! + s.nodes[2]!.count!).toBe(CLUSTER_LIMIT + 50);
-    expect(s.edges.map((e) => e.id)).toEqual(["cluster:mod:m0->cluster:mod:m1"]);
-    expect(locate(big, s, "file:m1/f1.ts")).toBe("cluster:mod:m1");
+    expect(s.grouped).toBe(true);
+    expect(s.total).toBe(GROUP_LIMIT + 50);
+    expect(s.nodes.filter((n) => n.role !== "group").length).toBeLessThanOrEqual(GROUP_LIMIT);
+    expect(locate(big, s, "file:m1/f1.ts")).toMatch(/^dir:/);
     const all = buildScene(big, { level: "file", showAll: true }, "developer");
-    expect(all.clustered).toBe(false);
-    expect(all.nodes.filter((n) => n.role === "card")).toHaveLength(CLUSTER_LIMIT + 50);
-    expect(buildScene(buildIndex(bigView(CLUSTER_LIMIT)), { level: "file" }, "developer").clustered).toBe(false);
+    expect(all.grouped).toBe(false);
+    expect(all.nodes.filter((n) => n.role === "card")).toHaveLength(GROUP_LIMIT + 50);
+    expect(buildScene(buildIndex(bigView(GROUP_LIMIT)), { level: "file" }, "developer").grouped).toBe(false);
   });
 
   it("keeps the strongest lines past the edge limit, every node's best first", () => {
@@ -226,7 +213,6 @@ describe("drill and breadcrumb", () => {
     expect(drillTarget(ix, "sys:api")).toEqual({ level: "mod", focus: "sys:api" });
     expect(drillTarget(ix, "mod:src-routes")).toEqual({ level: "file", focus: "mod:src-routes" });
     expect(drillTarget(ix, "file:src/server.ts")).toEqual({ level: "sym", focus: "file:src/server.ts" });
-    expect(drillTarget(ix, "cluster:mod:src")).toEqual({ level: "file", focus: "mod:src" });
     expect(drillTarget(ix, "entity:Order")).toBeUndefined();
     expect(drillTarget(ix, "route:GET /health")).toBeUndefined();
   });

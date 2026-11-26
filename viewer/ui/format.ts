@@ -1,7 +1,8 @@
 // Small display helpers shared by the map cards, the side panel and the lists.
 
-import { type AnyKind, type Index, pathOf, type XNode } from "../lib/data.js";
-import type { ViewerAudience } from "../lib/levels.js";
+import { type AnyKind, type Counts, type Index, pathOf, type XNode } from "../lib/data.js";
+import { fitParts as fitLine } from "../lib/labels.js";
+import type { SceneNode, ViewerAudience } from "../lib/levels.js";
 import { num, t } from "../lib/i18n.js";
 
 export const FONT = `system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
@@ -44,7 +45,7 @@ export function ellipsize(text: string, max: number, size: number, weight = 400)
   return `${text.slice(0, Math.max(1, lo)).trimEnd()}…`;
 }
 
-export function kindName(kind: AnyKind | "cluster"): string {
+export function kindName(kind: AnyKind | "cluster" | "folder"): string {
   return t(`kind.${kind}`);
 }
 
@@ -59,8 +60,49 @@ export function capVar(ix: Index, capId: string): string {
   return slot === undefined || slot < 0 ? "var(--cap-none)" : `var(--cap-${slot})`;
 }
 
+/** The text a scene node shows: aggregate chips name their count ("28 data models"). */
+export function sceneLabel(n: SceneNode): string {
+  if (n.part !== undefined) return `${t("map.part", { n: n.part + 1 })} · ${n.label}`;
+  if (n.role !== "agg") return n.label;
+  const count = n.count ?? 0;
+  return t(n.kind === "entity" ? "count.entities" : n.kind === "ext" ? "count.externals" : "count.infra", { count, n: num(count) });
+}
+
+/** Counts a folder card shows, most telling first. */
+export function groupParts(counts: Partial<Counts>): string[] {
+  const parts: string[] = [];
+  const order: [keyof Counts, string][] = [
+    ["mod", "count.modules"],
+    ["file", "count.files"],
+    ["route", "count.routes"],
+    ["screen", "count.screens"],
+    ["entity", "count.entities"],
+    ["sym", "count.symbols"],
+  ];
+  for (const [k, key] of order) {
+    const c = counts[k];
+    if (c) parts.push(t(key, { count: c, n: num(c) }));
+  }
+  return parts;
+}
+
+/** The parts joined to fit `max` pixels: the least telling (last) parts drop first, the first one is cut only when alone. */
+export function fitParts(parts: readonly string[], max: number, size: number, weight = 400): string {
+  return fitLine(
+    parts,
+    max,
+    (x) => textWidth(x, size, weight),
+    (x) => ellipsize(x, max, size, weight),
+  );
+}
+
 /** The short line under a card's label: what it holds, or where it lives. */
 export function subline(ix: Index, n: XNode, audience: ViewerAudience): string {
+  return sublineParts(ix, n, audience).join(" · ");
+}
+
+/** The pieces of a card's short line, most telling first. */
+export function sublineParts(ix: Index, n: XNode, audience: ViewerAudience): string[] {
   const c = ix.counts.get(n.id);
   const parts: string[] = [];
   const add = (count: number | undefined, key: string) => {
@@ -77,13 +119,13 @@ export function subline(ix: Index, n: XNode, audience: ViewerAudience): string {
       parts.push(t("kind.actor"));
       break;
     case "sys":
-      if (audience === "business" && n.caps.length) return capNames(ix, n.caps);
+      if (audience === "business" && n.caps.length) return [capNames(ix, n.caps)];
       add(c?.mod, "count.modules");
       add(c?.file, "count.files");
       add(c?.route, "count.routes");
       break;
     case "mod":
-      if (audience === "business" && n.caps.length) return capNames(ix, n.caps);
+      if (audience === "business" && n.caps.length) return [capNames(ix, n.caps)];
       add(c?.file, "count.files");
       add(c?.route, "count.routes");
       add(c?.entity, "count.entities");
@@ -108,7 +150,7 @@ export function subline(ix: Index, n: XNode, audience: ViewerAudience): string {
       if (at) parts.push(at.split("/").pop() ?? at);
     }
   }
-  return parts.join(" · ");
+  return parts;
 }
 
 function capNames(ix: Index, caps: readonly string[]): string {

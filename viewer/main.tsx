@@ -9,6 +9,7 @@ import type { ViewModel } from "../src/model/types.js";
 import type { RepoRef } from "./lib/editor.js";
 import "./styles.css";
 import { App, NoData } from "./ui/App.js";
+import { perfStep } from "./ui/perf.js";
 
 function readJson(id: string): any {
   const el = document.getElementById(id);
@@ -21,6 +22,7 @@ function readJson(id: string): any {
 }
 
 const view = readJson("ultraview-data") as ViewModel | null | undefined;
+perfStep("data parsed");
 const env = (readJson("ultraview-env") ?? {}) as { root?: unknown };
 const repo: RepoRef = typeof env.root === "string" ? { root: env.root } : {};
 const root = document.getElementById("app")!;
