@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.13.4](https://github.com/maxgfr/ultraview/compare/v1.13.3...v1.13.4) (2026-11-26)
+
+
+### Bug Fixes
+
+* **viewer:** keep the page from scrolling ([1932f9c](https://github.com/maxgfr/ultraview/commit/1932f9c32313203ccb40aa5ffcdb4425a259104b)), closes [#25](https://github.com/maxgfr/ultraview/issues/25)
+
 ## [1.13.3](https://github.com/maxgfr/ultraview/compare/v1.13.2...v1.13.3) (2026-11-26)
 
 
