@@ -9,7 +9,7 @@ import { ancestors, type AnyKind, type Index, locationOf, pathOf, type XEdge, ty
 import { num, t } from "../lib/i18n.js";
 import { nodeLabels } from "../lib/labels.js";
 import { drillTarget } from "../lib/nav.js";
-import { askAboutNode } from "../lib/prompts.js";
+import { contextable, edgeContext, nodeContext } from "../lib/chat.js";
 import { useApp } from "./context.js";
 import { capVar, kindName } from "./format.js";
 import { Icon } from "./icons.js";
@@ -29,15 +29,27 @@ function NodeLink({ id, note, label }: { id: string; note?: string; label?: stri
   );
 }
 
-function NodeList({ ids, notes }: { ids: string[]; notes?: Map<string, string> }): JSX.Element {
+/** A list of nodes; with `ask`, each row also asks about the link it stands for. */
+function NodeList({ ids, notes, ask }: { ids: string[]; notes?: Map<string, string>; ask?: (id: string) => void }): JSX.Element {
   const { ix } = useApp();
   const shown = ids.slice(0, LIST_CAP);
   const labels = nodeLabels(ix, shown);
   return (
     <ul class="node-list">
       {shown.map((id) => (
-        <li key={id}>
+        <li key={id} class={ask ? "node-row" : undefined}>
           <NodeLink id={id} note={notes?.get(id)} label={labels.get(id)} />
+          {ask && contextable(id) ? (
+            <button
+              type="button"
+              class="icon-btn small node-ask"
+              aria-label={t("panel.askEdge", { label: labels.get(id) ?? ix.byId.get(id)?.label ?? id })}
+              title={t("panel.askEdge", { label: labels.get(id) ?? ix.byId.get(id)?.label ?? id })}
+              onClick={() => ask(id)}
+            >
+              <Icon name="ask" size={14} />
+            </button>
+          ) : null}
         </li>
       ))}
       {ids.length > LIST_CAP ? <li class="muted small">{t("panel.andMore", { count: ids.length - LIST_CAP })}</li> : null}
@@ -83,8 +95,10 @@ function groupEdges(edges: readonly XEdge[], side: "out" | "in"): Map<string, { 
   return out;
 }
 
-function Edges({ title, edges, side }: { title: string; edges: readonly XEdge[]; side: "out" | "in" }): JSX.Element | null {
+function Edges({ title, edges, side, self }: { title: string; edges: readonly XEdge[]; side: "out" | "in"; self: string }): JSX.Element | null {
+  const { chat } = useApp();
   if (!edges.length) return null;
+  const ask = contextable(self) ? (id: string) => chat.open({ context: side === "out" ? edgeContext(self, id) : edgeContext(id, self) }) : undefined;
   const groups = groupEdges(edges, side);
   return (
     <Section title={title} count={new Set(edges.map((e) => (side === "out" ? e.to : e.from))).size}>
@@ -97,6 +111,7 @@ function Edges({ title, edges, side }: { title: string; edges: readonly XEdge[];
           <NodeList
             ids={list.map((x) => x.id)}
             notes={new Map(list.map((x) => [x.id, [x.label, x.weight > 1 ? `×${x.weight}` : ""].filter(Boolean).join(" ")]))}
+            {...(ask ? { ask } : {})}
           />
         </div>
       ))}
@@ -106,7 +121,7 @@ function Edges({ title, edges, side }: { title: string; edges: readonly XEdge[];
 
 export function SidePanel(): JSX.Element | null {
   const api = useApp();
-  const { ix, state, update, copy, reveal, drill } = api;
+  const { ix, state, update, reveal, drill, chat } = api;
   const n = state.selected ? ix.byId.get(state.selected) : undefined;
   const head = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -185,7 +200,7 @@ export function SidePanel(): JSX.Element | null {
             {t("panel.drill")}
           </button>
         ) : null}
-        <button type="button" class="btn btn-primary" onClick={() => copy(askAboutNode(n.id, n.label), t("toast.promptCopied"))}>
+        <button type="button" class="btn btn-primary" onClick={() => chat.open(contextable(n.id) ? { context: nodeContext(n.id) } : {})}>
           <Icon name="ask" size={14} />
           {t("panel.ask")}
         </button>
@@ -294,8 +309,13 @@ export function SidePanel(): JSX.Element | null {
             </Section>
           ))}
 
-        {n.kind !== "actor" ? <Edges title={t("panel.uses")} edges={outE} side="out" /> : null}
-        <Edges title={t("panel.usedByEdges")} edges={inE.filter((e) => !(n.kind === "entity" && e.kind === "data" && e.from.startsWith("file:")))} side="in" />
+        {n.kind !== "actor" ? <Edges title={t("panel.uses")} edges={outE} side="out" self={n.id} /> : null}
+        <Edges
+          title={t("panel.usedByEdges")}
+          edges={inE.filter((e) => !(n.kind === "entity" && e.kind === "data" && e.from.startsWith("file:")))}
+          side="in"
+          self={n.id}
+        />
 
         {n.links?.length && path ? (
           <Section title={t("panel.links")} count={n.links.length}>

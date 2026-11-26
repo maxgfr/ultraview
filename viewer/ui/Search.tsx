@@ -1,20 +1,20 @@
 // ⌘K: find any node by label, id or path; results grouped by kind, arrow
 // keys to move, Enter to select and reveal it on the map at the right level.
 // When `ultraview serve` runs the Ask bridge, the last option asks the typed
-// text as a question ("Ask: …") and opens the Lenses view to follow it.
+// text as a question ("Ask: …") in the chat panel.
 
 import type { JSX } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { t } from "../lib/i18n.js";
 import { nodeLabels } from "../lib/labels.js";
-import { askMode, questionOk } from "../lib/live.js";
+import { questionOk } from "../lib/live.js";
 import { groupHits, type Hit, search } from "../lib/search.js";
 import { useApp } from "./context.js";
 import { kindName } from "./format.js";
 import { Icon } from "./icons.js";
 
 export function Search(): JSX.Element | null {
-  const { ix, docs, state, update, reveal, live, ask } = useApp();
+  const { ix, docs, state, update, reveal, chat, live } = useApp();
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -22,9 +22,9 @@ export function Search(): JSX.Element | null {
   const hits = useMemo(() => search(docs, q, 60), [docs, q]);
   const groups = useMemo(() => groupHits(hits), [hits]);
   const flat: Hit[] = groups.flatMap((g) => g.hits);
-  const mode = askMode(live);
+  const mode = chat.can;
   // The "Ask: …" option, after the hits: shown while the bridge is on, usable when it is idle.
-  const askable = mode !== "off" && questionOk(q);
+  const askable = (mode === "ready" || mode === "busy") && questionOk(q);
   const askIndex = askable ? flat.length : -1;
   const options = flat.length + (askable ? 1 : 0);
   const labels = useMemo(
@@ -58,8 +58,9 @@ export function Search(): JSX.Element | null {
   };
   const askIt = () => {
     if (mode !== "ready") return;
-    ask(q);
-    update({ searchOpen: false, view: "lenses", spotlight: undefined }, "push");
+    update({ searchOpen: false });
+    chat.open();
+    chat.send(q);
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "ArrowDown") setActive((a) => Math.min(options - 1, a + 1));

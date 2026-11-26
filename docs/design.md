@@ -450,7 +450,7 @@ absent outside git.
 | `build [--repo .]` | ultraindex `runBuild` (incremental) + extractors → facts.json + view.json; prints a ≤150-line summary for the agent (entrypoints, workspaces, top modules by PageRank, routes/screens/entities/jobs/externals counts, uncovered paths) — the agent never reads facts.json/view.json |
 | `dossier <node-id>` | evidence pack to write about a node (ultraindex dossier + facts + neighbors), budgeted |
 | `check` | schema, ids resolve, citations resolve (ultraindex `checkCitations`), coverage thresholds (systems ≥ 90% code files, capabilities ≥ 70% non-test modules), every conversation turn as a lens, stale lenses/flows/turns, exit 1 on failure |
-| `render [--out]` | re-assembles view.json from the current agent files (the same cheap path as `serve`, no re-indexing; written only when its bytes change) → self-contained `.ultraview/index.html`; notes a stale index |
+| `render [--out]` | re-assembles view.json from the current agent files (the same cheap path as `serve`, no re-indexing; written only when its bytes change) → self-contained `.ultraview/index.html`; notes a stale index. The page also carries the saved conversations (`ultraview-chats`: valid ones, newest first, without `sources`, at most 50 and 512 KiB, `embeddedConversations`) so `#chat=<id>` opens read-only offline |
 | `serve [--port 4178] [--host 127.0.0.1] [--ask auto|claude|codex|none] [--ask-model m] [--open]` | local server (node:http, no dependency), live data over SSE on any `.ultraview/` change, `/api/*` for on-demand node / search / callgraph / explain, optional Ask bridge (read-only `claude -p` / `codex exec`, answer saved as a lens, or as a conversation turn through `POST /api/chat`) — contract in §8.1 |
 | `lens new "<question>" [--terms "<english keywords>"] [--budget n] [--id slug]` | evidence pack: proposed id (slug of the question, de-duplicated; a saved question keeps its id) + target path + JSON template, ranked candidates (first the routes/screens/entities/jobs/symbols/capabilities named like the question, scored by term rarity, name before definition / fields / summary, plus the kind, HTTP method (a route's, or the leading verb of a verb-noun symbol name: `placeOrder` → POST) and cardinality the wording points at and the score of a matching capability; then ultraindex `runFind` over modules mapped to view ids, slices included), their strongest edges, source excerpts (`gatherEvidence`) within the budget (default 6000 tokens ≈ 24k chars), closing steps (`lens save`, `check`); `--json` for the structured pack (`bridged`, `suppliedTerms` among its fields). The question is read by `src/lens-terms.ts`: its words split by the engine's tokenizer (`codeindex.keywords` + `subtokens`, any script), English words stemmed; `--terms` (English code keywords, required of the agent when the question is not in English) merged at weight 1, stemmed alike, synonyms applied, and read for the kind / method / cardinality hints too. `bridged` (the question is not English) holds when a word is a French marker, when most of its letters are not a–z once folded, or when terms are given and under 20% of its words are English stopwords (the engine's list); with terms, a bridged question's own words weigh 0.25 (they only catch code written in its language) and ultraindex find reads the terms alone; without them, a French question falls back on a lexicon of everyday app words and any other language ranks on its own words. Read-only, deterministic |
 | `lens new "<question>" --thread <id> [--context '<json>']` | the same pack for a conversation's next turn. It opens with the thread's **digest** (`chatDigest`): the last 6 turns, oldest first, each its question (≤ 200 characters), a one-line answer summary (its first sentence, citations stripped, ≤ 160), its node ids (≤ 8) and what it was asked about, then the node ids in play (≤ 12, most recent turn first); oldest turns are left out first to stay within 400 tokens (≈ 1600 characters), whatever the thread's length. The ranking folds in the thread: each node of an earlier turn (answer nodes, focus, context) is a seed weighing 0.5^(d−1) for the turn d back, shared by the square root of that turn's node count; `--context` seeds weigh 2. A pool node relates to a seed as itself (1.5), by an edge or a mention (one's name in the other's definition; an entity also through a relation field of a mentioned one, `order.items` → OrderItem) (1), as a sibling in the same file (0.5), or by a file-level edge between their files (0.4); its thread score, Σ weight × relation × 1.5, is added to its name score, and a node no term matched but the thread points at becomes a candidate (`via: "thread"`) with the kind / method / cardinality bonuses of the wording. So a follow-up with no content words ("and who calls it?") still ranks the previous turn's nodes and their neighbours first, and a topic switch still finds what it names. The template is a turn's (`question, answer, nodes, edges, focus, lang, mode, followUps`), the target `.ultraview/conversations/<id>.draft.json`. `--context` alone (no thread) seeds a lens pack the same way. Without `--thread` / `--context` the pack is byte-identical to a plain one |
@@ -545,7 +545,7 @@ when stale and logs any error to `.ultraview/hook.log`.
   never drawn), an infrastructure unit's "Declared in" overlays, "ask your
   agent about this" (copies a prompt naming the node id).
 - Cmd/Ctrl-K search across every node kind; with the Ask bridge on, the last
-  option is "Ask: <query>".
+  option is "Ask: <query>" (asked in the chat panel).
 - Audience toggle: business hides files/symbols and technical labels.
 - Deep links: `#view=`, `#level=`, `#focus=`, `#group=` (a folder of a
   grouped view, `dir~n` its part n + 1), `#node=`, `#lens=`, `#flow=` +
@@ -561,15 +561,37 @@ when stale and logs any error to `.ultraview/hook.log`.
     `hello.stale`): "The code changed since this map was built (N files).
     Run `ultraview build`", with the first changed paths; dismissible until
     the counts change, gone when the index is fresh again;
-  - an **Ask box** in the Lenses view header (also on its empty state) when
-    `hello.ask` is non-null: it posts `{question}` (≤ 500 characters) to
-    `/api/ask` as JSON from the same origin, shows the `ask-progress` stages
-    in a polite live region (sending, started, running with the bytes so far,
-    validating), and is disabled while any ask runs (`busy`, a 409, or
-    another page's progress). On `ask-done` for its own question it waits
-    for the lens id to appear in the live data (the `view` event brings it)
-    and navigates to `#lens=<id>`; on `ask-error` it shows the error and the
-    `lens save` problems. Asks from another page only mark the box busy.
+  - the **chat panel** asks: see below.
+- **Chat panel** (`viewer/ui/Chat.tsx`, pure logic in `viewer/lib/chat.ts`):
+  a conversation beside any view, opened from the top bar's "Ask" button,
+  `#chat=<id>`, Search's "Ask: <query>" or **Ask about this** on a node card,
+  each link of the side panel ("Uses" / "Used by" rows), an insight and a
+  flow step, which pre-fill the next question's `context` (`node`,
+  `"<from> -> <to>"`, the insight id, `"<flow-id>:<n>"`). On a node it first
+  shows the instant answer (`POST /api/explain`, the audience as `mode`, the
+  interface language as `lang`), marked "Instant · proven facts", with an
+  **Ask the agent** button (primary when `escalate` is true) that sends the
+  same question through `/api/chat` with the node as context. A question
+  posts `{thread?, question, mode, context?}` (`mode`: the Business /
+  Developer toggle) and reads the event stream: `progress` lines (in the
+  interface language) in a polite live region, then the turn, or an inline
+  error (a refusal's JSON message too) with "Try again". The first turn of a
+  new conversation names it (`turn.thread`, written to the hash). Each answer
+  lights its nodes and edge ends on the map (the spotlight; centred on its
+  focus when the map is open; "Show on the map" goes there); each citation
+  opens the side panel on the node it points at (the narrowest span holding
+  the line, else the nearest node defined above it, else the file; the
+  editor chip when the map holds nothing there); an agent turn's three
+  `followUps` are one-click chips. "Conversations" lists `/api/chats`; "New"
+  starts an unnamed one. The live `chat {id}` event re-reads the open
+  conversation, so a turn saved from the terminal shows at once. Closing the
+  panel drops `#chat=` from the hash and keeps the thread for the next open.
+  Read-only without a live server: the page carries the conversations
+  `render` embedded (below), opens them from `#chat=` and offers the prompt
+  to copy instead of a composer; a server without an agent still gives
+  instant answers. Enter sends, Shift+Enter breaks the line, Esc closes (the
+  list first), focus goes to the composer on "Ask about this" and back to
+  where it came from on close.
 - Light/dark, keyboard navigable, responsive down to phone (list fallback
   for the graph below 600px), WCAG AA contrast.
 
@@ -583,7 +605,7 @@ and never a CORS header. JSON bodies are compact `JSON.stringify`.
 
 | route | answer |
 |---|---|
-| `GET /` (`/index.html`) | the viewer page rendered from the current view (`renderHtml`, same bytes as `render` would embed): identical to the static file, plus live updates |
+| `GET /` (`/index.html`) | the viewer page rendered from the current view (`renderHtml`, same bytes as `render` would embed, but no conversations: the page reads them from `/api/chat`): identical to the static file, plus live updates |
 | `GET /view.json` | the current view-model (the bytes of `.ultraview/view.json`) |
 | `GET /events` | `text/event-stream` (below); at most 32 streams |
 | `GET /api/node?id=<node-id>` | 200: the `show --json` card; 404 `{error, suggestions}`; 400 without `id` |
@@ -625,8 +647,9 @@ one watch per indexed directory elsewhere, a 30 s poll beyond 2000
 directories) but a change never rebuilds: after 1 s it re-runs ultraindex
 `runCheck` and pushes `stale`; `build` (by the agent) refreshes the index,
 which the `.ultraindex/` watch picks up. The viewer turns `stale` into its
-banner and `ask-*` into the Ask box's progress (§8, viewer/lib/live.ts); it
-ignores events it does not know.
+banner, `ask-*` into the Ask bridge's busy state (§8, viewer/lib/live.ts)
+and `chat` into a re-read of the open conversation; it ignores events it does
+not know.
 
 **Security.** Binds `127.0.0.1` by default; a non-loopback `--host` is
 refused unless passed explicitly, then served with a warning, and `/api/ask`

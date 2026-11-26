@@ -46,7 +46,10 @@ export function LocationChip({ at, full }: { at: string; full?: boolean }): JSX.
   return c ? <CiteChip cite={c} full={full} /> : null;
 }
 
-function renderInline(nodes: readonly Inline[]): ComponentChildren[] {
+/** Draws a citation in place of the default chip (the chat panel opens the cited node instead). */
+export type CiteRenderer = (cite: CiteRef, key: number) => ComponentChildren;
+
+function renderInline(nodes: readonly Inline[], cite?: CiteRenderer): ComponentChildren[] {
   return nodes.map((n, i) => {
     switch (n.t) {
       case "text":
@@ -54,36 +57,36 @@ function renderInline(nodes: readonly Inline[]): ComponentChildren[] {
       case "code":
         return <code key={i}>{n.v}</code>;
       case "strong":
-        return <strong key={i}>{renderInline(n.c)}</strong>;
+        return <strong key={i}>{renderInline(n.c, cite)}</strong>;
       case "em":
-        return <em key={i}>{renderInline(n.c)}</em>;
+        return <em key={i}>{renderInline(n.c, cite)}</em>;
       case "link":
         return (
           <a key={i} href={n.href} target="_blank" rel="noopener noreferrer">
-            {renderInline(n.c)}
+            {renderInline(n.c, cite)}
           </a>
         );
       case "cite":
-        return <CiteChip key={i} cite={n.cite} />;
+        return cite ? cite(n.cite, i) : <CiteChip key={i} cite={n.cite} />;
     }
   });
 }
 
-function renderBlock(b: Block, i: number): JSX.Element {
+function renderBlock(b: Block, i: number, cite?: CiteRenderer): JSX.Element {
   switch (b.t) {
     case "p":
-      return <p key={i}>{renderInline(b.c)}</p>;
+      return <p key={i}>{renderInline(b.c, cite)}</p>;
     case "h":
       return (
         <p key={i} class="md-h">
-          <strong>{renderInline(b.c)}</strong>
+          <strong>{renderInline(b.c, cite)}</strong>
         </p>
       );
     case "ul":
       return (
         <ul key={i}>
           {b.items.map((it, j) => (
-            <li key={j}>{renderInline(it)}</li>
+            <li key={j}>{renderInline(it, cite)}</li>
           ))}
         </ul>
       );
@@ -91,7 +94,7 @@ function renderBlock(b: Block, i: number): JSX.Element {
       return (
         <ol key={i} start={b.start}>
           {b.items.map((it, j) => (
-            <li key={j}>{renderInline(it)}</li>
+            <li key={j}>{renderInline(it, cite)}</li>
           ))}
         </ol>
       );
@@ -103,9 +106,9 @@ export function Prose({ text, class: cls }: { text: string; class?: string }): J
   return <p class={`prose${cls ? ` ${cls}` : ""}`}>{renderInline(parseInline(text))}</p>;
 }
 
-/** A block of markdown (lens answers). */
-export function Markdown({ text }: { text: string }): JSX.Element {
-  return <div class="md">{parseMarkdown(text).map(renderBlock)}</div>;
+/** A block of markdown (lens answers, chat answers). */
+export function Markdown({ text, cite }: { text: string; cite?: CiteRenderer }): JSX.Element {
+  return <div class="md">{parseMarkdown(text).map((b, i) => renderBlock(b, i, cite))}</div>;
 }
 
 export function CopyButton({ text, label, message, icon = "copy" }: { text: string; label: string; message: string; icon?: string }): JSX.Element {

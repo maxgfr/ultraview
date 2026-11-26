@@ -6,8 +6,9 @@ import { buildMap } from "../src/build.js";
 import { main } from "../src/cli.js";
 import { saveLens } from "../src/save.js";
 import { carriedOver } from "../src/refresh.js";
-import { DATA_TAG, ENV_TAG, openerFor, renderHtml, renderMap, scriptJson, spawnDetached, viewerTemplatePath } from "../src/render.js";
-import { builtShop, captureIo, gitShop, readModelFile, touch } from "./helpers.js";
+import { EMBED_CHATS_BYTES, embeddedConversations, saveTurn } from "../src/chat.js";
+import { CHATS_TAG, DATA_TAG, ENV_TAG, openerFor, renderHtml, renderMap, scriptJson, spawnDetached, viewerTemplatePath } from "../src/render.js";
+import { builtShop, captureIo, gitShop, readModelFile, touch, writeView } from "./helpers.js";
 
 let cleanups: (() => void)[] = [];
 afterEach(() => {
@@ -68,6 +69,41 @@ describe("render", () => {
     // the packaged viewer is the template, untouched apart from the two blobs
     const template = readFileSync(viewerTemplatePath(), "utf8");
     expect(html.length - template.length).toBe(scriptJson(view).length - "null".length + scriptJson({ root: repo }).length - "{}".length);
+  });
+
+  it("embeds the saved conversations (valid ones, without sources) so #chat= opens offline; serve's page leaves them out", async () => {
+    const repo = await builtShop(cleanups);
+    const empty = renderMap({ repo });
+    expect(empty.chats).toBe(0);
+    expect(embedded(readFileSync(empty.out, "utf8"), CHATS_TAG)).toEqual([]);
+    const turn = {
+      question: "How does placing an order work?",
+      answer: "POST /api/orders hands the request body to placeOrder. [src/routes/orders.ts:10-12]",
+      nodes: ["route:POST /api/orders", "sym:src/services/orders.ts#placeOrder"],
+      focus: "route:POST /api/orders",
+      lang: "en",
+      mode: "dev",
+      followUps: ["a?", "b?", "c?"],
+    };
+    const now = (d: string) => new Date(`2026-0${d}T10:00:00.000Z`);
+    expect(saveTurn(repo, turn, { create: { id: "older" }, now: now("1-01") }).ok).toBe(true);
+    expect(saveTurn(repo, { ...turn, question: "And then?" }, { create: { id: "newer" }, now: now("2-01") }).ok).toBe(true);
+    writeView(repo, "conversations/broken.json", { id: "broken", turns: "no" });
+    const r = renderMap({ repo });
+    expect(r.chats).toBe(2);
+    const chats = embedded(readFileSync(r.out, "utf8"), CHATS_TAG) as { id: string; turns: Record<string, unknown>[] }[];
+    expect(chats.map((c) => c.id)).toEqual(["newer", "older"]);
+    expect(chats[0]!.turns[0]).toMatchObject({ question: "And then?", source: "agent", followUps: ["a?", "b?", "c?"] });
+    expect(chats[0]!.turns[0]!.sources).toBeUndefined();
+    // Byte-stable, and a page without the element (a custom template) still renders.
+    expect(renderMap({ repo }).bytes).toBe(r.bytes);
+    expect(renderHtml(TEMPLATE, {}, {}, chats)).toBe(renderHtml(TEMPLATE, {}, {}));
+    // The budget: what does not fit is left out, whatever the view's size.
+    const big = { ...turn, answer: `${"POST /api/orders hands the request body to placeOrder. ".repeat(20)}[src/routes/orders.ts:10-12]` };
+    for (let i = 0; i < 40; i++) saveTurn(repo, big, { create: { id: `big-${i}` }, now: now("3-01") });
+    const capped = embeddedConversations(repo);
+    expect(capped.length).toBeLessThanOrEqual(50);
+    expect(Buffer.byteLength(JSON.stringify(capped))).toBeLessThanOrEqual(EMBED_CHATS_BYTES);
   });
 
   it("--out writes elsewhere; a missing index or facts.json says to build first", async () => {

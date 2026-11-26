@@ -11,8 +11,8 @@ fallback on phones.
   the breadcrumb climbs. Big levels group cards by folder.
 - **Side panel** for the selected node: cited summary (citations open in the
   editor or the repo website), what it serves, numbers (lines, tests, churn),
-  members, what it uses and what uses it, and "Ask your agent" (copies a
-  prompt naming the node id).
+  members, what it uses and what uses it, and "Ask about this" (opens the
+  chat panel on the node; each "Uses" / "Used by" row asks about that link).
 - **Data**: the entities with their relations; selecting one highlights who
   reads and writes it.
 - **Flows**: a stepper over the map. **Lenses**: saved questions with their
@@ -20,10 +20,18 @@ fallback on phones.
   latest change set over the map (added, changed, impacted, risk) and the
   timeline. **Insights**: findings with a prompt to copy. **Start here**: the
   tour.
+- **Chat panel** ("Ask" in the top bar, `#chat=<id>`): a conversation beside
+  any view. "Ask about this" on a node, a link, an insight or a flow step
+  pre-fills the question's context; on a node it first shows the instant
+  answer from proven facts (`explain`), with "Ask the agent" to escalate.
+  Answers light their nodes on the map, citations open the cited node's
+  panel, the agent's three follow-ups are one click. Business / Developer is
+  sent as the mode. Offline (the rendered file) it shows the conversations
+  `render` embedded, read-only.
 - Business / Developer audience toggle (Business hides the Files and Symbols
   levels and technical labels); Cmd/Ctrl-K search over every node.
 
-When served, the rpc edges, the hub summaries, the Ask box and a banner for a
+When served, the rpc edges, the hub summaries, asking in the chat panel and a banner for a
 stale index are in the viewer as well (`docs/design.md` §8.1 has the server
 side).
 

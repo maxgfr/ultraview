@@ -3,6 +3,7 @@
 import { createContext } from "preact";
 import { useContext } from "preact/hooks";
 import type { ChangeView, Insight } from "../lib/changes.js";
+import type { ChatContext, ChatState, TurnAnswer, ViewConversation } from "../lib/chat.js";
 import type { Index } from "../lib/data.js";
 import type { Editor, RepoRef } from "../lib/editor.js";
 import type { Lang } from "../lib/i18n.js";
@@ -43,6 +44,35 @@ export interface UiState {
   overlay?: string;
   /** Ask the map to centre on a node (nonce re-triggers). */
   center?: { id: string; nonce: number };
+  /** The chat panel is open. */
+  chatOpen: boolean;
+  /** Its conversation (`#chat=`), once it has an id; kept while the panel is closed. */
+  chat?: string;
+  /** Move the focus into the panel's composer (nonce re-triggers). */
+  chatFocus?: number;
+}
+
+/** What the chat panel can ask: nothing on a static page, instant answers only without an agent, or the agent too. */
+export type ChatCan = "static" | "noagent" | "busy" | "ready";
+
+export interface ChatApi {
+  state: ChatState;
+  can: ChatCan;
+  /** The conversations `render` embedded in this page (read-only). */
+  embedded: readonly ViewConversation[];
+  /** Open the panel: on a conversation (null: a new one), about something ("Ask about this": a node also gets its instant answer). */
+  open: (opts?: { thread?: string | null; context?: ChatContext }) => void;
+  close: () => void;
+  /** Ask the agent, in the open conversation (or a new one). */
+  send: (question: string, opts?: { context?: ChatContext; from?: string }) => void;
+  setDraft: (context?: ChatContext) => void;
+  dismiss: (key: string) => void;
+  /** Re-read the conversations list. */
+  refreshList: () => void;
+  /** Light an answer's nodes on the map; `go` switches to the map, selects and centres its focus. */
+  show: (answer: TurnAnswer, label: string, go?: boolean) => void;
+  /** Open a node's card in the side panel (a citation was clicked). */
+  openNode: (id: string) => void;
 }
 
 export type NavMode = "push" | "replace" | "none";
@@ -68,9 +98,8 @@ export interface AppApi {
   drill: (id: string) => void;
   /** What a serving `ultraview serve` reported (stale index, Ask bridge); `connected` false on a static page. */
   live: LiveState;
-  /** Send a question to the Ask bridge (a no-op unless it is on and idle). */
-  ask: (question: string) => void;
   dismissLive: (what: "stale" | "error") => void;
+  chat: ChatApi;
 }
 
 export const AppContext = createContext<AppApi | null>(null);

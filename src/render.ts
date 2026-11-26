@@ -11,17 +11,23 @@
 // can close the element or open a comment — JSON.parse reads it back
 // unchanged. The repository's absolute path rides in a separate small blob
 // (`ultraview-env`) for "open in editor" links; view.json is never mutated.
+// The saved conversations (`.ultraview/conversations/`, valid ones, within a
+// byte budget: src/chat.ts `embeddedConversations`) ride in a third one
+// (`ultraview-chats`), so `#chat=<id>` opens read-only offline; `serve`
+// leaves it empty, its pages read them live.
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { embeddedConversations } from "./chat.js";
 import { indexExists } from "./engine.js";
 import { viewPaths } from "./paths.js";
 import { freshView, indexStaleness, writeView } from "./refresh.js";
 
 export const DATA_TAG = '<script type="application/json" id="ultraview-data">';
 export const ENV_TAG = '<script type="application/json" id="ultraview-env">';
+export const CHATS_TAG = '<script type="application/json" id="ultraview-chats">';
 
 export interface RenderOptions {
   repo: string;
@@ -41,6 +47,8 @@ export interface RenderResult {
   updated: boolean;
   /** The index no longer matches the source files: the page shows the code as of the last `build`. */
   stale: boolean;
+  /** Conversations embedded in the page (read-only offline). */
+  chats: number;
 }
 
 /** Where the packaged viewer lives, from src/ (tests), scripts/ (repo bundle) or skills/ultraview/scripts/ (installed skill). */
@@ -67,9 +75,10 @@ function fill(html: string, tag: string, body: string): string {
   return html.slice(0, from) + body + html.slice(end);
 }
 
-/** The viewer page for a view (pure). */
-export function renderHtml(template: string, view: unknown, env: { root?: string }): string {
-  return fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
+/** The viewer page for a view (pure); `chats` fill the conversations element when the template has one. */
+export function renderHtml(template: string, view: unknown, env: { root?: string }, chats?: readonly unknown[]): string {
+  const html = fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
+  return chats?.length && html.includes(CHATS_TAG) ? fill(html, CHATS_TAG, scriptJson(chats)) : html;
 }
 
 export function renderMap(opts: RenderOptions): RenderResult {
@@ -89,13 +98,23 @@ export function renderMap(opts: RenderOptions): RenderResult {
   }
   const templatePath = opts.template ?? viewerTemplatePath();
   const template = readFileSync(templatePath, "utf8");
-  const html = renderHtml(template, view, { root: repo });
+  const chats = embeddedConversations(repo);
+  const html = renderHtml(template, view, { root: repo }, chats);
   const out = resolve(opts.out ?? paths.html);
   mkdirSync(dirname(out), { recursive: true });
   const tmp = `${out}.${process.pid}.tmp`;
   writeFileSync(tmp, html);
   renameSync(tmp, out);
-  return { repo, out, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template), updated, stale };
+  return {
+    repo,
+    out,
+    bytes: Buffer.byteLength(html),
+    viewBytes: Buffer.byteLength(viewText),
+    viewerBytes: Buffer.byteLength(template),
+    updated,
+    stale,
+    chats: chats.length,
+  };
 }
 
 /** The command that opens a file with the OS's default app. */

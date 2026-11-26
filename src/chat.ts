@@ -522,6 +522,40 @@ export function contextView(repoArg: string): ContextView {
   return { byId: live.byId, flows: live.view.flows, insights: carriedOver(viewText).insights ?? [] };
 }
 
+// --- embedded in the rendered page ---------------------------------------------------
+
+/** Most conversations `render` embeds in the offline page. */
+export const EMBED_CHATS_MAX = 50;
+/** Most bytes (compact JSON) the embedded conversations take, whatever the view's size. */
+export const EMBED_CHATS_BYTES = 512 * 1024;
+
+/** A conversation as the page carries it: its turns without `sources` (the viewer never reads them). */
+export type EmbeddedConversation = Omit<Conversation, "turns"> & { turns: Omit<ChatTurn, "sources">[] };
+
+/**
+ * The conversations the offline page carries, so `#chat=<id>` opens read-only
+ * without a server: only valid ones (`check`'s rules), the most recently
+ * updated first, at most EMBED_CHATS_MAX, each kept only while the whole stays
+ * within EMBED_CHATS_BYTES (one that does not fit is left out, smaller later
+ * ones still go in). Deterministic: the same files give the same bytes.
+ */
+export function embeddedConversations(repoArg: string): EmbeddedConversation[] {
+  const repo = resolve(repoArg);
+  const { conversations } = loadConversations(repo);
+  const sorted = conversations.sort((a, b) => cmp(updatedAt(b), updatedAt(a)) || cmp(a.id, b.id));
+  const out: EmbeddedConversation[] = [];
+  let bytes = 2;
+  for (const c of sorted) {
+    if (out.length >= EMBED_CHATS_MAX) break;
+    const slim: EmbeddedConversation = { ...c, turns: c.turns.map(({ sources: _sources, ...turn }) => turn) };
+    const size = Buffer.byteLength(JSON.stringify(slim)) + 1;
+    if (bytes + size > EMBED_CHATS_BYTES) continue;
+    bytes += size;
+    out.push(slim);
+  }
+  return out;
+}
+
 // --- promote -------------------------------------------------------------------------
 
 /** `chat promote <id> <turn>`: turn `n` (from 1) saved as a lens, through `lens save` (sources re-stamped). */

@@ -7,9 +7,8 @@ import { type ChangeView, normalizeChanges, OVERLAY_KINDS, type OverlayKind, tim
 import { num, t } from "../lib/i18n.js";
 import { erdScene, type SceneNode, subgraphScene } from "../lib/levels.js";
 import { stripCites } from "../lib/markdown.js";
-import { askMode } from "../lib/live.js";
+import { insightContext, stepContext } from "../lib/chat.js";
 import { askAboutInsight, reaskLens, retraceFlow } from "../lib/prompts.js";
-import { AskBox } from "./Ask.js";
 import { useApp } from "./context.js";
 import { kindName } from "./format.js";
 import { Graph } from "./Graph.js";
@@ -77,7 +76,7 @@ export function DataModelsView(): JSX.Element {
 // Flows
 
 export function FlowsView(): JSX.Element {
-  const { ix, version, state, update, reveal, narrow } = useApp();
+  const { ix, version, state, update, reveal, narrow, chat } = useApp();
   const flows = ix.view.flows ?? [];
   const flow = flows.find((f) => f.id === state.flow) ?? (flows.length === 1 ? flows[0] : undefined);
   const step = flow ? Math.max(0, Math.min(state.step, flow.steps.length - 1)) : 0;
@@ -211,6 +210,10 @@ export function FlowsView(): JSX.Element {
                   <Icon name="map" size={14} />
                   {t("flows.showOnMap")}
                 </button>
+                <button type="button" class="btn btn-quiet" onClick={() => chat.open({ context: stepContext(flow.id, step) })}>
+                  <Icon name="ask" size={14} />
+                  {t("flows.ask")}
+                </button>
                 <span class="kbd-hint">{t("flows.keys")}</span>
               </div>
             </div>
@@ -251,8 +254,16 @@ export function FlowsView(): JSX.Element {
 // Lenses
 
 export function LensesView(): JSX.Element {
-  const { ix, version, state, update, reveal, narrow, live } = useApp();
-  const asking = askMode(live) !== "off";
+  const { ix, version, state, update, reveal, narrow, chat } = useApp();
+  const asking = chat.can === "ready" || chat.can === "busy";
+  const askHead = asking ? (
+    <header class="view-head">
+      <button type="button" class="btn btn-primary" onClick={() => chat.open()}>
+        <Icon name="ask" size={14} />
+        {t("lenses.ask")}
+      </button>
+    </header>
+  ) : null;
   const lenses = ix.view.lenses ?? [];
   const lens = lenses.find((l) => l.id === state.lens) ?? (lenses.length === 1 ? lenses[0] : undefined);
   useEffect(() => {
@@ -272,11 +283,7 @@ export function LensesView(): JSX.Element {
   if (!lenses.length) {
     return (
       <div class="lenses">
-        {asking ? (
-          <header class="view-head">
-            <AskBox />
-          </header>
-        ) : null}
+        {askHead}
         <Empty icon="lens" title={t("lenses.emptyTitle")}>
           <p>{asking ? t("lenses.emptyAsk") : t("lenses.emptyBody")}</p>
           {asking ? null : (
@@ -292,11 +299,7 @@ export function LensesView(): JSX.Element {
   const focus = lens?.focus ?? lens?.nodes[0];
   return (
     <div class="lenses">
-      {asking ? (
-        <header class="view-head">
-          <AskBox />
-        </header>
-      ) : null}
+      {askHead}
       <div class="split">
         <Rail label={t("lenses.list")}>
           {lenses.map((l) => {
@@ -515,7 +518,7 @@ function ChangeItem({ c, on }: { c: ChangeView; on: boolean }): JSX.Element {
 // Insights
 
 export function InsightsView(): JSX.Element {
-  const { ix, insights, reveal } = useApp();
+  const { ix, insights, reveal, chat } = useApp();
   if (!insights.length) {
     return (
       <Empty icon="insights" title={t("insights.emptyTitle")}>
@@ -549,6 +552,10 @@ export function InsightsView(): JSX.Element {
               </div>
             ) : null}
             <div class="insight-actions">
+              <button type="button" class="btn btn-primary" onClick={() => chat.open({ context: insightContext(i.id) })}>
+                <Icon name="ask" size={14} />
+                {t("insights.ask")}
+              </button>
               <CopyButton text={i.prompt ?? askAboutInsight(i.title, i.nodes)} label={t("insights.copyPrompt")} message={t("toast.promptCopied")} icon="ask" />
             </div>
           </li>

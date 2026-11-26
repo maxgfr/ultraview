@@ -40849,6 +40849,24 @@ function contextView(repoArg) {
   }
   return { byId: live.byId, flows: live.view.flows, insights: carriedOver(viewText).insights ?? [] };
 }
+var EMBED_CHATS_MAX = 50;
+var EMBED_CHATS_BYTES = 512 * 1024;
+function embeddedConversations(repoArg) {
+  const repo = resolve23(repoArg);
+  const { conversations } = loadConversations(repo);
+  const sorted = conversations.sort((a, b) => cmp9(updatedAt(b), updatedAt(a)) || cmp9(a.id, b.id));
+  const out2 = [];
+  let bytes = 2;
+  for (const c2 of sorted) {
+    if (out2.length >= EMBED_CHATS_MAX) break;
+    const slim = { ...c2, turns: c2.turns.map(({ sources: _sources, ...turn }) => turn) };
+    const size = Buffer.byteLength(JSON.stringify(slim)) + 1;
+    if (bytes + size > EMBED_CHATS_BYTES) continue;
+    bytes += size;
+    out2.push(slim);
+  }
+  return out2;
+}
 function promoteTurn(repoArg, id, n, opts) {
   const repo = resolve23(repoArg);
   const c2 = loadConversation(repo, id);
@@ -41745,6 +41763,7 @@ import { dirname as dirname16, join as join49, relative as relative15, resolve a
 import { fileURLToPath as fileURLToPath3 } from "url";
 var DATA_TAG = '<script type="application/json" id="ultraview-data">';
 var ENV_TAG = '<script type="application/json" id="ultraview-env">';
+var CHATS_TAG = '<script type="application/json" id="ultraview-chats">';
 function viewerTemplatePath() {
   const here = dirname16(fileURLToPath3(import.meta.url));
   const candidates = [join49(here, "../assets/viewer.html"), join49(here, "../skills/ultraview/assets/viewer.html")];
@@ -41763,8 +41782,9 @@ function fill(html, tag, body2) {
   if (end === -1) throw new Error(`viewer template: unterminated ${tag}`);
   return html.slice(0, from) + body2 + html.slice(end);
 }
-function renderHtml(template, view, env) {
-  return fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
+function renderHtml(template, view, env, chats) {
+  const html = fill(fill(template, DATA_TAG, scriptJson(view)), ENV_TAG, scriptJson(env));
+  return chats?.length && html.includes(CHATS_TAG) ? fill(html, CHATS_TAG, scriptJson(chats)) : html;
 }
 function renderMap(opts) {
   const repo = resolve28(opts.repo);
@@ -41781,13 +41801,23 @@ function renderMap(opts) {
   }
   const templatePath = opts.template ?? viewerTemplatePath();
   const template = readFileSync31(templatePath, "utf8");
-  const html = renderHtml(template, view, { root: repo });
+  const chats = embeddedConversations(repo);
+  const html = renderHtml(template, view, { root: repo }, chats);
   const out2 = resolve28(opts.out ?? paths.html);
   mkdirSync10(dirname16(out2), { recursive: true });
   const tmp = `${out2}.${process.pid}.tmp`;
   writeFileSync13(tmp, html);
   renameSync9(tmp, out2);
-  return { repo, out: out2, bytes: Buffer.byteLength(html), viewBytes: Buffer.byteLength(viewText), viewerBytes: Buffer.byteLength(template), updated, stale };
+  return {
+    repo,
+    out: out2,
+    bytes: Buffer.byteLength(html),
+    viewBytes: Buffer.byteLength(viewText),
+    viewerBytes: Buffer.byteLength(template),
+    updated,
+    stale,
+    chats: chats.length
+  };
 }
 function openerFor(platform, file) {
   if (platform === "darwin") return { cmd: "open", args: [file] };

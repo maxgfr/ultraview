@@ -22,3 +22,11 @@ export function askAboutInsight(title: string, nodes: readonly string[]): string
 export function businessMapPrompt(app: string): string {
   return `Use ultraview (/ultraview) to write the business map of ${app}: run \`ultraview status\` and follow it to describe the capabilities, who uses them and the systems in .ultraview/model.json, with a [path:line] citation for every claim. Then run \`ultraview check\` and \`ultraview render\`.`;
 }
+
+export function askAboutEdge(from: string, to: string): string {
+  return `Using ultraview, explain the link from ${from} to ${to}: why ${from} depends on ${to} and what goes through it. Run \`ultraview show ${from}\` and \`ultraview show ${to}\` first, and cite [path:line] for every claim.`;
+}
+
+export function askAboutStep(flow: string, title: string, n: number, node: string): string {
+  return `Using ultraview, explain step ${n} of the flow "${title}" (id ${flow}), on ${node}: what happens there and why. Run \`ultraview show ${node}\` first, and cite [path:line] for every claim.`;
+}

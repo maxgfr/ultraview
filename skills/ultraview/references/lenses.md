@@ -99,8 +99,9 @@ and 3 follow-up suggestions. Shape: [schema](schema.md).
 ## The Ask bridge
 
 `serve --ask auto|claude|codex|none` (default `auto`: claude, then codex, when
-installed) adds `POST /api/ask`: the viewer's Ask box sends a question, the
-server runs that agent's CLI read-only (Claude Code in its don't-ask
+installed) adds `POST /api/ask` and `POST /api/chat` (the viewer's chat
+panel asks through it, one conversation turn at a time): the server runs that
+agent's CLI read-only (Claude Code in its don't-ask
 permission mode, allowed only Read, Glob, Grep and ultraview's read-only
 commands; Codex in its read-only sandbox), with this same `lens new` pack (the
 prompt asks the agent to add `--terms` when the question is not in English),

@@ -6,6 +6,7 @@
 
 import { render } from "preact";
 import type { ViewModel } from "../src/model/types.js";
+import { readConversations } from "./lib/chat.js";
 import type { RepoRef } from "./lib/editor.js";
 import "./styles.css";
 import { App, NoData } from "./ui/App.js";
@@ -25,7 +26,9 @@ const view = readJson("ultraview-data") as ViewModel | null | undefined;
 perfStep("data parsed");
 const env = (readJson("ultraview-env") ?? {}) as { root?: unknown };
 const repo: RepoRef = typeof env.root === "string" ? { root: env.root } : {};
+// The conversations `render` embedded (read-only offline; a served page reads them live).
+const chats = readConversations(readJson("ultraview-chats"));
 const root = document.getElementById("app")!;
 
-if (view && typeof view === "object" && Array.isArray(view.nodes)) render(<App initial={view} repo={repo} />, root);
+if (view && typeof view === "object" && Array.isArray(view.nodes)) render(<App initial={view} repo={repo} chats={chats} />, root);
 else render(<NoData />, root);

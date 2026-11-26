@@ -421,6 +421,8 @@ describe("conversations", () => {
       (await http(handle, "/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: '{"question":"x","mode":"dev"}' })).status,
     ).toBe(404);
     expect((await http(handle, "/api/chat?id=from-terminal")).status).toBe(200);
+    // The served page reads conversations live: none are embedded in it.
+    expect((await http(handle, "/")).body).toContain('<script type="application/json" id="ultraview-chats">[]</script>');
   });
 });
 

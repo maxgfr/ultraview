@@ -1,5 +1,5 @@
-// The top bar: app name and summary, views, audience, Start here, search,
-// settings (editor), theme and language.
+// The top bar: app name and summary, views, audience, Start here, the chat
+// panel, search, settings (editor), theme and language.
 
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -159,6 +159,19 @@ export function TopBar(): JSX.Element {
             </button>
           ))}
         </div>
+        {api.chat.can !== "static" || api.chat.embedded.length ? (
+          <button
+            type="button"
+            class={`btn chat-btn${state.chatOpen ? " on" : ""}`}
+            aria-pressed={state.chatOpen}
+            title={t("top.chat")}
+            aria-label={t("top.chat")}
+            onClick={() => (state.chatOpen ? api.chat.close() : api.chat.open())}
+          >
+            <Icon name="ask" size={14} />
+            <span class="chat-btn-label">{t("top.chat")}</span>
+          </button>
+        ) : null}
         <button
           type="button"
           class="search-btn"
