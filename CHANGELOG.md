@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here, generated automatically from the [Conventional Commits](https://www.conventionalcommits.org/) by [semantic-release](https://github.com/semantic-release/semantic-release).
 
+## [1.9.3](https://github.com/maxgfr/ultraview/compare/v1.9.2...v1.9.3) (2026-11-26)
+
+
+### Bug Fixes
+
+* **drizzle:** extract tables declared through pgTableCreator ([25f7e43](https://github.com/maxgfr/ultraview/commit/25f7e4311b318da210f6fdc4310ced6af8004189)), closes [#16](https://github.com/maxgfr/ultraview/issues/16)
+
 ## [1.9.2](https://github.com/maxgfr/ultraview/compare/v1.9.1...v1.9.2) (2026-11-26)
 
 
