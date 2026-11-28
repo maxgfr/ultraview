@@ -1,10 +1,10 @@
 {
-  "tag": "v7.16.3",
-  "engineVersion": "7.16.3",
+  "tag": "v7.16.4",
+  "engineVersion": "7.16.4",
   "sha256": {
-    "ultraindex-engine.mjs": "17816b6f99fef121a22f4b7c95ceb89a3bbe047b23aa26d91f03c9b847cf7348",
-    "ultraindex-engine.d.mts": "54701e5e64d5ef64a54d5b713aaed63394282ae86255862f55aa5ae5124e55ef"
+    "ultraindex-engine.mjs": "4b1ae7b49de901724b0dda5e0b947e3f9a0323427d91dede2805e2ebe347cf31",
+    "ultraindex-engine.d.mts": "fcb741463f7e631f5e1f2dcdb78f72afe1883aa54be8e547614ae5ca76f79ddf"
   },
-  "syncedAt": "2026-11-27T16:47:07.464Z",
-  "commit": "166091bade633913f4ff924ada7112cdf885eb01"
+  "syncedAt": "2026-11-28T15:39:22.457Z",
+  "commit": "4df058de5889512955a047ba8dd9da681e7e125b"
 }
